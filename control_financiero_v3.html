@@ -487,6 +487,45 @@
                         </table>
                     </div>
 
+                    <div class="panel no-print" style="border-top: 4px solid #f59e0b;">
+                        <h3 class="panel-title">↔️ Transferencias entre Cuentas</h3>
+                        <div class="form-block">
+                            <form id="form-transferencia">
+                                <div class="form-group-row">
+                                    <div>
+                                        <label>Origen</label>
+                                        <select id="transf-origen" required></select>
+                                    </div>
+                                    <div>
+                                        <label>Destino</label>
+                                        <select id="transf-destino" required></select>
+                                    </div>
+                                </div>
+                                <div class="form-group-row">
+                                    <div>
+                                        <label>Monto ($)</label>
+                                        <input type="number" id="transf-monto" required placeholder="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Fecha</label>
+                                        <input type="date" id="transf-fecha" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-add" style="background:#f59e0b;">Registrar Transferencia</button>
+                            </form>
+                        </div>
+                        <table>
+                            <thead><tr>
+                                <th style="width:20%">Fecha</th>
+                                <th style="width:30%">Origen</th>
+                                <th style="width:30%">Destino</th>
+                                <th style="width:15%" class="text-right">Monto</th>
+                                <th style="width:5%" class="no-print"></th>
+                            </tr></thead>
+                            <tbody id="tabla-transferencias-body"></tbody>
+                        </table>
+                    </div>
+
                     <div class="panel no-print" style="border-top: 4px solid #64748b;">
                         <h3 class="panel-title">⚙️ Rubros de Gasto Corriente</h3>
                         <div class="form-block">
@@ -724,16 +763,22 @@
     //  GUARDAR DATOS
     // ══════════════════════════════════════════════
     function guardarDatos() {
-        localStorage.setItem(KEYS.bancos,     JSON.stringify(listaBancos));
-        localStorage.setItem(KEYS.tarjetas,   JSON.stringify(listaTarjetas));
-        localStorage.setItem(KEYS.servicios,  JSON.stringify(listaServicios));
-        localStorage.setItem(KEYS.corrientes, JSON.stringify(listaCorrientes));
-        localStorage.setItem(KEYS.rubros,     JSON.stringify(listaRubros));
-        localStorage.setItem(KEYS.historico,  JSON.stringify(historicoMeses));
+        localStorage.setItem(KEYS.bancos,         JSON.stringify(listaBancos));
+        localStorage.setItem(KEYS.tarjetas,       JSON.stringify(listaTarjetas));
+        localStorage.setItem(KEYS.servicios,      JSON.stringify(listaServicios));
+        localStorage.setItem(KEYS.corrientes,     JSON.stringify(listaCorrientes));
+        localStorage.setItem(KEYS.rubros,         JSON.stringify(listaRubros));
+        localStorage.setItem(KEYS.transferencias, JSON.stringify(listaTransferencias));
+        localStorage.setItem(KEYS.historico,      JSON.stringify(historicoMeses));
     }
 
     function formatMoneda(num) {
-        return '$ ' + Math.round(num).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+        const n = Math.round(num);
+        return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function formatNum(num) {
+        return Math.round(num).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
     // ══════════════════════════════════════════════
@@ -758,11 +803,12 @@
             nombre: nombre + sufijo,
             fechaCierre: new Date().toISOString(),
             datos: {
-                listaBancos:     JSON.parse(JSON.stringify(listaBancos)),
-                listaTarjetas:   JSON.parse(JSON.stringify(listaTarjetas)),
-                listaServicios:  JSON.parse(JSON.stringify(listaServicios)),
-                listaCorrientes: JSON.parse(JSON.stringify(listaCorrientes)),
-                listaRubros:     JSON.parse(JSON.stringify(listaRubros))
+                listaBancos:        JSON.parse(JSON.stringify(listaBancos)),
+                listaTarjetas:      JSON.parse(JSON.stringify(listaTarjetas)),
+                listaServicios:     JSON.parse(JSON.stringify(listaServicios)),
+                listaCorrientes:    JSON.parse(JSON.stringify(listaCorrientes)),
+                listaRubros:        JSON.parse(JSON.stringify(listaRubros)),
+                listaTransferencias:JSON.parse(JSON.stringify(listaTransferencias))
             }
         };
         historicoMeses.push(snapshot);
@@ -914,10 +960,51 @@
     }
 
     // ══════════════════════════════════════════════
+    //  TRANSFERENCIAS
+    // ══════════════════════════════════════════════
+    function agregarTransferencia(e) {
+        e.preventDefault();
+        const origenId  = document.getElementById('transf-origen').value;
+        const destinoId = document.getElementById('transf-destino').value;
+        const monto     = parseFloat(document.getElementById('transf-monto').value) || 0;
+        const fecha     = document.getElementById('transf-fecha').value;
+
+        if (origenId === destinoId) { alert("Origen y destino no pueden ser iguales."); return; }
+        if (monto <= 0) { alert("El monto debe ser mayor a cero."); return; }
+
+        // Ajustar saldos
+        const origen  = listaBancos.find(b => b.id === origenId)  || listaTarjetas.find(t => t.id === origenId);
+        const destino = listaBancos.find(b => b.id === destinoId) || listaTarjetas.find(t => t.id === destinoId);
+        if (origen)  origen.saldo  = (origen.saldo  || 0) - monto;
+        if (destino) destino.saldo = (destino.saldo || 0) + monto;
+
+        listaTransferencias.push({
+            id: 'tr_' + Date.now(),
+            origenId, destinoId, monto, fecha,
+            origenNombre:  origen  ? origen.nombre  : '?',
+            destinoNombre: destino ? destino.nombre : '?'
+        });
+
+        guardarDatos(); e.target.reset(); renderizarTodo();
+    }
+
+    function eliminarTransferencia(id) {
+        const tr = listaTransferencias.find(t => t.id === id);
+        if (tr) {
+            const origen  = listaBancos.find(b => b.id === tr.origenId)  || listaTarjetas.find(t => t.id === tr.origenId);
+            const destino = listaBancos.find(b => b.id === tr.destinoId) || listaTarjetas.find(t => t.id === tr.destinoId);
+            if (origen)  origen.saldo  = (origen.saldo  || 0) + tr.monto;
+            if (destino) destino.saldo = (destino.saldo || 0) - tr.monto;
+        }
+        listaTransferencias = listaTransferencias.filter(t => t.id !== id);
+        guardarDatos(); renderizarTodo();
+    }
+
+    // ══════════════════════════════════════════════
     //  BACKUPS
     // ══════════════════════════════════════════════
     function exportarFlujo() {
-        const data = { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaRubros, historicoMeses };
+        const data = { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaRubros, listaTransferencias, historicoMeses };
         const url = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
         const a = document.createElement('a'); a.href = url; a.download = "backup_v3_tesoreria.json";
         document.body.appendChild(a); a.click(); a.remove();
@@ -1002,8 +1089,14 @@
             const tr = document.createElement('tr');
             const tdN = document.createElement('td'); tdN.innerHTML = `<b>${b.nombre}</b>`;
             const tdS = document.createElement('td'); tdS.className = "text-right";
-            const inp = document.createElement('input'); inp.type = "number"; inp.className = "input-tabla text-right"; inp.value = Math.round(b.saldo);
-            inp.addEventListener('change', e => modificarSaldoBaseBanco(b.id, e.target.value));
+            const inp = document.createElement('input'); inp.type = "text"; inp.className = "input-tabla text-right"; 
+            inp.value = formatNum(b.saldo);
+            inp.addEventListener('focus', () => { inp.value = Math.round(b.saldo); });
+            inp.addEventListener('blur', e => { 
+                const v = parseFloat(e.target.value.replace(/\./g,'').replace(',','.')) || 0;
+                modificarSaldoBaseBanco(b.id, v); 
+                inp.value = formatNum(listaBancos.find(x=>x.id===b.id)?.saldo || 0);
+            });
             tdS.appendChild(inp);
             const tdD = document.createElement('td'); tdD.className = "text-center no-print";
             const btn = document.createElement('button'); btn.className = "btn-danger"; btn.innerText = "✕";
@@ -1017,8 +1110,14 @@
             const tr = document.createElement('tr');
             const tdN = document.createElement('td'); tdN.innerHTML = `<b>${t.nombre}</b>`;
             const tdS = document.createElement('td'); tdS.className = "text-right";
-            const inp = document.createElement('input'); inp.type = "number"; inp.className = "input-tabla text-right"; inp.value = Math.round(t.saldo); inp.id = `input-saldo-base-${t.id}`;
-            inp.addEventListener('change', e => modificarSaldoBaseTarjeta(t.id, e.target.value));
+            const inp = document.createElement('input'); inp.type = "text"; inp.className = "input-tabla text-right"; inp.id = `input-saldo-base-${t.id}`;
+            inp.value = formatNum(t.saldo);
+            inp.addEventListener('focus', () => { inp.value = Math.round(t.saldo); });
+            inp.addEventListener('blur', e => { 
+                const v = parseFloat(e.target.value.replace(/\./g,'').replace(',','.')) || 0;
+                modificarSaldoBaseTarjeta(t.id, v);
+                inp.value = formatNum(listaTarjetas.find(x=>x.id===t.id)?.saldo || 0);
+            });
             tdS.appendChild(inp);
             const tdD = document.createElement('td'); tdD.className = "text-center no-print";
             const btn = document.createElement('button'); btn.className = "btn-danger"; btn.innerText = "✕";
@@ -1103,8 +1202,14 @@
                 tdFP.appendChild(inpFP);
 
                 const tdMon = document.createElement('td'); tdMon.className = "text-right";
-                const inpM = document.createElement('input'); inpM.type = "number"; inpM.className = "input-tabla text-right"; inpM.value = Math.round(c.monto); inpM.style.cssText = "font-weight:bold;color:#10b981;";
-                inpM.addEventListener('change', e => modificarMontoCorriente(c.id, e.target.value));
+                const inpM = document.createElement('input'); inpM.type = "text"; inpM.className = "input-tabla text-right"; inpM.style.cssText = "font-weight:bold;color:#10b981;";
+                inpM.value = formatNum(c.monto);
+                inpM.addEventListener('focus', () => { inpM.value = Math.round(c.monto); });
+                inpM.addEventListener('blur', e => { 
+                    const v = parseFloat(e.target.value.replace(/\./g,'').replace(',','.')) || 0;
+                    modificarMontoCorriente(c.id, v);
+                    inpM.value = formatNum(v);
+                });
                 tdMon.appendChild(inpM);
 
                 const tdDel = document.createElement('td'); tdDel.className = "text-center no-print";
