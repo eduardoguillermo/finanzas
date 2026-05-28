@@ -793,9 +793,15 @@ function nuevoMes() {
 //  BACKUP
 // ═══════════════════════════════════════════
 function exportar() {
+    const ahora = new Date();
+    const fecha = ahora.getFullYear() +
+        String(ahora.getMonth()+1).padStart(2,'0') +
+        String(ahora.getDate()).padStart(2,'0') + '_' +
+        String(ahora.getHours()).padStart(2,'0') +
+        String(ahora.getMinutes()).padStart(2,'0');
     const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses};
     const a=document.createElement('a'); a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
-    a.download='backup_v3_finanzas.json'; document.body.appendChild(a); a.click(); a.remove();
+    a.download=`backup_finanzas_${fecha}.json`; document.body.appendChild(a); a.click(); a.remove();
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
