@@ -512,11 +512,26 @@ function render() {
             inpD.onchange = e => { c.detalle = e.target.value.trim(); guardar(); };
 
             const inpFP = document.createElement('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
-            inpFP.onchange = e => { c.fechaPago = e.target.value; guardar(); };
+            inpFP.onchange = e => {
+                const fechaAnterior = c.fechaPago;
+                const fechaNueva = e.target.value;
+                // Si pasa de sin fecha a con fecha: descontar saldo en cuentas liquidables
+                if (!fechaAnterior && fechaNueva && esCuentaLiq(c.medioPagoId)) {
+                    const bk = listaBancos.find(b => b.id === c.medioPagoId);
+                    if (bk) bk.saldo -= c.monto;
+                }
+                // Si pasa de con fecha a sin fecha: restaurar saldo en cuentas liquidables
+                if (fechaAnterior && !fechaNueva && esCuentaLiq(c.medioPagoId)) {
+                    const bk = listaBancos.find(b => b.id === c.medioPagoId);
+                    if (bk) bk.saldo += c.monto;
+                }
+                c.fechaPago = fechaNueva;
+                guardar(); render();
+            };
 
             const inpM = inpNum(c.monto, v => {
                 const diff = v - c.monto;
-                if (esCuentaLiq(c.medioPagoId)) {
+                if (c.fechaPago && esCuentaLiq(c.medioPagoId)) {
                     const bk = listaBancos.find(b=>b.id===c.medioPagoId);
                     if (bk) bk.saldo -= diff;
                 }
@@ -628,8 +643,10 @@ function calcDash() {
         }
     });
     listaCorrientes.forEach(c => {
-        totalPag+=c.monto;
-        if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto;
+        if (c.fechaPago) { // solo impacta si tiene fecha de pago confirmada
+            totalPag+=c.monto;
+            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto;
+        }
     });
 
     let sumaBancos=0;
@@ -676,10 +693,7 @@ function altaCorriente(e) {
     const medioId = v('corr-medio');
     if (!medioId) { alert('Configure un medio de pago.'); return; }
     const monto = n('corr-monto');
-    if (esCuentaLiq(medioId)) {
-        const bk=listaBancos.find(b=>b.id===medioId);
-        if (bk) bk.saldo-=monto;
-    }
+    // No descontar saldo al dar de alta — se descuenta al confirmar con fecha de pago
     listaCorrientes.push({ id:'c_'+Date.now(), rubro:v('corr-rubro'), detalle:v('corr-detalle'), monto, fechaPago:'', medioPagoId:medioId });
     guardar(); e.target.reset(); render();
 }
@@ -717,7 +731,7 @@ function elimRubro(r)     { if(listaCorrientes.some(c=>c.rubro===r)){alert('Rubr
 
 function elimCorriente(id) {
     const c=listaCorrientes.find(x=>x.id===id);
-    if (c && esCuentaLiq(c.medioPagoId)) {
+    if (c && c.fechaPago && esCuentaLiq(c.medioPagoId)) {
         const bk=listaBancos.find(b=>b.id===c.medioPagoId);
         if (bk) bk.saldo+=c.monto;
     }
@@ -765,7 +779,8 @@ function nuevoMes() {
     listaTarjetas.forEach(t=>{ t.saldo+=(mDeb[t.id]||0); });
 
     listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; });
-    listaCorrientes=[]; listaTransferencias=[];
+    listaCorrientes = listaCorrientes.filter(c => !c.fechaPago); // arrastrar sin fecha
+    listaTransferencias=[];
 
     // Generar cuotas del nuevo mes como servicios fijos
     listaCuotas.forEach(c => {
