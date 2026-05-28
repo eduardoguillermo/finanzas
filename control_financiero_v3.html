@@ -175,21 +175,23 @@
     //  STORAGE KEYS
     // ══════════════════════════════════════════════
     const KEYS = {
-        rubros:     'f_r_v2_2',
-        bancos:     'f_bancos_v2_4',
-        tarjetas:   'f_tarjetas_v2_4',
-        servicios:  'f_servicios_v2_4',
-        corrientes: 'f_corrientes_v2_4',
-        historico:  'f_historico_v3'
+        rubros:         'f_r_v2_2',
+        bancos:         'f_bancos_v2_4',
+        tarjetas:       'f_tarjetas_v2_4',
+        servicios:      'f_servicios_v2_4',
+        corrientes:     'f_corrientes_v2_4',
+        transferencias: 'f_transferencias_v3',
+        historico:      'f_historico_v3'
     };
 
     // Estado global
-    let listaRubros     = JSON.parse(localStorage.getItem(KEYS.rubros))     || ["Carnicería / Verdulería", "Supermercado / Almacén", "Gastos Auto / Combustible"];
-    let listaBancos     = JSON.parse(localStorage.getItem(KEYS.bancos))     || [];
-    let listaTarjetas   = JSON.parse(localStorage.getItem(KEYS.tarjetas))   || [];
-    let listaServicios  = JSON.parse(localStorage.getItem(KEYS.servicios))  || [];
-    let listaCorrientes = JSON.parse(localStorage.getItem(KEYS.corrientes)) || [];
-    let historicoMeses  = JSON.parse(localStorage.getItem(KEYS.historico))  || [];
+    let listaRubros         = JSON.parse(localStorage.getItem(KEYS.rubros))         || ["Carnicería / Verdulería", "Supermercado / Almacén", "Gastos Auto / Combustible"];
+    let listaBancos         = JSON.parse(localStorage.getItem(KEYS.bancos))         || [];
+    let listaTarjetas       = JSON.parse(localStorage.getItem(KEYS.tarjetas))       || [];
+    let listaServicios      = JSON.parse(localStorage.getItem(KEYS.servicios))      || [];
+    let listaCorrientes     = JSON.parse(localStorage.getItem(KEYS.corrientes))     || [];
+    let listaTransferencias = JSON.parse(localStorage.getItem(KEYS.transferencias)) || [];
+    let historicoMeses      = JSON.parse(localStorage.getItem(KEYS.historico))      || [];
 
     // Tab activo: null = mes actual, string = id del histórico
     let tabActivo = null;
