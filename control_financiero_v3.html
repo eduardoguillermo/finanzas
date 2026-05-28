@@ -849,6 +849,11 @@
         listaServicios = listaServicios.filter(s => s.id !== id); guardarDatos(); renderizarTodo();
     }
 
+    function esCuentaLiquidable(nombre) {
+        const n = nombre.toLowerCase();
+        return n.includes('efectivo') || n.includes('mercado pago') || n.includes('mercadopago');
+    }
+
     function agregarCorriente(e) {
         e.preventDefault();
         const rubro = document.getElementById('corr-rubro').value;
@@ -856,12 +861,27 @@
         const monto = parseFloat(document.getElementById('corr-monto').value) || 0;
         const medioPagoId = document.getElementById('corr-medio').value;
         if (!medioPagoId) { alert("Configure un medio de pago."); return; }
+
+        // Descontar saldo si es Efectivo o MercadoPago
+        const banco = listaBancos.find(b => b.id === medioPagoId);
+        if (banco && esCuentaLiquidable(banco.nombre)) {
+            banco.saldo = (banco.saldo || 0) - monto;
+        }
+
         listaCorrientes.push({ id: 'c_' + Date.now(), rubro, detalle, monto, fechaPago: "", medioPagoId });
         guardarDatos(); e.target.reset(); renderizarTodo();
     }
 
     function eliminarCorriente(id) {
-        listaCorrientes = listaCorrientes.filter(c => c.id !== id); guardarDatos(); renderizarTodo();
+        const c = listaCorrientes.find(x => x.id === id);
+        if (c) {
+            const banco = listaBancos.find(b => b.id === c.medioPagoId);
+            if (banco && esCuentaLiquidable(banco.nombre)) {
+                banco.saldo = (banco.saldo || 0) + c.monto;
+            }
+        }
+        listaCorrientes = listaCorrientes.filter(x => x.id !== id);
+        guardarDatos(); renderizarTodo();
     }
 
     // ══════════════════════════════════════════════
@@ -877,7 +897,21 @@
     function modificarRubroCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].rubro=v;      guardarDatos();} }
     function modificarFechaCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].fechaPago=v;  guardarDatos();} }
     function modificarDetalleCorriente(id, v)    { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].detalle=v.trim(); guardarDatos();} }
-    function modificarMontoCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].monto=parseFloat(v)||0; guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarMontoCorriente(id, nuevoValor) {
+        const i = listaCorrientes.findIndex(c => c.id === id);
+        if (i !== -1) {
+            const montoAnterior = listaCorrientes[i].monto;
+            const montoNuevo = parseFloat(nuevoValor) || 0;
+            const diff = montoNuevo - montoAnterior;
+            // Ajustar saldo si es cuenta liquidable
+            const banco = listaBancos.find(b => b.id === listaCorrientes[i].medioPagoId);
+            if (banco && esCuentaLiquidable(banco.nombre)) {
+                banco.saldo = (banco.saldo || 0) - diff;
+            }
+            listaCorrientes[i].monto = montoNuevo;
+            guardarDatos(); calcularMatrizFinanciera();
+        }
+    }
 
     // ══════════════════════════════════════════════
     //  BACKUPS
