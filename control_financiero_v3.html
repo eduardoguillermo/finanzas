@@ -1043,6 +1043,43 @@
 
         if (!tBancos) return; // no estamos en la vista activa
 
+        // ── Poblar selects y tabla de transferencias ──
+        const selOrig = document.getElementById('transf-origen');
+        const selDest = document.getElementById('transf-destino');
+        const tTransf = document.getElementById('tabla-transferencias-body');
+        if (selOrig) {
+            selOrig.innerHTML = '';
+            selDest.innerHTML = '';
+            listaBancos.forEach(b => {
+                const o1 = document.createElement('option'); o1.value = b.id; o1.innerText = '🏦 ' + b.nombre; selOrig.appendChild(o1);
+                const o2 = document.createElement('option'); o2.value = b.id; o2.innerText = '🏦 ' + b.nombre; selDest.appendChild(o2);
+            });
+            listaTarjetas.forEach(t => {
+                const o1 = document.createElement('option'); o1.value = t.id; o1.innerText = '💳 ' + t.nombre; selOrig.appendChild(o1);
+                const o2 = document.createElement('option'); o2.value = t.id; o2.innerText = '💳 ' + t.nombre; selDest.appendChild(o2);
+            });
+        }
+        if (tTransf) {
+            tTransf.innerHTML = '';
+            if (listaTransferencias.length === 0) {
+                tTransf.innerHTML = '<tr><td colspan="5" class="text-center" style="color:#94a3b8;padding:12px;">Sin transferencias.</td></tr>';
+            } else {
+                [...listaTransferencias].reverse().forEach(function(tr) {
+                    var row = document.createElement('tr');
+                    var tdF = document.createElement('td'); tdF.style.fontSize='12px'; tdF.innerText = tr.fecha || '-';
+                    var tdO = document.createElement('td'); tdO.style.cssText='font-size:12px;color:#64748b;'; tdO.innerText = tr.origenNombre;
+                    var tdD = document.createElement('td'); tdD.style.cssText='font-size:12px;color:#64748b;'; tdD.innerText = tr.destinoNombre;
+                    var tdM = document.createElement('td'); tdM.style.cssText='font-size:12px;font-weight:bold;text-align:right;color:#f59e0b;'; tdM.innerText = formatMoneda(tr.monto);
+                    var tdX = document.createElement('td'); tdX.className='text-center no-print';
+                    var btn = document.createElement('button'); btn.className='btn-danger'; btn.innerText='x';
+                    btn.addEventListener('click', (function(id){ return function(){ eliminarTransferencia(id); }; })(tr.id));
+                    tdX.appendChild(btn);
+                    row.appendChild(tdF); row.appendChild(tdO); row.appendChild(tdD); row.appendChild(tdM); row.appendChild(tdX);
+                    tTransf.appendChild(row);
+                });
+            }
+        }
+
         // Construir tabla corrientes completa desde JS
         const wrap = document.getElementById('tabla-corrientes-wrap');
         wrap.innerHTML = '';
