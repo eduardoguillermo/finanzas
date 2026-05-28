@@ -405,7 +405,7 @@
             <header class="no-print">
                 <div>
                     <h2 style="margin:0; font-size: 20px;">Auditoría Financiera y Conciliación Unificada</h2>
-                    <p class="version-tag">Versión v3.1.2</p>
+                    <p class="version-tag">Versión v3.2.0</p>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <button type="button" id="btn-nuevo-mes" class="btn btn-mes">🔄 Abrir Nuevo Mes</button>
@@ -1017,12 +1017,13 @@
             try {
                 const res = JSON.parse(e.target.result);
                 if (res.listaBancos && res.listaServicios) {
-                    listaBancos     = res.listaBancos;
-                    listaTarjetas   = res.listaTarjetas   || [];
-                    listaServicios  = res.listaServicios;
-                    listaCorrientes = res.listaCorrientes || [];
-                    listaRubros     = res.listaRubros     || [];
-                    historicoMeses  = res.historicoMeses  || [];
+                    listaBancos         = res.listaBancos;
+                    listaTarjetas       = res.listaTarjetas       || [];
+                    listaServicios      = res.listaServicios;
+                    listaCorrientes     = res.listaCorrientes     || [];
+                    listaRubros         = res.listaRubros         || [];
+                    listaTransferencias = res.listaTransferencias || [];
+                    historicoMeses      = res.historicoMeses      || [];
                     guardarDatos(); renderizarTabs(); renderizarContenido();
                 }
             } catch(err) { alert("Error al importar."); }
