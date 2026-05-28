@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#1e293b">
+    <link rel="manifest" href="manifest.json">
+    <title>Control Financiero Avanzado - v3.0.0</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f1f5f9; padding: 0; color: #334155; margin: 0; }
+        .container { max-width: 1600px; margin: 0 auto; padding: 10px; }
+        
+        /* ── TABS ── */
+        .tabs-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 0;
+            background: #1e293b;
+            padding: 0 16px;
+            overflow-x: auto;
+            min-height: 44px;
+        }
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            border: 1px solid transparent;
+            border-bottom: none;
+            white-space: nowrap;
+            transition: background 0.15s;
+            color: #94a3b8;
+            background: transparent;
+            margin-top: 4px;
+            user-select: none;
+        }
+        .tab:hover { background: #334155; color: #e2e8f0; }
+        .tab.activo { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+        .tab.historico { color: #64748b; }
+        .tab.historico.activo { background: #fff7ed; color: #92400e; border-color: #fed7aa; }
+        .tab-close {
+            font-size: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+        .tab-close:hover { background: #ef4444; color: white; }
+        .tab-badge {
+            font-size: 9px;
+            background: #f59e0b;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        /* ── PANEL HISTÓRICO (read-only) ── */
+        .panel-historico-wrapper {
+            background: #fff7ed;
+            border-bottom: 3px solid #f59e0b;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #92400e;
+        }
+        .panel-historico-wrapper strong { font-size: 14px; }
+
+        /* Estilos read-only */
+        .readonly-view input, .readonly-view select, .readonly-view button.btn-danger { 
+            pointer-events: none; 
+            background: #f8fafc; 
+            border-color: #e2e8f0;
+            color: #64748b;
+        }
+        .readonly-view .no-print { display: none !important; }
+        .readonly-view .form-block { display: none !important; }
+        .readonly-view .panel-bancos, .readonly-view .panel-tarjetas { display: block !important; }
+
+        header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-bottom: 1px solid #cbd5e1; margin-bottom: 20px; }
+        .version-tag { margin: 4px 0 0 0; font-size: 11px; color: #4f46e5; font-weight: bold; }
+        
+        .grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card-bal { background: white; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .card-bal h4 { margin: 0; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-bal p { margin: 8px 0 0 0; font-size: 22px; font-weight: bold; }
+        
+        .grid-principal { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; }
+        @media (min-width: 1000px) { .grid-principal { grid-template-columns: 1fr 2.5fr; } }
+        
+        .panel { background: white; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .panel-bancos { border-top: 4px solid #0284c7; }
+        .panel-tarjetas { border-top: 4px solid #a855f7; }
+        .panel-servicios { border-top: 4px solid #4f46e5; }
+        .panel-corrientes { border-top: 4px solid #10b981; }
+        
+        .panel-title { font-size: 14px; font-weight: bold; margin-top: 0; margin-bottom: 15px; text-transform: uppercase; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+        
+        .form-block { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-bottom: 20px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 12px; }
+        
+        label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; color: #64748b; }
+        input, select { width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; background: white; font-size: 13px; }
+        
+        .btn { padding: 9px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .btn-add { background: #1e293b; color: white; width: 100%; padding: 11px; font-size: 14px; }
+        .btn-danger { background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-backup { background: #0284c7; color: white; }
+        .btn-restore { background: #10b981; color: white; }
+        .btn-mes { background: #4f46e5; color: white; padding: 10px 15px; font-size: 13px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+        th, td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; text-align: left; word-wrap: break-word; vertical-align: middle; }
+        th { background: #f8fafc; color: #475569; font-size: 11px; text-transform: uppercase; font-weight: bold; }
+        
+        .input-tabla { width: 100%; padding: 5px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-size: 12px; box-sizing: border-box; }
+        
+        .hidden { display: none !important; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        
+        .rubro-container-config { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .rubro-badge-item { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+        .rubro-badge-item button { border: none; background: transparent; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 12px; padding: 0; }
+
+        /* Tabla read-only: inputs como texto */
+        .ro-cell { font-size: 12px; color: #334155; padding: 2px 0; }
+        .ro-cell.muted { color: #64748b; }
+        .ro-cell.money { font-weight: bold; text-align: right; }
+        .ro-cell.green { color: #10b981; font-weight: bold; }
+        
+        /* Modal vencimientos */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; }
+        .modal-box { background: white; border-radius: 12px; width: 460px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; }
+        .modal-header { background: #1e293b; padding: 18px 20px; display: flex; align-items: center; gap: 10px; }
+        .modal-header h3 { margin: 0; color: white; font-size: 15px; }
+        .modal-header span { font-size: 20px; }
+        .modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; }
+        .vto-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid; }
+        .vto-item.urgente { background: #fef2f2; border-color: #ef4444; }
+        .vto-item.proximo { background: #fffbeb; border-color: #f59e0b; }
+        .vto-item-nombre { font-weight: bold; font-size: 13px; color: #1e293b; }
+        .vto-item-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .vto-item-fecha { text-align: right; }
+        .vto-item-fecha .dias { font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 10px; }
+        .vto-item.urgente .dias { background: #fee2e2; color: #b91c1c; }
+        .vto-item.proximo .dias { background: #fef3c7; color: #92400e; }
+        .vto-item-fecha .fecha-txt { font-size: 12px; color: #64748b; margin-top: 3px; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; }
+
+        @media print { .no-print { display: none !important; } body { background: white; padding: 0; } .panel { border: none; box-shadow: none; padding: 0; } }
+
+        /* Animación entrada panel */
+        #app-content { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    </style>
+</head>
+<body>
+
+    <!-- BARRA DE PESTAÑAS -->
+    <div class="tabs-bar" id="tabs-bar"></div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div id="app-content"></div>
+
+    <script>
+    // ══════════════════════════════════════════════
+    //  STORAGE KEYS
+    // ══════════════════════════════════════════════
+    const KEYS = {
+        rubros:     'f_r_v2_2',
+        bancos:     'f_bancos_v2_4',
+        tarjetas:   'f_tarjetas_v2_4',
+        servicios:  'f_servicios_v2_4',
+        corrientes: 'f_corrientes_v2_4',
+        historico:  'f_historico_v3'
+    };
+
+    // Estado global
+    let listaRubros     = JSON.parse(localStorage.getItem(KEYS.rubros))     || ["Carnicería / Verdulería", "Supermercado / Almacén", "Gastos Auto / Combustible"];
+    let listaBancos     = JSON.parse(localStorage.getItem(KEYS.bancos))     || [];
+    let listaTarjetas   = JSON.parse(localStorage.getItem(KEYS.tarjetas))   || [];
+    let listaServicios  = JSON.parse(localStorage.getItem(KEYS.servicios))  || [];
+    let listaCorrientes = JSON.parse(localStorage.getItem(KEYS.corrientes)) || [];
+    let historicoMeses  = JSON.parse(localStorage.getItem(KEYS.historico))  || [];
+
+    // Tab activo: null = mes actual, string = id del histórico
+    let tabActivo = null;
+
+    // ══════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════
+    document.addEventListener("DOMContentLoaded", function() {
+        renderizarTabs();
+        renderizarContenido();
+        setTimeout(mostrarModalVencimientos, 300);
+    });
+
+    // ══════════════════════════════════════════════
+    //  MODAL VENCIMIENTOS PRÓXIMOS
+    // ══════════════════════════════════════════════
+
+    // Feriados fijos Argentina (MM-DD) + inamovibles
+    function esFeriadoArgentina(fecha) {
+        const anio = fecha.getFullYear();
+        const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dd = String(fecha.getDate()).padStart(2, '0');
+        const clave = `${mm}-${dd}`;
+
+        const fijos = [
+            '01-01', // Año Nuevo
+            '03-24', // Día de la Memoria
+            '04-02', // Malvinas
+            '05-01', // Día del Trabajo
+            '05-25', // Revolución de Mayo
+            '06-20', // Belgrano
+            '07-09', // Independencia
+            '08-17', // San Martín (3er lunes agosto — aproximado fijo)
+            '10-12', // Diversidad Cultural
+            '11-20', // Soberanía Nacional
+            '12-08', // Inmaculada Concepción
+            '12-25', // Navidad
+        ];
+
+        // Semana Santa (Jueves y Viernes Santo) — calculado por año
+        const semanaSanta = calcularSemanaSanta(anio);
+        const fmtDate = d => `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+        return fijos.includes(clave) ||
+               clave === fmtDate(semanaSanta.jueves) ||
+               clave === fmtDate(semanaSanta.viernes);
+    }
+
+    function calcularSemanaSanta(anio) {
+        // Algoritmo de Meeus/Jones/Butcher para Pascua
+        const a = anio % 19;
+        const b = Math.floor(anio / 100);
+        const c = anio % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const mes = Math.floor((h + l - 7 * m + 114) / 31) - 1; // 0-indexed
+        const dia = ((h + l - 7 * m + 114) % 31) + 1;
+        const pascua = new Date(anio, mes, dia);
+        const jueves = new Date(pascua); jueves.setDate(pascua.getDate() - 3);
+        const viernes = new Date(pascua); viernes.setDate(pascua.getDate() - 2);
+        return { jueves, viernes };
+    }
+
+    function esDiaHabil(fecha) {
+        const dow = fecha.getDay(); // 0=dom, 6=sab
+        if (dow === 0 || dow === 6) return false;
+        return !esFeriadoArgentina(fecha);
+    }
+
+    // Devuelve los próximos N días hábiles a partir de "desde" (exclusive)
+    function proximosDiasHabiles(desde, n) {
+        const dias = [];
+        const cursor = new Date(desde);
+        cursor.setHours(0, 0, 0, 0);
+        while (dias.length < n) {
+            cursor.setDate(cursor.getDate() + 1);
+            if (esDiaHabil(cursor)) dias.push(new Date(cursor));
+        }
+        return dias;
+    }
+
+    function mostrarModalVencimientos() {
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const habiles = proximosDiasHabiles(hoy, 5);
+        const limite = habiles[habiles.length - 1];
+
+        // Servicios no pagados con vencimiento en el rango
+        const proximos = listaServicios.filter(s => {
+            if (!s.fVto) return false;
+            if (s.pagado >= s.presupuesto && s.presupuesto > 0) return false; // ya pagado
+            const vto = new Date(s.fVto + 'T00:00:00');
+            return vto >= hoy && vto <= limite;
+        });
+
+        if (proximos.length === 0) return; // sin alertas, no mostrar
+
+        // Calcular días hábiles restantes para cada uno
+        const conDias = proximos.map(s => {
+            const vto = new Date(s.fVto + 'T00:00:00');
+            let diasHab = 0;
+            const cur = new Date(hoy);
+            while (cur < vto) {
+                cur.setDate(cur.getDate() + 1);
+                if (esDiaHabil(cur)) diasHab++;
+            }
+            return { ...s, vtoDate: vto, diasHabiles: diasHab };
+        }).sort((a, b) => a.vtoDate - b.vtoDate);
+
+        // Construir modal
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay no-print';
+        overlay.id = 'modal-vencimientos';
+
+        const fmtFecha = d => d.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+
+        const items = conDias.map(s => {
+            const urgente = s.diasHabiles <= 2;
+            const clase = urgente ? 'urgente' : 'proximo';
+            const labelDias = s.diasHabiles === 0 ? '¡Hoy!' : s.diasHabiles === 1 ? '1 día hábil' : `${s.diasHabiles} días hábiles`;
+            const pendiente = s.presupuesto > 0 ? formatMoneda(s.presupuesto - s.pagado) : '—';
+            const estadoTexto = s.pagado > 0 ? `Pago parcial · Resta ${pendiente}` : `Pendiente · ${pendiente}`;
+            return `<div class="vto-item ${clase}">
+                <div>
+                    <div class="vto-item-nombre">${s.nombre}</div>
+                    <div class="vto-item-sub">${estadoTexto}</div>
+                </div>
+                <div class="vto-item-fecha">
+                    <div class="dias">${labelDias}</div>
+                    <div class="fecha-txt">${fmtFecha(s.vtoDate)}</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        overlay.innerHTML = `
+            <div class="modal-box">
+                <div class="modal-header">
+                    <span>⚠️</span>
+                    <h3>Vencimientos en los próximos 5 días hábiles</h3>
+                </div>
+                <div class="modal-body">${items}</div>
+                <div class="modal-footer">
+                    <button class="btn" style="background:#1e293b;color:white;" onclick="document.getElementById('modal-vencimientos').remove()">Entendido</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+    }
+
+
+    function renderizarTabs() {
+        const bar = document.getElementById('tabs-bar');
+        bar.innerHTML = '';
+
+        // Tab mes actual
+        const tabActual = document.createElement('div');
+        tabActual.className = 'tab' + (tabActivo === null ? ' activo' : '');
+        tabActual.innerHTML = `<span>📊 Mes Actual</span>`;
+        tabActual.addEventListener('click', () => { tabActivo = null; renderizarTabs(); renderizarContenido(); });
+        bar.appendChild(tabActual);
+
+        // Tabs históricos (más reciente primero)
+        [...historicoMeses].reverse().forEach(mes => {
+            const tab = document.createElement('div');
+            tab.className = 'tab historico' + (tabActivo === mes.id ? ' activo' : '');
+            tab.innerHTML = `<span>🗂 ${mes.nombre}</span><span class="tab-close" title="Eliminar período">✕</span>`;
+            tab.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab-close')) {
+                    e.stopPropagation();
+                    if (confirm(`¿Eliminar el período "${mes.nombre}"? Esta acción no se puede deshacer.`)) {
+                        historicoMeses = historicoMeses.filter(m => m.id !== mes.id);
+                        if (tabActivo === mes.id) tabActivo = null;
+                        guardarDatos(); renderizarTabs(); renderizarContenido();
+                    }
+                    return;
+                }
+                tabActivo = mes.id; renderizarTabs(); renderizarContenido();
+            });
+            bar.appendChild(tab);
+        });
+    }
+
+    function renderizarContenido() {
+        const app = document.getElementById('app-content');
+        app.innerHTML = '';
+        app.style.animation = 'none';
+        void app.offsetWidth; // reflow para reiniciar animación
+        app.style.animation = '';
+
+        if (tabActivo === null) {
+            app.appendChild(construirVistaMesActual());
+            inicializarEventosMesActual();
+            setTimeout(renderizarTodo, 0);
+        } else {
+            const mes = historicoMeses.find(m => m.id === tabActivo);
+            if (mes) app.appendChild(construirVistaHistorica(mes));
+        }
+    }
+
+    // ══════════════════════════════════════════════
+    //  VISTA MES ACTUAL (HTML igual al original)
+    // ══════════════════════════════════════════════
+    function construirVistaMesActual() {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+        <div class="container">
+            <header class="no-print">
+                <div>
+                    <h2 style="margin:0; font-size: 20px;">Auditoría Financiera y Conciliación Unificada</h2>
+                    <p class="version-tag">Versión v3.1.2</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" id="btn-nuevo-mes" class="btn btn-mes">🔄 Abrir Nuevo Mes</button>
+                    <button type="button" id="btn-exportar" class="btn btn-backup">💾 Exportar Backup</button>
+                    <button type="button" id="btn-importar-trigger" class="btn btn-restore">📥 Importar Backup</button>
+                    <input type="file" id="input-backup" accept=".json" style="display: none;">
+                    <button type="button" onclick="window.print()" class="btn" style="background:#1e293b; color:white;">🖨️ PDF</button>
+                </div>
+            </header>
+
+            <div class="grid-dashboard">
+                <div class="card-bal" style="border-left: 5px solid #0284c7;">
+                    <h4>Efectivo / Banco Disponible</h4>
+                    <p id="total-bancos" style="color: #0284c7;">$ 0</p>
+                </div>
+                <div class="card-bal" style="border-left: 5px solid #a855f7;">
+                    <h4>Total Deuda Tarjetas</h4>
+                    <p id="total-tarjetas" style="color: #a855f7;">$ 0</p>
+                </div>
+                <div class="card-bal" style="border-left: 5px solid #10b981;">
+                    <h4>Total Egresado / Pagado</h4>
+                    <p id="total-pagado" style="color: #10b981;">$ 0</p>
+                </div>
+                <div class="card-bal" id="card-pendiente" style="border-left: 5px solid #ef4444;">
+                    <h4>Fijos Pendientes de Pago</h4>
+                    <p id="total-pendiente" style="color: #ef4444;">$ 0</p>
+                </div>
+            </div>
+
+            <div class="grid-principal">
+                <div>
+                    <div class="panel panel-bancos no-print">
+                        <h3 class="panel-title">🏦 Cuentas Bancarias / Efectivo</h3>
+                        <div class="form-block">
+                            <form id="form-banco">
+                                <div class="form-group">
+                                    <label>Nombre de la Cuenta</label>
+                                    <input type="text" id="banco-nombre" required placeholder="Ej. Galicia Debito, MercadoPago">
+                                </div>
+                                <div class="form-group">
+                                    <label>Saldo Disponible ($)</label>
+                                    <input type="number" id="banco-saldo" required value="0" step="1">
+                                </div>
+                                <button type="submit" class="btn btn-add" style="background: #0284c7;">Añadir Cuenta</button>
+                            </form>
+                        </div>
+                        <table>
+                            <thead><tr>
+                                <th style="width: 55%;">Cuenta / Detalle</th>
+                                <th style="width: 35%;" class="text-right">Saldo Real ($)</th>
+                                <th style="width: 10%;"></th>
+                            </tr></thead>
+                            <tbody id="tabla-bancos-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel panel-tarjetas no-print">
+                        <h3 class="panel-title">💳 Tarjetas de Crédito (Gasto Acumulado)</h3>
+                        <div class="form-block">
+                            <form id="form-tarjeta">
+                                <div class="form-group">
+                                    <label>Nombre de la Tarjeta</label>
+                                    <input type="text" id="tarjeta-nombre" required placeholder="Ej. Visa Galicia, Mastercard Macro">
+                                </div>
+                                <div class="form-group">
+                                    <label>Saldo Inicial Acumulado ($)</label>
+                                    <input type="number" id="tarjeta-saldo" required value="0" step="1">
+                                </div>
+                                <button type="submit" class="btn btn-add" style="background: #a855f7;">Registrar Tarjeta</button>
+                            </form>
+                        </div>
+                        <table>
+                            <thead><tr>
+                                <th style="width: 55%;">Tarjeta</th>
+                                <th style="width: 35%;" class="text-right">Consumo ($)</th>
+                                <th style="width: 10%;"></th>
+                            </tr></thead>
+                            <tbody id="tabla-tarjetas-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel no-print" style="border-top: 4px solid #64748b;">
+                        <h3 class="panel-title">⚙️ Rubros de Gasto Corriente</h3>
+                        <div class="form-block">
+                            <form id="form-crear-rubro" class="form-group-row" style="margin-bottom:0; grid-template-columns: 2fr 1fr;">
+                                <input type="text" id="new-rubro-name" required placeholder="Ej. Carnicería, Gastos Auto">
+                                <button type="submit" class="btn" style="background:#64748b; color:white; font-weight:bold;">Crear Rubro</button>
+                            </form>
+                        </div>
+                        <div id="config-rubros-list" class="rubro-container-config"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="panel panel-servicios">
+                        <h3 class="panel-title">📋 Liquidación de Servicios y Vencimientos Fijos</h3>
+                        <div class="form-block no-print">
+                            <form id="form-servicio">
+                                <div class="form-group-row">
+                                    <div style="flex: 2;">
+                                        <label>Descripción del Servicio Fijo</label>
+                                        <input type="text" id="srv-nombre" required placeholder="Ej. Luz, AYSAM, Internet">
+                                    </div>
+                                    <div>
+                                        <label>Presupuesto ($)</label>
+                                        <input type="number" id="srv-presupuesto" required placeholder="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Vto.</label>
+                                        <input type="date" id="srv-f-vto" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-add" style="background:#4f46e5;">Configurar Vencimiento Fijo</button>
+                            </form>
+                        </div>
+                        <table>
+                            <thead><tr>
+                                <th style="width: 22%;">Servicio</th>
+                                <th style="width: 15%;" class="text-center">Vto. (Editable)</th>
+                                <th style="width: 11%;" class="text-right">Presup.</th>
+                                <th style="width: 11%;" class="text-right">Pagado</th>
+                                <th style="width: 12%;" class="text-center">F. Pago</th>
+                                <th style="width: 17%;">Medio de Pago</th>
+                                <th style="width: 8%;" class="text-center">Estado</th>
+                                <th style="width: 4%;" class="no-print"></th>
+                            </tr></thead>
+                            <tbody id="tabla-servicios-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel panel-corrientes">
+                        <h3 class="panel-title">🛍️ Gastos Corrientes / Caja Diaria</h3>
+                        <div class="form-block no-print">
+                            <form id="form-corriente">
+                                <div class="form-group-row">
+                                    <div style="flex: 1.5;">
+                                        <label>Rubro</label>
+                                        <select id="corr-rubro" required></select>
+                                    </div>
+                                    <div style="flex: 2;">
+                                        <label>Detalle / Nota corta</label>
+                                        <input type="text" id="corr-detalle" required placeholder="Ej. Nafta YPF, Supermercado">
+                                    </div>
+                                    <div>
+                                        <label>Monto Pago ($)</label>
+                                        <input type="number" id="corr-monto" required placeholder="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Pagar con:</label>
+                                        <select id="corr-medio" required></select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-add" style="background:#10b981;">Asentar Gasto Corriente</button>
+                            </form>
+                        </div>
+                        <div id="tabla-corrientes-wrap"></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        return wrap;
+    }
+
+    function inicializarEventosMesActual() {
+        document.getElementById('form-banco').addEventListener('submit', agregarBanco);
+        document.getElementById('form-tarjeta').addEventListener('submit', agregarTarjeta);
+        document.getElementById('form-servicio').addEventListener('submit', agregarServicio);
+        document.getElementById('form-corriente').addEventListener('submit', agregarCorriente);
+        document.getElementById('form-crear-rubro').addEventListener('submit', crearNuevoRubroPersonalizado);
+        document.getElementById('input-backup').addEventListener('change', importarFlujo);
+        document.getElementById('btn-exportar').addEventListener('click', exportarFlujo);
+        document.getElementById('btn-importar-trigger').addEventListener('click', () => document.getElementById('input-backup').click());
+        document.getElementById('btn-nuevo-mes').addEventListener('click', abrirNuevoPeriodoMes);
+    }
+
+    // ══════════════════════════════════════════════
+    //  VISTA HISTÓRICA (read-only)
+    // ══════════════════════════════════════════════
+    function construirVistaHistorica(mes) {
+        const wrap = document.createElement('div');
+
+        // Banner
+        const banner = document.createElement('div');
+        banner.className = 'panel-historico-wrapper no-print';
+        banner.innerHTML = `
+            <span style="font-size:20px;">🗂</span>
+            <div>
+                <strong>Período Cerrado: ${mes.nombre}</strong>
+                <div style="font-size:11px; margin-top:2px;">Vista de sólo lectura — datos al cierre del período</div>
+            </div>`;
+        wrap.appendChild(banner);
+
+        const cont = document.createElement('div');
+        cont.className = 'container';
+
+        // Dashboard
+        const db = mes.datos;
+        let sumaBancos = 0, sumaTarjetas = 0, totalPagado = 0, fijosPend = 0;
+        db.listaBancos.forEach(b => sumaBancos += b.saldo);
+        db.listaTarjetas.forEach(t => sumaTarjetas += t.saldo);
+        db.listaServicios.forEach(s => { totalPagado += s.pagado; if(s.presupuesto > s.pagado) fijosPend += (s.presupuesto - s.pagado); });
+        db.listaCorrientes.forEach(c => totalPagado += c.monto);
+
+        cont.innerHTML = `
+        <div style="height:15px;"></div>
+        <div class="grid-dashboard">
+            <div class="card-bal" style="border-left: 5px solid #0284c7;">
+                <h4>Efectivo / Banco (Cierre)</h4>
+                <p style="color: #0284c7;">${formatMoneda(sumaBancos)}</p>
+            </div>
+            <div class="card-bal" style="border-left: 5px solid #a855f7;">
+                <h4>Deuda Tarjetas (Cierre)</h4>
+                <p style="color: #a855f7;">${formatMoneda(sumaTarjetas)}</p>
+            </div>
+            <div class="card-bal" style="border-left: 5px solid #10b981;">
+                <h4>Total Egresado / Pagado</h4>
+                <p style="color: #10b981;">${formatMoneda(totalPagado)}</p>
+            </div>
+            <div class="card-bal" style="border-left: 5px solid ${fijosPend > 0 ? '#ef4444' : '#10b981'};">
+                <h4>Fijos Pendientes al Cierre</h4>
+                <p style="color: ${fijosPend > 0 ? '#ef4444' : '#10b981'};">${formatMoneda(fijosPend)}</p>
+            </div>
+        </div>
+        <div class="grid-principal">
+            <div>
+                ${renderTablaRoSimple('🏦 Cuentas Bancarias al Cierre', 'panel-bancos',
+                    ['Cuenta', 'Saldo ($)'],
+                    db.listaBancos.map(b => [b.nombre, formatMoneda(b.saldo)])
+                )}
+                ${renderTablaRoSimple('💳 Tarjetas de Crédito al Cierre', 'panel-tarjetas',
+                    ['Tarjeta', 'Deuda ($)'],
+                    db.listaTarjetas.map(t => [t.nombre, formatMoneda(t.saldo)])
+                )}
+            </div>
+            <div>
+                ${renderTablaRoServicios(db)}
+                ${renderTablaRoCorrientes(db)}
+            </div>
+        </div>`;
+
+        wrap.appendChild(cont);
+        return wrap;
+    }
+
+    function renderTablaRoSimple(titulo, panelClass, headers, rows) {
+        const ths = headers.map(h => `<th>${h}</th>`).join('');
+        const trs = rows.length === 0
+            ? `<tr><td colspan="${headers.length}" class="text-center" style="color:#94a3b8; padding:12px;">Sin datos</td></tr>`
+            : rows.map(r => `<tr>${r.map((c,i) => `<td class="ro-cell${i>0?' money':''}">${c}</td>`).join('')}</tr>`).join('');
+        return `<div class="panel ${panelClass}">
+            <h3 class="panel-title">${titulo}</h3>
+            <table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>
+        </div>`;
+    }
+
+    function renderTablaRoServicios(db) {
+        const medioNombre = (id) => {
+            const b = db.listaBancos.find(x => x.id === id);
+            const t = db.listaTarjetas.find(x => x.id === id);
+            return b ? `🏦 ${b.nombre}` : t ? `💳 ${t.nombre}` : '—';
+        };
+        const rows = db.listaServicios.map(s => {
+            let estado = ''; let estColor = '';
+            if (s.pagado >= s.presupuesto && s.presupuesto > 0) { estado = 'PAGADO'; estColor = '#137333'; }
+            else if (s.pagado > 0) { estado = 'PARCIAL'; estColor = '#b06000'; }
+            else { estado = 'PENDIENTE'; estColor = '#c5221f'; }
+            return `<tr>
+                <td class="ro-cell"><b>${s.nombre}</b></td>
+                <td class="ro-cell muted">${s.fVto || '—'}</td>
+                <td class="ro-cell money">${formatMoneda(s.presupuesto)}</td>
+                <td class="ro-cell money">${formatMoneda(s.pagado)}</td>
+                <td class="ro-cell muted text-center">${s.fPago || '—'}</td>
+                <td class="ro-cell muted">${medioNombre(s.medioPagoId)}</td>
+                <td class="text-center"><span style="font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;background:${estColor}22;color:${estColor}">${estado}</span></td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="7" class="text-center" style="color:#94a3b8;padding:12px;">Sin servicios</td></tr>`;
+
+        return `<div class="panel panel-servicios">
+            <h3 class="panel-title">📋 Liquidación de Servicios y Vencimientos Fijos</h3>
+            <table><thead><tr>
+                <th style="width:22%">Servicio</th><th style="width:13%">Vto.</th>
+                <th style="width:12%" class="text-right">Presup.</th><th style="width:12%" class="text-right">Pagado</th>
+                <th style="width:12%" class="text-center">F.Pago</th><th style="width:18%">Medio</th>
+                <th style="width:11%" class="text-center">Estado</th>
+            </tr></thead><tbody>${rows}</tbody></table>
+        </div>`;
+    }
+
+    function renderTablaRoCorrientes(db) {
+        const medioNombre = (id) => {
+            const b = db.listaBancos.find(x => x.id === id);
+            const t = db.listaTarjetas.find(x => x.id === id);
+            return b ? `🏦 ${b.nombre}` : t ? `💳 ${t.nombre}` : '—';
+        };
+        const rows = db.listaCorrientes.length === 0
+            ? `<tr><td colspan="5" class="text-center" style="color:#94a3b8;padding:12px;">Sin egresos corrientes.</td></tr>`
+            : db.listaCorrientes.map(c => `<tr>
+                <td class="ro-cell">${c.rubro}</td>
+                <td class="ro-cell">${c.detalle}</td>
+                <td class="ro-cell muted">${medioNombre(c.medioPagoId)}</td>
+                <td class="ro-cell muted text-center">${c.fechaPago || '—'}</td>
+                <td class="ro-cell green text-right">${formatMoneda(c.monto)}</td>
+            </tr>`).join('');
+
+        return `<div class="panel panel-corrientes">
+            <h3 class="panel-title">🛍️ Gastos Corrientes / Caja Diaria</h3>
+            <table><thead><tr>
+                <th style="width:22%">Rubro</th><th style="width:30%">Detalle</th>
+                <th style="width:23%">Medio</th><th style="width:12%" class="text-center">F. Pago</th>
+                <th style="width:13%" class="text-right">Monto ($)</th>
+            </tr></thead><tbody>${rows}</tbody></table>
+        </div>`;
+    }
+
+    // ══════════════════════════════════════════════
+    //  GUARDAR DATOS
+    // ══════════════════════════════════════════════
+    function guardarDatos() {
+        localStorage.setItem(KEYS.bancos,     JSON.stringify(listaBancos));
+        localStorage.setItem(KEYS.tarjetas,   JSON.stringify(listaTarjetas));
+        localStorage.setItem(KEYS.servicios,  JSON.stringify(listaServicios));
+        localStorage.setItem(KEYS.corrientes, JSON.stringify(listaCorrientes));
+        localStorage.setItem(KEYS.rubros,     JSON.stringify(listaRubros));
+        localStorage.setItem(KEYS.historico,  JSON.stringify(historicoMeses));
+    }
+
+    function formatMoneda(num) {
+        return '$ ' + Math.round(num).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    }
+
+    // ══════════════════════════════════════════════
+    //  ABRIR NUEVO MES — lógica central
+    // ══════════════════════════════════════════════
+    function nombreMesActual() {
+        const ahora = new Date();
+        return ahora.toLocaleString('es-AR', { month: 'long', year: 'numeric' })
+            .replace(/^\w/, c => c.toUpperCase());
+    }
+
+    function abrirNuevoPeriodoMes() {
+        const nombre = nombreMesActual();
+        const yaExiste = historicoMeses.some(m => m.nombre === nombre);
+        const sufijo = yaExiste ? ` (${Date.now()})` : '';
+
+        if (!confirm(`🔄 ¿Abrir nuevo período mensual?\n\n→ El mes actual se archivará como "${nombre}${sufijo}"\n→ Se conservan bancos, tarjetas y servicios fijos\n→ Los pagados/ejecutados se limpian\n→ La caja diaria se vacía`)) return;
+
+        // 1. Snapshot del mes que se cierra
+        const snapshot = {
+            id: 'mes_' + Date.now(),
+            nombre: nombre + sufijo,
+            fechaCierre: new Date().toISOString(),
+            datos: {
+                listaBancos:     JSON.parse(JSON.stringify(listaBancos)),
+                listaTarjetas:   JSON.parse(JSON.stringify(listaTarjetas)),
+                listaServicios:  JSON.parse(JSON.stringify(listaServicios)),
+                listaCorrientes: JSON.parse(JSON.stringify(listaCorrientes)),
+                listaRubros:     JSON.parse(JSON.stringify(listaRubros))
+            }
+        };
+        historicoMeses.push(snapshot);
+
+        // 2. Migración al nuevo mes
+        //    Descontar pagos de bancos / sumar a tarjetas
+        let mDeb = {};
+        listaBancos.forEach(b => mDeb[b.id] = 0);
+        listaTarjetas.forEach(t => mDeb[t.id] = 0);
+
+        listaServicios.forEach(s => {
+            if (s.pagado > 0 && mDeb[s.medioPagoId] !== undefined) mDeb[s.medioPagoId] += s.pagado;
+        });
+        listaCorrientes.forEach(c => {
+            if (mDeb[c.medioPagoId] !== undefined) mDeb[c.medioPagoId] += c.monto;
+        });
+
+        listaBancos.forEach(b => { b.saldo = b.saldo - (mDeb[b.id] || 0); });
+        listaTarjetas.forEach(t => { t.saldo = t.saldo + (mDeb[t.id] || 0); });
+
+        // Servicios: conservar nombre/presupuesto/fVto, limpiar ejecuciones
+        listaServicios.forEach(s => { s.pagado = 0; s.fPago = ""; });
+
+        // Caja diaria: vaciar
+        listaCorrientes = [];
+
+        guardarDatos();
+        renderizarTabs();
+        renderizarContenido();
+        alert(`✅ Mes "${nombre}${sufijo}" archivado. Nuevo período abierto.`);
+    }
+
+    // ══════════════════════════════════════════════
+    //  CONTROLADORES ALTAS (igual que v2)
+    // ══════════════════════════════════════════════
+    function crearNuevoRubroPersonalizado(e) {
+        e.preventDefault();
+        const inp = document.getElementById('new-rubro-name');
+        const val = inp.value.trim();
+        if (!val || listaRubros.includes(val)) return;
+        listaRubros.push(val); guardarDatos(); inp.value = ''; renderizarTodo();
+    }
+
+    function eliminarRubroPersonalizado(r) {
+        if (listaCorrientes.some(c => c.rubro === r)) { alert("Rubro en uso."); return; }
+        listaRubros = listaRubros.filter(x => x !== r); guardarDatos(); renderizarTodo();
+    }
+
+    function agregarBanco(e) {
+        e.preventDefault();
+        const nombre = document.getElementById('banco-nombre').value.trim();
+        const saldo = parseFloat(document.getElementById('banco-saldo').value) || 0;
+        listaBancos.push({ id: 'b_' + Date.now(), nombre, saldo });
+        guardarDatos(); e.target.reset(); renderizarTodo();
+    }
+
+    function eliminarBanco(id) {
+        if (confirm("¿Remover esta cuenta?")) { listaBancos = listaBancos.filter(b => b.id !== id); guardarDatos(); renderizarTodo(); }
+    }
+
+    function agregarTarjeta(e) {
+        e.preventDefault();
+        const nombre = document.getElementById('tarjeta-nombre').value.trim();
+        const saldo = parseFloat(document.getElementById('tarjeta-saldo').value) || 0;
+        listaTarjetas.push({ id: 't_' + Date.now(), nombre, saldo });
+        guardarDatos(); e.target.reset(); renderizarTodo();
+    }
+
+    function eliminarTarjeta(id) {
+        if (confirm("¿Remover esta tarjeta?")) { listaTarjetas = listaTarjetas.filter(t => t.id !== id); guardarDatos(); renderizarTodo(); }
+    }
+
+    function agregarServicio(e) {
+        e.preventDefault();
+        const nombre = document.getElementById('srv-nombre').value.trim();
+        const presupuesto = parseFloat(document.getElementById('srv-presupuesto').value) || 0;
+        const fVto = document.getElementById('srv-f-vto').value;
+        let medioId = listaBancos.length > 0 ? listaBancos[0].id : listaTarjetas.length > 0 ? listaTarjetas[0].id : "";
+        listaServicios.push({ id: 's_' + Date.now(), nombre, presupuesto, pagado: 0, fVto, fPago: "", medioPagoId: medioId });
+        guardarDatos(); e.target.reset(); renderizarTodo();
+    }
+
+    function eliminarServicio(id) {
+        listaServicios = listaServicios.filter(s => s.id !== id); guardarDatos(); renderizarTodo();
+    }
+
+    function agregarCorriente(e) {
+        e.preventDefault();
+        const rubro = document.getElementById('corr-rubro').value;
+        const detalle = document.getElementById('corr-detalle').value.trim();
+        const monto = parseFloat(document.getElementById('corr-monto').value) || 0;
+        const medioPagoId = document.getElementById('corr-medio').value;
+        if (!medioPagoId) { alert("Configure un medio de pago."); return; }
+        listaCorrientes.push({ id: 'c_' + Date.now(), rubro, detalle, monto, fechaPago: "", medioPagoId });
+        guardarDatos(); e.target.reset(); renderizarTodo();
+    }
+
+    function eliminarCorriente(id) {
+        listaCorrientes = listaCorrientes.filter(c => c.id !== id); guardarDatos(); renderizarTodo();
+    }
+
+    // ══════════════════════════════════════════════
+    //  MODIFICADORES IN-SITU
+    // ══════════════════════════════════════════════
+    function modificarSaldoBaseBanco(id, v)      { const i = listaBancos.findIndex(b=>b.id===id);    if(i!==-1){listaBancos[i].saldo=parseFloat(v)||0;    guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarSaldoBaseTarjeta(id, v)    { const i = listaTarjetas.findIndex(t=>t.id===id);  if(i!==-1){listaTarjetas[i].saldo=parseFloat(v)||0;  guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarPresupuestoServicio(id, v) { const i = listaServicios.findIndex(s=>s.id===id); if(i!==-1){listaServicios[i].presupuesto=parseFloat(v)||0; guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarPagadoServicio(id, v)      { const i = listaServicios.findIndex(s=>s.id===id); if(i!==-1){listaServicios[i].pagado=parseFloat(v)||0;     guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarFechaVtoServicio(id, v)    { const i = listaServicios.findIndex(s=>s.id===id); if(i!==-1){listaServicios[i].fVto=v;    guardarDatos();} }
+    function modificarFechaPagoServicio(id, v)   { const i = listaServicios.findIndex(s=>s.id===id); if(i!==-1){listaServicios[i].fPago=v;   guardarDatos();} }
+    function modificarMedioPagoServicio(id, v)   { const i = listaServicios.findIndex(s=>s.id===id); if(i!==-1){listaServicios[i].medioPagoId=v; guardarDatos(); calcularMatrizFinanciera();} }
+    function modificarRubroCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].rubro=v;      guardarDatos();} }
+    function modificarFechaCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].fechaPago=v;  guardarDatos();} }
+    function modificarDetalleCorriente(id, v)    { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].detalle=v.trim(); guardarDatos();} }
+    function modificarMontoCorriente(id, v)      { const i = listaCorrientes.findIndex(c=>c.id===id); if(i!==-1){listaCorrientes[i].monto=parseFloat(v)||0; guardarDatos(); calcularMatrizFinanciera();} }
+
+    // ══════════════════════════════════════════════
+    //  BACKUPS
+    // ══════════════════════════════════════════════
+    function exportarFlujo() {
+        const data = { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaRubros, historicoMeses };
+        const url = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const a = document.createElement('a'); a.href = url; a.download = "backup_v3_tesoreria.json";
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function importarFlujo(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const r = new FileReader();
+        r.onload = function(e) {
+            try {
+                const res = JSON.parse(e.target.result);
+                if (res.listaBancos && res.listaServicios) {
+                    listaBancos     = res.listaBancos;
+                    listaTarjetas   = res.listaTarjetas   || [];
+                    listaServicios  = res.listaServicios;
+                    listaCorrientes = res.listaCorrientes || [];
+                    listaRubros     = res.listaRubros     || [];
+                    historicoMeses  = res.historicoMeses  || [];
+                    guardarDatos(); renderizarTabs(); renderizarContenido();
+                }
+            } catch(err) { alert("Error al importar."); }
+        };
+        r.readAsText(file); event.target.value = '';
+    }
+
+    // ══════════════════════════════════════════════
+    //  RENDER MES ACTUAL
+    // ══════════════════════════════════════════════
+    function renderizarTodo() {
+        const tBancos     = document.getElementById('tabla-bancos-body');
+        const tTarjetas   = document.getElementById('tabla-tarjetas-body');
+        const tServicios  = document.getElementById('tabla-servicios-body');
+        const selRubro    = document.getElementById('corr-rubro');
+        const selMedio    = document.getElementById('corr-medio');
+        const contRubros  = document.getElementById('config-rubros-list');
+
+        if (!tBancos) return; // no estamos en la vista activa
+
+        // Construir tabla corrientes completa desde JS
+        const wrap = document.getElementById('tabla-corrientes-wrap');
+        wrap.innerHTML = '';
+        const tblC = document.createElement('table');
+        tblC.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr>' +
+            '<th style="width:20%;background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;font-weight:bold;padding:8px 6px;">Rubro</th>' +
+            '<th style="width:27%;background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;font-weight:bold;padding:8px 6px;">Detalle</th>' +
+            '<th style="width:17%;background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;font-weight:bold;padding:8px 6px;">Medio</th>' +
+            '<th style="width:13%;min-width:120px;background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;font-weight:bold;padding:8px 6px;text-align:center;">F. Pago</th>' +
+            '<th style="width:15%;background:#f8fafc;color:#475569;font-size:11px;text-transform:uppercase;font-weight:bold;padding:8px 6px;text-align:right;">Monto ($)</th>' +
+            '<th style="width:8%;background:#f8fafc;padding:8px 6px;" class="no-print"></th>' +
+            '</tr>';
+        const tblBody = document.createElement('tbody');
+        tblBody.id = 'tabla-corrientes-body';
+        tblC.appendChild(thead);
+        tblC.appendChild(tblBody);
+        wrap.appendChild(tblC);
+        const tCorrientes = tblBody;
+
+        tBancos.innerHTML = ''; tTarjetas.innerHTML = ''; tServicios.innerHTML = ''; contRubros.innerHTML = '';
+
+
+
+        // Rubros config
+        listaRubros.forEach(r => {
+            const badge = document.createElement('div'); badge.className = "rubro-badge-item";
+            badge.innerHTML = `<span>${r}</span>`;
+            const btn = document.createElement('button'); btn.type = "button"; btn.innerText = "✕";
+            btn.addEventListener('click', () => eliminarRubroPersonalizado(r));
+            badge.appendChild(btn); contRubros.appendChild(badge);
+        });
+
+        selRubro.innerHTML = '';
+        listaRubros.forEach(r => { const o = document.createElement('option'); o.value = r; o.innerText = r; selRubro.appendChild(o); });
+
+        selMedio.innerHTML = '';
+        listaBancos.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.innerText = `🏦 ${b.nombre}`; selMedio.appendChild(o); });
+        listaTarjetas.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.innerText = `💳 ${t.nombre}`; selMedio.appendChild(o); });
+
+        // Bancos
+        listaBancos.forEach(b => {
+            const tr = document.createElement('tr');
+            const tdN = document.createElement('td'); tdN.innerHTML = `<b>${b.nombre}</b>`;
+            const tdS = document.createElement('td'); tdS.className = "text-right";
+            const inp = document.createElement('input'); inp.type = "number"; inp.className = "input-tabla text-right"; inp.value = Math.round(b.saldo);
+            inp.addEventListener('change', e => modificarSaldoBaseBanco(b.id, e.target.value));
+            tdS.appendChild(inp);
+            const tdD = document.createElement('td'); tdD.className = "text-center no-print";
+            const btn = document.createElement('button'); btn.className = "btn-danger"; btn.innerText = "✕";
+            btn.addEventListener('click', () => eliminarBanco(b.id));
+            tdD.appendChild(btn);
+            tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdD); tBancos.appendChild(tr);
+        });
+
+        // Tarjetas
+        listaTarjetas.forEach(t => {
+            const tr = document.createElement('tr');
+            const tdN = document.createElement('td'); tdN.innerHTML = `<b>${t.nombre}</b>`;
+            const tdS = document.createElement('td'); tdS.className = "text-right";
+            const inp = document.createElement('input'); inp.type = "number"; inp.className = "input-tabla text-right"; inp.value = Math.round(t.saldo); inp.id = `input-saldo-base-${t.id}`;
+            inp.addEventListener('change', e => modificarSaldoBaseTarjeta(t.id, e.target.value));
+            tdS.appendChild(inp);
+            const tdD = document.createElement('td'); tdD.className = "text-center no-print";
+            const btn = document.createElement('button'); btn.className = "btn-danger"; btn.innerText = "✕";
+            btn.addEventListener('click', () => eliminarTarjeta(t.id));
+            tdD.appendChild(btn);
+            tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdD); tTarjetas.appendChild(tr);
+        });
+
+        // Servicios
+        listaServicios.forEach(s => {
+            const tr = document.createElement('tr');
+            const tdN = document.createElement('td'); tdN.innerHTML = `<b>${s.nombre}</b>`;
+
+            const tdVto = document.createElement('td');
+            const inpVto = document.createElement('input'); inpVto.type = "date"; inpVto.className = "input-tabla"; inpVto.value = s.fVto || "";
+            inpVto.addEventListener('change', e => modificarFechaVtoServicio(s.id, e.target.value));
+            tdVto.appendChild(inpVto);
+
+            const tdPres = document.createElement('td');
+            const inpPres = document.createElement('input'); inpPres.type = "number"; inpPres.className = "input-tabla text-right"; inpPres.value = Math.round(s.presupuesto);
+            inpPres.addEventListener('change', e => modificarPresupuestoServicio(s.id, e.target.value));
+            tdPres.appendChild(inpPres);
+
+            const tdPag = document.createElement('td');
+            const inpPag = document.createElement('input'); inpPag.type = "number"; inpPag.className = "input-tabla text-right"; inpPag.value = Math.round(s.pagado);
+            inpPag.addEventListener('change', e => modificarPagadoServicio(s.id, e.target.value));
+            tdPag.appendChild(inpPag);
+
+            const tdFP = document.createElement('td');
+            const inpFP = document.createElement('input'); inpFP.type = "date"; inpFP.className = "input-tabla"; inpFP.value = s.fPago;
+            inpFP.addEventListener('change', e => modificarFechaPagoServicio(s.id, e.target.value));
+            tdFP.appendChild(inpFP);
+
+            const tdMed = document.createElement('td');
+            const selM = document.createElement('select'); selM.className = "input-tabla";
+            listaBancos.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.innerText = `🏦 ${b.nombre}`; if(b.id===s.medioPagoId) o.selected=true; selM.appendChild(o); });
+            listaTarjetas.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.innerText = `💳 ${t.nombre}`; if(t.id===s.medioPagoId) o.selected=true; selM.appendChild(o); });
+            selM.addEventListener('change', e => modificarMedioPagoServicio(s.id, e.target.value));
+            tdMed.appendChild(selM);
+
+            const tdEst = document.createElement('td'); tdEst.className = "text-center"; tdEst.id = `cell-estado-${s.id}`;
+            const badge = document.createElement('span'); badge.style.cssText = "font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;";
+            tdEst.appendChild(badge);
+
+            const tdDel = document.createElement('td'); tdDel.className = "text-center no-print";
+            const btnD = document.createElement('button'); btnD.className = "btn-danger"; btnD.innerText = "✕";
+            btnD.addEventListener('click', () => eliminarServicio(s.id));
+            tdDel.appendChild(btnD);
+
+            tr.appendChild(tdN); tr.appendChild(tdVto); tr.appendChild(tdPres); tr.appendChild(tdPag); tr.appendChild(tdFP); tr.appendChild(tdMed); tr.appendChild(tdEst); tr.appendChild(tdDel);
+            tServicios.appendChild(tr);
+        });
+
+        // Corrientes
+        if (listaCorrientes.length === 0) {
+            tCorrientes.innerHTML = '<tr><td colspan="6" class="text-center" style="color:#94a3b8; padding:15px;">Sin egresos corrientes.</td></tr>';
+        } else {
+            listaCorrientes.forEach(c => {
+                const tr = document.createElement('tr');
+                let bNom = "Desconocido";
+                const bO = listaBancos.find(b => b.id === c.medioPagoId);
+                const tO = listaTarjetas.find(t => t.id === c.medioPagoId);
+                if(bO) bNom = `🏦 ${bO.nombre}`; if(tO) bNom = `💳 ${tO.nombre}`;
+
+                const tdR = document.createElement('td');
+                const selR = document.createElement('select'); selR.className = "input-tabla";
+                listaRubros.forEach(r => { const o = document.createElement('option'); o.value = r; o.innerText = r; if(r===c.rubro) o.selected=true; selR.appendChild(o); });
+                selR.addEventListener('change', e => modificarRubroCorriente(c.id, e.target.value));
+                tdR.appendChild(selR);
+
+                const tdD = document.createElement('td');
+                const inpD = document.createElement('input'); inpD.type = "text"; inpD.className = "input-tabla"; inpD.value = c.detalle;
+                inpD.addEventListener('change', e => modificarDetalleCorriente(c.id, e.target.value));
+                tdD.appendChild(inpD);
+
+                const tdM = document.createElement('td'); tdM.style.color = "#64748b"; tdM.innerText = bNom;
+
+                const tdFP = document.createElement('td'); tdFP.className = "text-center"; tdFP.style.minWidth = "120px";
+                const inpFP = document.createElement('input'); inpFP.type = "date"; inpFP.className = "input-tabla"; inpFP.value = c.fechaPago || "";
+                inpFP.style.minWidth = "110px";
+                inpFP.addEventListener('change', e => modificarFechaCorriente(c.id, e.target.value));
+                tdFP.appendChild(inpFP);
+
+                const tdMon = document.createElement('td'); tdMon.className = "text-right";
+                const inpM = document.createElement('input'); inpM.type = "number"; inpM.className = "input-tabla text-right"; inpM.value = Math.round(c.monto); inpM.style.cssText = "font-weight:bold;color:#10b981;";
+                inpM.addEventListener('change', e => modificarMontoCorriente(c.id, e.target.value));
+                tdMon.appendChild(inpM);
+
+                const tdDel = document.createElement('td'); tdDel.className = "text-center no-print";
+                const btnD = document.createElement('button'); btnD.className = "btn-danger"; btnD.innerText = "✕";
+                btnD.addEventListener('click', () => eliminarCorriente(c.id));
+                tdDel.appendChild(btnD);
+
+                tr.appendChild(tdR); tr.appendChild(tdD); tr.appendChild(tdM); tr.appendChild(tdFP); tr.appendChild(tdMon); tr.appendChild(tdDel);
+                tCorrientes.appendChild(tr);
+            });
+        }
+
+        calcularMatrizFinanciera();
+    }
+
+    function calcularMatrizFinanciera() {
+        let mDeb = {}; let totalPagadoConsolidado = 0;
+        listaBancos.forEach(b => mDeb[b.id] = 0);
+        listaTarjetas.forEach(t => mDeb[t.id] = 0);
+
+        listaServicios.forEach(s => {
+            if (s.pagado > 0) { totalPagadoConsolidado += s.pagado; if(mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId] += s.pagado; }
+            const cell = document.getElementById(`cell-estado-${s.id}`);
+            if (cell && cell.firstChild) {
+                const b = cell.firstChild;
+                if (s.pagado >= s.presupuesto && s.presupuesto > 0)  { b.innerText="PAGADO";   b.style.background="#e6f4ea"; b.style.color="#137333"; }
+                else if (s.pagado > 0 && s.pagado < s.presupuesto)   { b.innerText="PARCIAL";  b.style.background="#fef7e0"; b.style.color="#b06000"; }
+                else                                                   { b.innerText="PENDIENTE";b.style.background="#fce8e6"; b.style.color="#c5221f"; }
+            }
+        });
+
+        listaCorrientes.forEach(c => { totalPagadoConsolidado += c.monto; if(mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId] += c.monto; });
+
+        let sumaBancosLiquida = 0;
+        listaBancos.forEach(b => { sumaBancosLiquida += (b.saldo - (mDeb[b.id]||0)); });
+
+        let sumaTarjetasPasivo = 0;
+        listaTarjetas.forEach(t => {
+            sumaTarjetasPasivo += (t.saldo + (mDeb[t.id]||0));
+            const inp = document.getElementById(`input-saldo-base-${t.id}`);
+            if (inp && document.activeElement !== inp) inp.value = Math.round(t.saldo + (mDeb[t.id]||0));
+        });
+
+        let fijosPendientes = 0;
+        listaServicios.forEach(s => { if(s.presupuesto > s.pagado) fijosPendientes += (s.presupuesto - s.pagado); });
+
+        const elB = document.getElementById('total-bancos');
+        const elT = document.getElementById('total-tarjetas');
+        const elP = document.getElementById('total-pagado');
+        const elPend = document.getElementById('total-pendiente');
+        const cardPend = document.getElementById('card-pendiente');
+
+        if(elB) elB.innerText = formatMoneda(sumaBancosLiquida);
+        if(elT) elT.innerText = formatMoneda(sumaTarjetasPasivo);
+        if(elP) elP.innerText = formatMoneda(totalPagadoConsolidado);
+        if(elPend) elPend.innerText = formatMoneda(fijosPendientes);
+        if(cardPend) cardPend.style.borderLeftColor = fijosPendientes > 0 ? "#ef4444" : "#10b981";
+    }
+
+    </script>
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(r => console.log('SW registrado:', r.scope))
+            .catch(e => console.log('SW error:', e));
+    });
+}
+</script>
+</body>
+</html>
