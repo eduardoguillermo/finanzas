@@ -129,6 +129,7 @@ let listaTarjetas       = leer(K.tarjetas)       || [];
 let listaServicios      = leer(K.servicios)      || [];
 let listaCorrientes     = leer(K.corrientes)     || [];
 let listaTransferencias = leer(K.transferencias) || [];
+let listaCuotas         = leer(K.cuotas)         || [];
 let historicoMeses      = leer(K.historico)      || [];
 let tabActivo = null;
 
@@ -141,6 +142,7 @@ function guardar() {
     localStorage.setItem(K.servicios,      JSON.stringify(listaServicios));
     localStorage.setItem(K.corrientes,     JSON.stringify(listaCorrientes));
     localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
+    localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
     localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
 }
 
@@ -281,6 +283,34 @@ function buildMesActual() {
               <th style="width:18%">Fecha</th><th style="width:30%">Origen</th><th style="width:30%">Destino</th>
               <th style="width:17%" class="tr">Monto</th><th style="width:5%" class="no-print"></th>
             </tr></thead><tbody id="t-transf"></tbody></table>
+          </div>
+
+          <!-- CUOTAS -->
+          <div class="panel no-print" style="border-top:4px solid #6366f1;">
+            <h3 class="panel-title">💳 Compras en Cuotas</h3>
+            <div class="form-block">
+              <form id="form-cuota">
+                <div class="form-row">
+                  <div style="flex:2"><label>Descripción</label><input type="text" id="cuota-desc" required placeholder="Ej. TV Samsung, Notebook"></div>
+                  <div><label>Monto Total ($)</label><input type="number" id="cuota-total" required placeholder="0" step="1"></div>
+                  <div><label>Cant. Cuotas</label><input type="number" id="cuota-cant" required placeholder="12" min="2" step="1"></div>
+                </div>
+                <div class="form-row">
+                  <div><label>Medio de Pago</label><select id="cuota-medio" required></select></div>
+                  <div style="display:flex;align-items:flex-end;">
+                    <div id="cuota-preview" style="font-size:12px;color:#6366f1;font-weight:bold;padding:9px 0;"></div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-add" style="background:#6366f1;">Registrar Compra en Cuotas</button>
+              </form>
+            </div>
+            <table><thead><tr>
+              <th style="width:35%">Descripción</th>
+              <th style="width:20%" class="tr">Cuota ($)</th>
+              <th style="width:20%" class="tc">Progreso</th>
+              <th style="width:18%" class="tr">Resto ($)</th>
+              <th style="width:7%" class="no-print"></th>
+            </tr></thead><tbody id="t-cuotas"></tbody></table>
           </div>
 
           <!-- RUBROS -->
@@ -509,6 +539,7 @@ function render() {
         });
     }
 
+    renderCuotas();
     calcDash();
 }
 
@@ -709,7 +740,7 @@ function nuevoMes() {
         id: 'mes_'+Date.now(),
         nombre: nombre+sufijo,
         fechaCierre: new Date().toISOString(),
-        datos: { listaBancos:clon(listaBancos), listaTarjetas:clon(listaTarjetas), listaServicios:clon(listaServicios), listaCorrientes:clon(listaCorrientes), listaTransferencias:clon(listaTransferencias), listaRubros:clon(listaRubros) }
+        datos: { listaBancos:clon(listaBancos), listaTarjetas:clon(listaTarjetas), listaServicios:clon(listaServicios), listaCorrientes:clon(listaCorrientes), listaTransferencias:clon(listaTransferencias), listaRubros:clon(listaRubros), listaCuotas:clon(listaCuotas) }
     });
 
     // Ajustar saldos
@@ -724,6 +755,24 @@ function nuevoMes() {
     listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; });
     listaCorrientes=[]; listaTransferencias=[];
 
+    // Generar cuotas del nuevo mes como servicios fijos
+    listaCuotas.forEach(c => {
+        if (c.cuotaActual < c.totalCuotas) {
+            c.cuotaActual++;
+            const medioId = c.medioPagoId || (listaBancos[0]?.id || listaTarjetas[0]?.id || '');
+            listaServicios.push({
+                id: 's_cuota_' + c.id + '_' + c.cuotaActual,
+                nombre: c.descripcion + ' (' + c.cuotaActual + '/' + c.totalCuotas + ')',
+                presupuesto: c.montoCuota,
+                pagado: 0, fVto: '', fPago: '',
+                medioPagoId: medioId,
+                esCuota: true, cuotaId: c.id
+            });
+        }
+    });
+    // Eliminar cuotas terminadas
+    listaCuotas = listaCuotas.filter(c => c.cuotaActual < c.totalCuotas);
+
     guardar(); renderTabs(); renderContenido();
     alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
 }
@@ -732,7 +781,7 @@ function nuevoMes() {
 //  BACKUP
 // ═══════════════════════════════════════════
 function exportar() {
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,historicoMeses};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses};
     const a=document.createElement('a'); a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     a.download='backup_v3_finanzas.json'; document.body.appendChild(a); a.click(); a.remove();
 }
@@ -749,6 +798,7 @@ function importar(event) {
             listaCorrientes     = res.listaCorrientes     || [];
             listaRubros         = res.listaRubros         || [];
             listaTransferencias = res.listaTransferencias || [];
+            listaCuotas         = res.listaCuotas         || [];
             historicoMeses      = res.historicoMeses      || [];
             guardar(); renderTabs(); renderContenido();
         } catch(err) { alert('Error al importar. Archivo inválido.'); }
@@ -926,6 +976,100 @@ function medioNomDB(db,id) {
     const b=(db.listaBancos||[]).find(x=>x.id===id); if(b) return '🏦 '+b.nombre;
     const t=(db.listaTarjetas||[]).find(x=>x.id===id); if(t) return '💳 '+t.nombre;
     return '—';
+}
+
+// ═══════════════════════════════════════════
+//  CUOTAS
+// ═══════════════════════════════════════════
+function bindCuotas() {
+    const fC = document.getElementById('form-cuota');
+    if (!fC || fC._bound) return;
+    fC._bound = true;
+    fC.addEventListener('submit', altaCuota);
+
+    // Preview monto cuota
+    ['cuota-total','cuota-cant'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', actualizarPreviewCuota);
+    });
+}
+
+function actualizarPreviewCuota() {
+    const total = parseFloat(document.getElementById('cuota-total')?.value) || 0;
+    const cant  = parseInt(document.getElementById('cuota-cant')?.value)   || 0;
+    const prev  = document.getElementById('cuota-preview');
+    if (prev) prev.innerText = (total > 0 && cant > 0) ? 'Cuota: ' + fmt(Math.ceil(total / cant)) + '/mes' : '';
+}
+
+function altaCuota(e) {
+    e.preventDefault();
+    const desc    = v('cuota-desc');
+    const total   = n('cuota-total');
+    const cant    = parseInt(document.getElementById('cuota-cant')?.value) || 0;
+    const medioId = v('cuota-medio');
+    if (!desc || total <= 0 || cant < 2) { alert('Completá todos los campos.'); return; }
+
+    const montoCuota = Math.ceil(total / cant);
+    const cuota = { id: 'cuota_' + Date.now(), descripcion: desc, montoTotal: total, totalCuotas: cant, montoCuota, medioPagoId: medioId, cuotaActual: 1 };
+    listaCuotas.push(cuota);
+
+    // Asentar la primera cuota como servicio fijo del mes actual
+    listaServicios.push({
+        id: 's_cuota_' + cuota.id + '_1',
+        nombre: desc + ' (1/' + cant + ')',
+        presupuesto: montoCuota,
+        pagado: 0, fVto: '', fPago: '',
+        medioPagoId: medioId,
+        esCuota: true, cuotaId: cuota.id
+    });
+
+    guardar(); e.target.reset(); document.getElementById('cuota-preview').innerText = ''; render();
+}
+
+function elimCuota(id) {
+    if (!confirm('¿Eliminar esta cuota? Se eliminarán también sus servicios fijos pendientes.')) return;
+    listaCuotas = listaCuotas.filter(c => c.id !== id);
+    listaServicios = listaServicios.filter(s => s.cuotaId !== id);
+    guardar(); render();
+}
+
+function renderCuotas() {
+    const tC = document.getElementById('t-cuotas');
+    if (!tC) return;
+
+    // Poblar select medio de cuota
+    const sM = document.getElementById('cuota-medio');
+    if (sM && sM.options.length === 0) {
+        listaBancos.forEach(b => addOpt(sM, b.id, '🏦 ' + b.nombre));
+        listaTarjetas.forEach(t => addOpt(sM, t.id, '💳 ' + t.nombre));
+    }
+
+    bindCuotas();
+
+    tC.innerHTML = '';
+    if (listaCuotas.length === 0) {
+        tC.innerHTML = '<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin cuotas activas.</td></tr>';
+        return;
+    }
+    listaCuotas.forEach(c => {
+        const resto = c.montoCuota * (c.totalCuotas - c.cuotaActual);
+        const pct   = Math.round((c.cuotaActual / c.totalCuotas) * 100);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-size:12px;"><b>${c.descripcion}</b></td>
+            <td class="tr" style="font-size:12px;font-weight:bold;color:#6366f1;">${fmt(c.montoCuota)}</td>
+            <td class="tc" style="font-size:11px;">
+                <div style="background:#e2e8f0;border-radius:4px;height:8px;width:100%;margin-bottom:3px;">
+                    <div style="background:#6366f1;height:8px;border-radius:4px;width:${pct}%;"></div>
+                </div>
+                ${c.cuotaActual}/${c.totalCuotas}
+            </td>
+            <td class="tr" style="font-size:12px;color:#64748b;">${fmt(resto)}</td>
+            <td class="tc no-print"></td>`;
+        const btn = document.createElement('button'); btn.className = 'btn-del'; btn.innerText = '✕';
+        btn.onclick = () => elimCuota(c.id);
+        tr.lastElementChild.appendChild(btn);
+        tC.appendChild(tr);
+    });
 }
 
 // ═══════════════════════════════════════════
