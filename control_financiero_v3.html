@@ -559,12 +559,24 @@ function tdBtn(label, fn, cls='no-print') {
 function inpNum(val, onChange) {
     const inp=el('input'); inp.type='text'; inp.className='inp tr';
     inp.value=fmtN(val);
-    inp.addEventListener('focus', () => { inp.value=Math.round(val); });
-    inp.addEventListener('blur', e => {
-        const v=parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+    let lastRaw = Math.round(val);
+    inp.addEventListener('focus', () => { inp.value = lastRaw; });
+    inp.addEventListener('change', e => {
+        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        lastRaw = Math.round(v);
         onChange(v);
-        inp.value=fmtN(v);
+        inp.value = fmtN(v);
     });
+    inp.addEventListener('blur', e => {
+        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        if (v !== lastRaw) {
+            lastRaw = Math.round(v);
+            onChange(v);
+        }
+        inp.value = fmtN(lastRaw);
+    });
+    // Exponer setter para que calcDash pueda actualizar el display sin romper el closure
+    inp._setVal = (v) => { lastRaw = Math.round(v); if (document.activeElement !== inp) inp.value = fmtN(v); };
     return inp;
 }
 function tdInpNum(val, onChange, cls='') {
@@ -628,7 +640,7 @@ function calcDash() {
         const total=t.saldo+(mDeb[t.id]||0);
         sumaTarjetas+=total;
         const inp=document.getElementById('saldo-t-'+t.id);
-        if (inp && document.activeElement!==inp) inp.value=fmtN(total);
+        if (inp) { if (inp._setVal) inp._setVal(total); else if (document.activeElement!==inp) inp.value=fmtN(total); }
     });
 
     setTxt('d-bancos',   fmt(sumaBancos));
