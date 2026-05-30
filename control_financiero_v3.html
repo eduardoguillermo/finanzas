@@ -172,6 +172,13 @@ function renderTabs() {
     tAct.onclick = () => { tabActivo = null; renderTabs(); renderContenido(); };
     bar.appendChild(tAct);
 
+    const tRep = document.createElement('div');
+    tRep.className = 'tab' + (tabActivo === 'reportes' ? ' activo' : '');
+    tRep.style.cssText = tabActivo === 'reportes' ? 'background:#f0fdf4;color:#166534;border-color:#86efac;' : '';
+    tRep.innerHTML = '<span>📈 Reportes</span>';
+    tRep.onclick = () => { tabActivo = 'reportes'; renderTabs(); renderContenido(); };
+    bar.appendChild(tRep);
+
     [...historicoMeses].reverse().forEach(mes => {
         const t = document.createElement('div');
         t.className = 'tab historico' + (tabActivo === mes.id ? ' activo' : '');
@@ -198,6 +205,8 @@ function renderContenido() {
         app.appendChild(buildMesActual());
         bindEventosMesActual();
         render();
+    } else if (tabActivo === 'reportes') {
+        app.appendChild(buildReportes());
     } else {
         const mes = historicoMeses.find(m => m.id === tabActivo);
         if (mes) app.appendChild(buildHistorico(mes));
@@ -906,6 +915,233 @@ function modalVencimientos() {
         <div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById('modal-vto').remove()">Entendido</button></div>
     </div>`;
     document.body.appendChild(ov);
+}
+
+// ═══════════════════════════════════════════
+//  REPORTES
+// ═══════════════════════════════════════════
+function buildReportes() {
+    const wrap = document.createElement('div');
+    wrap.className = 'container';
+    wrap.style.paddingTop = '20px';
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #4f46e5;';
+    hdr.innerHTML = `
+        <div>
+            <h2 style="margin:0;font-size:22px;color:#1e293b;">📈 Reportes Financieros</h2>
+            <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Datos en tiempo real · ${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})}</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-dark no-print" style="font-size:12px;padding:8px 14px;">🖨️ Imprimir / PDF</button>`;
+    wrap.appendChild(hdr);
+
+    // ── REPORTE 1: RESUMEN MENSUAL ─────────────────────────────
+    const r1 = document.createElement('div');
+    r1.innerHTML = `<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 1 · Resumen del Mes Actual</h3>`;
+    wrap.appendChild(r1);
+
+    const grid1 = document.createElement('div');
+    grid1.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;';
+
+    // Card: Saldos bancarios
+    const mDeb = {};
+    listaBancos.forEach(b => mDeb[b.id] = 0);
+    listaTarjetas.forEach(t => mDeb[t.id] = 0);
+    listaServicios.forEach(s => { if(s.pagado>0 && mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
+    listaCorrientes.forEach(c => { if(c.fechaPago && mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto; });
+
+    let totalBancos=0, totalGastadoBancos=0;
+    listaBancos.forEach(b => { totalBancos+=b.saldo; totalGastadoBancos+=(mDeb[b.id]||0); });
+
+    let cardBancos = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;">
+        <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🏦 Cuentas Bancarias</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Cuenta</th><th style="padding:6px;text-align:right;color:#475569;">Saldo Base</th><th style="padding:6px;text-align:right;color:#475569;">Gastado</th><th style="padding:6px;text-align:right;color:#475569;">Disponible</th></tr>`;
+    listaBancos.forEach(b => {
+        const gastado = mDeb[b.id]||0;
+        const disp = b.saldo - gastado;
+        cardBancos += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;font-weight:bold;">${b.nombre}</td>
+            <td style="padding:5px 6px;text-align:right;">${fmt(b.saldo)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmt(gastado)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#0284c7;font-weight:bold;">${fmt(disp)}</td>
+        </tr>`;
+    });
+    cardBancos += `<tr style="background:#f8fafc;font-weight:bold;">
+        <td style="padding:6px;">TOTAL</td>
+        <td style="padding:6px;text-align:right;">${fmt(totalBancos)}</td>
+        <td style="padding:6px;text-align:right;color:#ef4444;">${fmt(totalGastadoBancos)}</td>
+        <td style="padding:6px;text-align:right;color:#0284c7;">${fmt(totalBancos-totalGastadoBancos)}</td>
+    </tr></table></div>`;
+
+    // Card: Tarjetas
+    let totalTarjDeuda=0;
+    let cardTarj = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;">
+        <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">💳 Tarjetas de Credito</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Tarjeta</th><th style="padding:6px;text-align:right;color:#475569;">Saldo Base</th><th style="padding:6px;text-align:right;color:#475569;">Consumo Mes</th><th style="padding:6px;text-align:right;color:#475569;">Total Deuda</th></tr>`;
+    listaTarjetas.forEach(t => {
+        const consumo = mDeb[t.id]||0;
+        const total = t.saldo+consumo;
+        totalTarjDeuda+=total;
+        cardTarj += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;font-weight:bold;">${t.nombre}</td>
+            <td style="padding:5px 6px;text-align:right;">${fmt(t.saldo)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#a855f7;">${fmt(consumo)}</td>
+            <td style="padding:5px 6px;text-align:right;font-weight:bold;color:#a855f7;">${fmt(total)}</td>
+        </tr>`;
+    });
+    cardTarj += `<tr style="background:#f8fafc;font-weight:bold;">
+        <td colspan="3" style="padding:6px;">TOTAL DEUDA</td>
+        <td style="padding:6px;text-align:right;color:#a855f7;">${fmt(totalTarjDeuda)}</td>
+    </tr></table></div>`;
+
+    grid1.innerHTML = cardBancos + cardTarj;
+    wrap.appendChild(grid1);
+
+    // Servicios fijos
+    let totalPres=0, totalPag=0, totalPend=0;
+    listaServicios.forEach(s=>{ totalPres+=s.presupuesto; totalPag+=s.pagado; if(s.presupuesto>s.pagado) totalPend+=(s.presupuesto-s.pagado); });
+
+    let tablaSrv = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;">
+        <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos del Mes</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Servicio</th><th style="padding:6px;text-align:right;color:#475569;">Presup.</th><th style="padding:6px;text-align:right;color:#475569;">Pagado</th><th style="padding:6px;text-align:right;color:#475569;">Pendiente</th><th style="padding:6px;text-align:center;color:#475569;">Estado</th></tr>`;
+    listaServicios.forEach(s => {
+        const pend = Math.max(0, s.presupuesto-s.pagado);
+        let estColor='#c5221f', estBg='#fce8e6', estTxt='PENDIENTE';
+        if(s.pagado>=s.presupuesto&&s.presupuesto>0){estColor='#137333';estBg='#e6f4ea';estTxt='PAGADO';}
+        else if(s.pagado>0){estColor='#b06000';estBg='#fef7e0';estTxt='PARCIAL';}
+        tablaSrv += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td>
+            <td style="padding:5px 6px;text-align:right;">${fmt(s.presupuesto)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#10b981;">${fmt(s.pagado)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmt(pend)}</td>
+            <td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${estBg};color:${estColor};">${estTxt}</span></td>
+        </tr>`;
+    });
+    tablaSrv += `<tr style="background:#f8fafc;font-weight:bold;">
+        <td style="padding:6px;">TOTAL</td>
+        <td style="padding:6px;text-align:right;">${fmt(totalPres)}</td>
+        <td style="padding:6px;text-align:right;color:#10b981;">${fmt(totalPag)}</td>
+        <td style="padding:6px;text-align:right;color:#ef4444;">${fmt(totalPend)}</td>
+        <td></td>
+    </tr></table></div>`;
+    wrap.insertAdjacentHTML('beforeend', tablaSrv);
+
+    // Gastos corrientes por rubro
+    const porRubro = {};
+    listaCorrientes.filter(c=>c.fechaPago).forEach(c => { porRubro[c.rubro]=(porRubro[c.rubro]||0)+c.monto; });
+    const porRubroSinFecha = {};
+    listaCorrientes.filter(c=>!c.fechaPago).forEach(c => { porRubroSinFecha[c.rubro]=(porRubroSinFecha[c.rubro]||0)+c.monto; });
+    const totalCorr = Object.values(porRubro).reduce((a,b)=>a+b,0);
+    const totalPendCorr = Object.values(porRubroSinFecha).reduce((a,b)=>a+b,0);
+
+    let tablaCorr = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;">
+        <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Rubro</th><th style="padding:6px;text-align:right;color:#475569;">Pagado</th><th style="padding:6px;text-align:right;color:#475569;">Sin confirmar</th><th style="padding:6px;text-align:right;color:#475569;">% del total</th></tr>`;
+    const todosRubros = new Set([...Object.keys(porRubro), ...Object.keys(porRubroSinFecha)]);
+    [...todosRubros].sort().forEach(r => {
+        const pag = porRubro[r]||0;
+        const pend = porRubroSinFecha[r]||0;
+        const pct = totalCorr>0 ? ((pag/totalCorr)*100).toFixed(1) : '0.0';
+        tablaCorr += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;font-weight:bold;">${r}</td>
+            <td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pag)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#94a3b8;">${fmt(pend)}</td>
+            <td style="padding:5px 6px;text-align:right;">${pct}%</td>
+        </tr>`;
+    });
+    tablaCorr += `<tr style="background:#f8fafc;font-weight:bold;">
+        <td style="padding:6px;">TOTAL</td>
+        <td style="padding:6px;text-align:right;color:#10b981;">${fmt(totalCorr)}</td>
+        <td style="padding:6px;text-align:right;color:#94a3b8;">${fmt(totalPendCorr)}</td>
+        <td></td>
+    </tr></table></div>`;
+    wrap.insertAdjacentHTML('beforeend', tablaCorr);
+
+    // ── REPORTE 2: ACUMULADO 12 MESES ──────────────────────────
+    wrap.insertAdjacentHTML('beforeend', `<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>`);
+
+    // Recopilar todos los meses (historico + actual)
+    const ultimos12 = [...historicoMeses].slice(-12);
+    const mesesData = ultimos12.map(m => ({ nombre: m.nombre, datos: m.datos }));
+    // Agregar mes actual
+    mesesData.push({ nombre: 'Mes Actual', datos: { listaCorrientes, listaRubros } });
+
+    // Construir matriz rubros x meses
+    const todosRub = new Set();
+    mesesData.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago).forEach(c=>todosRub.add(c.rubro)));
+    const rubrosArr = [...todosRub].sort();
+
+    if (rubrosArr.length === 0) {
+        wrap.insertAdjacentHTML('beforeend', `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos históricos suficientes aún. Los rubros aparecerán al acumular meses cerrados.</div>`);
+    } else {
+        // Tabla de rubros x meses
+        const colMeses = mesesData.map(m => m.nombre.replace(' de ', ' '));
+        let t2 = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;">
+            <thead><tr style="background:#1e293b;">
+                <th style="padding:7px 8px;text-align:left;color:white;font-size:11px;">Rubro</th>`;
+        colMeses.forEach(m => { t2+=`<th style="padding:7px 8px;text-align:right;color:white;font-size:11px;">${m}</th>`; });
+        t2+=`<th style="padding:7px 8px;text-align:right;color:#f59e0b;font-size:11px;">TOTAL</th></tr></thead><tbody>`;
+
+        let totalGeneral=0;
+        const totalesMes = new Array(mesesData.length).fill(0);
+
+        rubrosArr.forEach((rub, ri) => {
+            let totalRub=0;
+            t2+=`<tr style="background:${ri%2===0?'#ffffff':'#f8fafc'};">
+                <td style="padding:5px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
+            mesesData.forEach((m, mi) => {
+                const suma = (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub).reduce((a,c)=>a+c.monto,0);
+                totalesMes[mi]+=suma;
+                totalRub+=suma;
+                const col = suma>0 ? '#10b981' : '#94a3b8';
+                t2+=`<td style="padding:5px 8px;text-align:right;color:${col};font-weight:${suma>0?'bold':'normal'};">${suma>0?fmt(suma):'—'}</td>`;
+            });
+            totalGeneral+=totalRub;
+            t2+=`<td style="padding:5px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totalRub)}</td></tr>`;
+        });
+
+        // Fila totales
+        t2+=`<tr style="background:#f1f5f9;font-weight:bold;">
+            <td style="padding:7px 8px;color:#1e293b;">TOTAL MES</td>`;
+        totalesMes.forEach(t => { t2+=`<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
+        t2+=`<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totalGeneral)}</td></tr>`;
+        t2+=`</tbody></table></div>`;
+        wrap.insertAdjacentHTML('beforeend', t2);
+
+        // Resumen: top rubros
+        const topRubros = rubrosArr.map(r => ({
+            rubro: r,
+            total: mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r).reduce((b,c)=>b+c.monto,0),0)
+        })).sort((a,b)=>b.total-a.total);
+
+        const totalAcum = topRubros.reduce((a,r)=>a+r.total,0);
+
+        let resumen = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:24px;">
+            <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Participacion por Rubro (acumulado)</h4>`;
+        topRubros.forEach(r => {
+            const pct = totalAcum>0 ? (r.total/totalAcum*100).toFixed(1) : 0;
+            const barW = Math.round(pct);
+            resumen+=`<div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                    <span style="font-weight:bold;color:#334155;">${r.rubro}</span>
+                    <span style="color:#64748b;">${fmt(r.total)} · ${pct}%</span>
+                </div>
+                <div style="background:#e2e8f0;border-radius:4px;height:10px;">
+                    <div style="background:linear-gradient(90deg,#f59e0b,#f97316);height:10px;border-radius:4px;width:${barW}%;"></div>
+                </div>
+            </div>`;
+        });
+        resumen+=`<div style="font-size:12px;color:#64748b;text-align:right;margin-top:8px;font-weight:bold;">Total acumulado: ${fmt(totalAcum)}</div></div>`;
+        wrap.insertAdjacentHTML('beforeend', resumen);
+    }
+
+    return wrap;
 }
 
 // ═══════════════════════════════════════════
