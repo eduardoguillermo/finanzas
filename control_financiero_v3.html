@@ -254,7 +254,7 @@ function buildMesActual() {
                 <button type="submit" class="btn btn-add btn-blue">Añadir Cuenta</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:55%">Cuenta</th><th style="width:35%" class="tr">Saldo ($)</th><th style="width:10%" class="no-print"></th></tr></thead>
+            <table><thead><tr><th style="width:45%">Cuenta</th><th style="width:30%" class="tr">Saldo ($)</th><th style="width:15%" class="tc">Auto⬇</th><th style="width:10%" class="no-print"></th></tr></thead>
             <tbody id="t-bancos"></tbody></table>
           </div>
 
@@ -435,9 +435,16 @@ function render() {
 
     // Bancos
     listaBancos.forEach(b => {
+        const tdToggle = document.createElement('td'); tdToggle.className = 'tc';
+        const tog = document.createElement('input'); tog.type = 'checkbox'; tog.checked = b.autoDescontar || false;
+        tog.title = 'Descontar saldo automáticamente al confirmar gastos';
+        tog.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#4f46e5;';
+        tog.onchange = e => { b.autoDescontar = e.target.checked; guardar(); };
+        tdToggle.appendChild(tog);
         const tr = fila([
             tdHTML(`<b>${b.nombre}</b>`),
             tdInpNum(b.saldo, v => { b.saldo = v; guardar(); calcDash(); }, 'tr'),
+            tdToggle,
             tdBtn('✕', ()=>elimBanco(b.id))
         ]);
         tB.appendChild(tr);
@@ -627,6 +634,7 @@ function medioNom(id) {
 function esCuentaLiq(id) {
     const b=listaBancos.find(x=>x.id===id);
     if (!b) return false;
+    if (b.autoDescontar) return true;
     const n=b.nombre.toLowerCase();
     return n.includes('efectivo') || n.includes('mercado pago') || n.includes('mercadopago');
 }
@@ -683,7 +691,7 @@ function setTxt(id,v) { const e=document.getElementById(id); if(e) e.innerText=v
 // ═══════════════════════════════════════════
 function altaBanco(e) {
     e.preventDefault();
-    listaBancos.push({ id:'b_'+Date.now(), nombre:v('banco-nombre'), saldo:n('banco-saldo') });
+    listaBancos.push({ id:'b_'+Date.now(), nombre:v('banco-nombre'), saldo:n('banco-saldo'), autoDescontar:false });
     guardar(); e.target.reset(); render();
 }
 function altaTarjeta(e) {
