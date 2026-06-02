@@ -122,8 +122,6 @@ function buildMesActual() {
           <button class="btn btn-blue" id="btn-exportar">💾 Exportar Backup</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar Backup</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
-          <button class="btn btn-gdrive no-print" id="btn-gdrive-exportar" title="Subir a Drive">☁️ Drive</button>
-          <button class="btn btn-gdrive no-print" id="btn-gdrive-importar" title="Restaurar desde Drive">📂 Drive</button>
           <button class="btn btn-dark" onclick="window.print()">🖨️ PDF</button>
         </div>
       </header>
@@ -296,8 +294,6 @@ function bindEventosMesActual() {
     get('btn-exportar')?.addEventListener('click', exportar);
     get('btn-importar-trigger')?.addEventListener('click', () => get('input-backup')?.click());
     get('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
-    get('btn-gdrive-exportar')?.addEventListener('click', driveExportar);
-    get('btn-gdrive-importar')?.addEventListener('click', driveImportar);
 }
 
 // ═══════════════════════════════════════════
@@ -1405,148 +1401,6 @@ function renderCuotas() {
 // ═══════════════════════════════════════════
 function v(id) { return document.getElementById(id)?.value?.trim()||''; }
 function n(id) { return parseFloat(document.getElementById(id)?.value)||0; }
-
-// ═══════════════════════════════════════════
-//  GOOGLE DRIVE
-// ═══════════════════════════════════════════
-const GDRIVE_CLIENT_ID = '1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-let gdriveToken = null;
-
-function driveGetToken(callback) {
-    if (gdriveToken) { callback(gdriveToken); return; }
-    // Cargar script de Google si no está cargado
-    if (typeof google === 'undefined') {
-        const s = document.createElement('script');
-        s.src = 'https://accounts.google.com/gsi/client';
-        s.onload = () => driveIniciarToken(callback);
-        s.onerror = () => alert('No se pudo cargar Google. Verificá tu conexión.');
-        document.head.appendChild(s);
-        return;
-    }
-    driveIniciarToken(callback);
-}
-
-function driveIniciarToken(callback) {
-    const client = google.accounts.oauth2.initTokenClient({
-        client_id: GDRIVE_CLIENT_ID,
-        scope: GDRIVE_SCOPE,
-        callback: resp => {
-            if (resp.error) { alert('Error al conectar con Google Drive: ' + resp.error); return; }
-            gdriveToken = resp.access_token;
-            callback(gdriveToken);
-        }
-    });
-    client.requestAccessToken();
-}
-
-function driveExportar() {
-    driveGetToken(token => {
-        const ahora = new Date();
-        const fecha = ahora.getFullYear() +
-            String(ahora.getMonth()+1).padStart(2,'0') +
-            String(ahora.getDate()).padStart(2,'0') + '_' +
-            String(ahora.getHours()).padStart(2,'0') +
-            String(ahora.getMinutes()).padStart(2,'0');
-        const nombre = `backup_finanzas_${fecha}.json`;
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses});
-
-        const meta = JSON.stringify({ name: nombre, parents: ['appDataFolder'] });
-        const blob = new Blob([data], { type: 'application/json' });
-        const form = new FormData();
-        form.append('metadata', new Blob([meta], { type: 'application/json' }));
-        form.append('file', blob);
-
-        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + token },
-            body: form
-        })
-        .then(r => r.json())
-        .then(f => {
-            if (f.id) alert('Backup guardado en Drive: ' + nombre);
-            else { alert('Error al subir: ' + JSON.stringify(f)); gdriveToken = null; }
-        })
-        .catch(e => { alert('Error: ' + e.message); gdriveToken = null; });
-    });
-}
-
-function driveImportar() {
-    driveGetToken(token => {
-        // Listar archivos de backup
-        fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=20", {
-            headers: { Authorization: 'Bearer ' + token }
-        })
-        .then(r => r.json())
-        .then(data => {
-            const archivos = (data.files || []).filter(f => f.name.startsWith('backup_finanzas_'));
-            mostrarModalDrive(archivos, token);
-        })
-        .catch(e => { alert('Error al listar Drive: ' + e.message); gdriveToken = null; });
-    });
-}
-
-function mostrarModalDrive(archivos, token) {
-    const existente = document.getElementById('modal-drive');
-    if (existente) existente.remove();
-
-    const ov = document.createElement('div');
-    ov.className = 'drive-modal'; ov.id = 'modal-drive';
-
-    let items = '';
-    if (archivos.length === 0) {
-        items = '<p style="color:#64748b;text-align:center;padding:20px;">No hay backups en Drive todavía.<br>Usá "Subir a Drive" para crear el primero.</p>';
-    } else {
-        archivos.forEach(f => {
-            const fecha = new Date(f.modifiedTime).toLocaleString('es-AR');
-            items += `<div class="drive-file" onclick="driveCargarArchivo('${f.id}','${f.name}')">
-                <div>
-                    <div class="drive-file-name">📄 ${f.name}</div>
-                    <div class="drive-file-date">${fecha}</div>
-                </div>
-                <span style="font-size:11px;color:#4285f4;font-weight:bold;">Restaurar →</span>
-            </div>`;
-        });
-    }
-
-    ov.innerHTML = `<div class="drive-box">
-        <div class="drive-header">
-            <h3>☁️ Backups en Google Drive</h3>
-            <button onclick="document.getElementById('modal-drive').remove()" style="background:transparent;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
-        </div>
-        <div class="drive-body">${items}</div>
-        <div class="drive-footer">
-            <button class="btn" style="background:#e2e8f0;color:#334155;" onclick="document.getElementById('modal-drive').remove()">Cancelar</button>
-        </div>
-    </div>`;
-    document.body.appendChild(ov);
-    // Guardar token para uso del modal
-    window._driveToken = token;
-}
-
-function driveCargarArchivo(id, nombre) {
-    if (!confirm('Restaurar backup ' + nombre + '? Se reemplazaran todos los datos.')) return;
-    document.getElementById('modal-drive').remove();
-
-    fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', {
-        headers: { Authorization: 'Bearer ' + window._driveToken }
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (!res.listaBancos || !res.listaServicios) { alert('Backup inválido.'); return; }
-        listaBancos         = res.listaBancos;
-        listaTarjetas       = res.listaTarjetas       || [];
-        listaServicios      = res.listaServicios;
-        listaCorrientes     = res.listaCorrientes     || [];
-        listaRubros         = res.listaRubros         || [];
-        listaTransferencias = res.listaTransferencias || [];
-        listaCuotas         = res.listaCuotas         || [];
-        historicoMeses      = res.historicoMeses      || [];
-        guardar(); renderTabs(); renderContenido();
-        alert('Backup restaurado: ' + nombre);
-    })
-    .catch(e => alert('Error al descargar: ' + e.message));
-}
 
 // ═══════════════════════════════════════════
 //  SERVICE WORKER
