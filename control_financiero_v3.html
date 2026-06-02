@@ -1102,6 +1102,95 @@ function buildReportes() {
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaClase);
 
+    wrap.insertAdjacentHTML('beforeend', tablaClase);
+
+    // Gráfico de torta: un sector por servicio fijo
+    const srvConPres = listaServicios.filter(s => s.presupuesto > 0);
+    if (srvConPres.length > 0) {
+        const totalTorta = srvConPres.reduce((a,s)=>a+s.presupuesto,0);
+        // Paleta de colores
+        const paleta = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
+
+        const divTorta = document.createElement('div');
+        divTorta.style.cssText = 'background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:20px;margin-bottom:24px;';
+        divTorta.innerHTML = `<h4 style="margin:0 0 16px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 Distribución Presupuesto · Servicios Fijos del Mes</h4>
+            <div style="display:flex;align-items:flex-start;justify-content:center;gap:32px;flex-wrap:wrap;">
+                <div id="torta-wrap"></div>
+                <div id="torta-leyenda" style="max-height:320px;overflow-y:auto;"></div>
+            </div>`;
+        wrap.appendChild(divTorta);
+
+        setTimeout(() => {
+            const tw = document.getElementById('torta-wrap');
+            if (!tw) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = 300; canvas.height = 300;
+            tw.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            const cx = 150, cy = 150, r = 120, ri = 60;
+            let anguloInicio = -Math.PI / 2;
+
+            srvConPres.forEach((s, i) => {
+                const pct = s.presupuesto / totalTorta;
+                const anguloFin = anguloInicio + pct * 2 * Math.PI;
+                const color = paleta[i % paleta.length];
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, anguloInicio, anguloFin);
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Mostrar % solo si el sector es suficientemente grande
+                if (pct > 0.05) {
+                    const midAngle = anguloInicio + (anguloFin - anguloInicio) / 2;
+                    const lx = cx + (r * 0.68) * Math.cos(midAngle);
+                    const ly = cy + (r * 0.68) * Math.sin(midAngle);
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText((pct*100).toFixed(0)+'%', lx, ly);
+                }
+                anguloInicio = anguloFin;
+            });
+
+            // Agujero central
+            ctx.beginPath();
+            ctx.arc(cx, cy, ri, 0, 2*Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Total', cx, cy - 10);
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillText(fmt(totalTorta), cx, cy + 10);
+
+            // Leyenda
+            const ley = document.getElementById('torta-leyenda');
+            if (ley) {
+                ley.innerHTML = srvConPres.map((s, i) => {
+                    const color = paleta[i % paleta.length];
+                    const pct = (s.presupuesto/totalTorta*100).toFixed(1);
+                    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <div style="width:12px;height:12px;border-radius:3px;background:${color};flex-shrink:0;"></div>
+                        <div>
+                            <span style="font-size:12px;font-weight:bold;color:#1e293b;">${s.nombre}</span>
+                            <span style="font-size:11px;color:#64748b;margin-left:6px;">${fmt(s.presupuesto)} · ${pct}%</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }, 50);
+    }
+
     // Gastos corrientes por rubro
     const porRubro = {};
     listaCorrientes.filter(c=>c.fechaPago).forEach(c => { porRubro[c.rubro]=(porRubro[c.rubro]||0)+c.monto; });
