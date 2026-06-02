@@ -122,6 +122,8 @@ function buildMesActual() {
           <button class="btn btn-blue" id="btn-exportar">💾 Exportar Backup</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar Backup</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
+          <button class="btn no-print" id="btn-drive-up" style="background:#4285f4;color:white;padding:9px 12px;">☁️ Subir</button>
+          <button class="btn no-print" id="btn-drive-down" style="background:#4285f4;color:white;padding:9px 12px;">📂 Restaurar</button>
           <button class="btn btn-dark" onclick="window.print()">🖨️ PDF</button>
         </div>
       </header>
@@ -294,6 +296,8 @@ function bindEventosMesActual() {
     get('btn-exportar')?.addEventListener('click', exportar);
     get('btn-importar-trigger')?.addEventListener('click', () => get('input-backup')?.click());
     get('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
+    get('btn-drive-up')?.addEventListener('click', driveSubir);
+    get('btn-drive-down')?.addEventListener('click', driveRestaurar);
 }
 
 // ═══════════════════════════════════════════
@@ -1401,6 +1405,159 @@ function renderCuotas() {
 // ═══════════════════════════════════════════
 function v(id) { return document.getElementById(id)?.value?.trim()||''; }
 function n(id) { return parseFloat(document.getElementById(id)?.value)||0; }
+
+
+// ═══════════════════════════════════════════
+//  GOOGLE DRIVE
+// ═══════════════════════════════════════════
+const GDRIVE_CLIENT_ID = '1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+let gToken = null;
+
+function driveCargarGoogle(callback) {
+    if (typeof google !== 'undefined') { callback(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = callback;
+    s.onerror = () => alert('No se pudo cargar Google. Verificá tu conexión.');
+    document.head.appendChild(s);
+}
+
+function driveGetToken(callback) {
+    driveCargarGoogle(() => {
+        if (gToken) { callback(gToken); return; }
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: GDRIVE_CLIENT_ID,
+            scope: GDRIVE_SCOPE,
+            callback: resp => {
+                if (resp.error) { alert('Error Google: ' + resp.error); return; }
+                gToken = resp.access_token;
+                callback(gToken);
+            }
+        });
+        client.requestAccessToken();
+    });
+}
+
+function driveSubir() {
+    driveGetToken(token => {
+        const ahora = new Date();
+        const ts = ahora.getFullYear() + String(ahora.getMonth()+1).padStart(2,'0') + String(ahora.getDate()).padStart(2,'0') + '_' + String(ahora.getHours()).padStart(2,'0') + String(ahora.getMinutes()).padStart(2,'0');
+        const nombre = 'backup_finanzas_' + ts + '.json';
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses});
+        const meta = JSON.stringify({name: nombre, parents: ['appDataFolder']});
+        const form = new FormData();
+        form.append('metadata', new Blob([meta], {type: 'application/json'}));
+        form.append('file', new Blob([data], {type: 'application/json'}));
+        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {Authorization: 'Bearer ' + token},
+            body: form
+        })
+        .then(r => r.json())
+        .then(f => {
+            if (f.id) alert('Backup guardado en Drive: ' + nombre);
+            else { alert('Error al subir: ' + JSON.stringify(f)); gToken = null; }
+        })
+        .catch(e => { alert('Error: ' + e.message); gToken = null; });
+    });
+}
+
+function driveRestaurar() {
+    driveGetToken(token => {
+        fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=20', {
+            headers: {Authorization: 'Bearer ' + token}
+        })
+        .then(r => r.json())
+        .then(data => {
+            const archivos = (data.files || []).filter(f => f.name.startsWith('backup_finanzas_'));
+            mostrarModalDrive(archivos, token);
+        })
+        .catch(e => { alert('Error al listar Drive: ' + e.message); gToken = null; });
+    });
+}
+
+function mostrarModalDrive(archivos, token) {
+    const existente = document.getElementById('modal-drive');
+    if (existente) existente.remove();
+
+    const ov = document.createElement('div');
+    ov.id = 'modal-drive';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:white;border-radius:12px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'background:#1e293b;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;';
+    const h3 = document.createElement('h3');
+    h3.style.cssText = 'margin:0;color:white;font-size:15px;';
+    h3.innerText = 'Backups en Google Drive';
+    const btnX = document.createElement('button');
+    btnX.innerText = '✕';
+    btnX.style.cssText = 'background:transparent;border:none;color:white;font-size:18px;cursor:pointer;';
+    btnX.onclick = () => ov.remove();
+    header.appendChild(h3); header.appendChild(btnX);
+
+    const body = document.createElement('div');
+    body.style.cssText = 'padding:20px;max-height:50vh;overflow-y:auto;';
+
+    if (archivos.length === 0) {
+        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px;">Sin backups en Drive. Usá Subir primero.</p>';
+    } else {
+        archivos.forEach(f => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:8px;cursor:pointer;';
+            item.onmouseover = () => item.style.background = '#f1f5f9';
+            item.onmouseout  = () => item.style.background = '';
+            const fecha = new Date(f.modifiedTime).toLocaleString('es-AR');
+            const left = document.createElement('div');
+            left.innerHTML = '<div style="font-size:13px;font-weight:bold;color:#1e293b;">' + f.name + '</div><div style="font-size:11px;color:#64748b;">' + fecha + '</div>';
+            const btn = document.createElement('span');
+            btn.innerText = 'Restaurar →';
+            btn.style.cssText = 'font-size:11px;color:#4285f4;font-weight:bold;';
+            item.appendChild(left); item.appendChild(btn);
+            item.onclick = () => driveCargarArchivo(f.id, f.name, token, ov);
+            body.appendChild(item);
+        });
+    }
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'padding:16px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;';
+    const btnCancelar = document.createElement('button');
+    btnCancelar.className = 'btn';
+    btnCancelar.style.cssText = 'background:#e2e8f0;color:#334155;';
+    btnCancelar.innerText = 'Cancelar';
+    btnCancelar.onclick = () => ov.remove();
+    footer.appendChild(btnCancelar);
+
+    box.appendChild(header); box.appendChild(body); box.appendChild(footer);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+}
+
+function driveCargarArchivo(id, nombre, token, modal) {
+    if (!confirm('Restaurar ' + nombre + '? Se reemplazaran todos los datos.')) return;
+    modal.remove();
+    fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', {
+        headers: {Authorization: 'Bearer ' + token}
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.listaBancos) { alert('Backup invalido.'); return; }
+        listaBancos         = res.listaBancos         || [];
+        listaTarjetas       = res.listaTarjetas       || [];
+        listaServicios      = res.listaServicios      || [];
+        listaCorrientes     = res.listaCorrientes     || [];
+        listaRubros         = res.listaRubros         || [];
+        listaTransferencias = res.listaTransferencias || [];
+        listaCuotas         = res.listaCuotas         || [];
+        historicoMeses      = res.historicoMeses      || [];
+        guardar(); renderTabs(); renderContenido();
+        alert('Backup restaurado: ' + nombre);
+    })
+    .catch(e => alert('Error al descargar: ' + e.message));
+}
 
 // ═══════════════════════════════════════════
 //  SERVICE WORKER
