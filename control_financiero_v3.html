@@ -1581,8 +1581,7 @@ function driveExportar() {
         })
         .then(r => r.json())
         .then(f => {
-            if (f.id) alert('✅ Backup guardado en Google Drive:
-' + nombre);
+            if (f.id) alert('Backup guardado en Drive: ' + nombre);
             else { alert('Error al subir: ' + JSON.stringify(f)); gdriveToken = null; }
         })
         .catch(e => { alert('Error: ' + e.message); gdriveToken = null; });
@@ -1643,8 +1642,7 @@ function mostrarModalDrive(archivos, token) {
 }
 
 function driveCargarArchivo(id, nombre) {
-    if (!confirm('¿Restaurar el backup "' + nombre + '"?
-Se reemplazarán todos los datos actuales.')) return;
+    if (!confirm('Restaurar backup ' + nombre + '? Se reemplazaran todos los datos.')) return;
     document.getElementById('modal-drive').remove();
 
     fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', {
@@ -1662,7 +1660,7 @@ Se reemplazarán todos los datos actuales.')) return;
         listaCuotas         = res.listaCuotas         || [];
         historicoMeses      = res.historicoMeses      || [];
         guardar(); renderTabs(); renderContenido();
-        alert('✅ Backup restaurado: ' + nombre);
+        alert('Backup restaurado: ' + nombre);
     })
     .catch(e => alert('Error al descargar: ' + e.message));
 }
