@@ -497,7 +497,18 @@ function render() {
             tdClase,
             tdInpDate(s.fVto,  v => { s.fVto  = v; guardar(); }),
             tdInpNum(s.presupuesto, v => { s.presupuesto = v; guardar(); calcDash(); }, 'tr'),
-            tdInpNum(s.pagado,      v => { s.pagado      = v; guardar(); calcDash(); }, 'tr'),
+            tdInpNum(s.pagado, v => {
+                const diff = v - s.pagado;
+                if (diff !== 0) {
+                    const cuenta = listaBancos.find(b => b.id === s.medioPagoId) || listaTarjetas.find(t => t.id === s.medioPagoId);
+                    if (cuenta) {
+                        const esTarjeta = !!listaTarjetas.find(t => t.id === s.medioPagoId);
+                        if (esTarjeta) cuenta.saldo += diff; // tarjetas acumulan deuda
+                        else cuenta.saldo -= diff;           // bancos descuentan saldo
+                    }
+                }
+                s.pagado = v; guardar(); calcDash();
+            }, 'tr'),
             tdInpDate(s.fPago, v => { s.fPago = v; guardar(); }),
             (() => { const td = document.createElement('td'); td.appendChild(medioSel); return td; })(),
             tdEst,
