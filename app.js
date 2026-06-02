@@ -273,7 +273,11 @@ function buildMesActual() {
                   <div><label>Monto ($)</label><input type="number" id="corr-monto" required placeholder="0" step="1"></div>
                   <div><label>Pagar con</label><select id="corr-medio" required></select></div>
                 </div>
-                <button type="submit" class="btn btn-add btn-green">Asentar Gasto Corriente</button>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                  <input type="checkbox" id="corr-es-ingreso" style="width:16px;height:16px;accent-color:#10b981;cursor:pointer;">
+                  <label for="corr-es-ingreso" style="font-size:13px;color:#334155;text-transform:none;font-weight:bold;cursor:pointer;">Es un ingreso</label>
+                </div>
+                <button type="submit" class="btn btn-add btn-green">Asentar</button>
               </form>
             </div>
             <div id="wrap-corrientes"></div>
@@ -464,15 +468,16 @@ function render() {
             inpFP.onchange = e => {
                 const fechaAnterior = c.fechaPago;
                 const fechaNueva = e.target.value;
-                // Si pasa de sin fecha a con fecha: descontar saldo en cuentas liquidables
+                const factor = c.esIngreso ? 1 : -1;
+                // Si pasa de sin fecha a con fecha: ajustar saldo en cuentas liquidables
                 if (!fechaAnterior && fechaNueva && esCuentaLiq(c.medioPagoId)) {
                     const bk = listaBancos.find(b => b.id === c.medioPagoId);
-                    if (bk) bk.saldo -= c.monto;
+                    if (bk) bk.saldo += c.monto * factor;
                 }
-                // Si pasa de con fecha a sin fecha: restaurar saldo en cuentas liquidables
+                // Si pasa de con fecha a sin fecha: revertir
                 if (fechaAnterior && !fechaNueva && esCuentaLiq(c.medioPagoId)) {
                     const bk = listaBancos.find(b => b.id === c.medioPagoId);
-                    if (bk) bk.saldo += c.monto;
+                    if (bk) bk.saldo -= c.monto * factor;
                 }
                 c.fechaPago = fechaNueva;
                 guardar(); render();
@@ -594,8 +599,9 @@ function calcDash() {
     });
     listaCorrientes.forEach(c => {
         if (c.fechaPago) {
-            totalPag+=Math.round(c.monto);
-            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=Math.round(c.monto);
+            const factor = c.esIngreso ? -1 : 1;
+            totalPag += Math.round(c.monto) * (c.esIngreso ? 0 : 1); // ingresos no suman al total pagado
+            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId] += Math.round(c.monto) * factor;
         }
     });
 
@@ -647,8 +653,11 @@ function altaCorriente(e) {
     const medioId = v('corr-medio');
     if (!medioId) { alert('Configure un medio de pago.'); return; }
     const monto = n('corr-monto');
+    const esIngreso = document.getElementById('corr-es-ingreso')?.checked || false;
     // No descontar saldo al dar de alta — se descuenta al confirmar con fecha de pago
-    listaCorrientes.push({ id:'c_'+Date.now(), rubro:v('corr-rubro'), detalle:v('corr-detalle'), monto, fechaPago:'', medioPagoId:medioId });
+    listaCorrientes.push({ id:'c_'+Date.now(), rubro:v('corr-rubro'), detalle:v('corr-detalle'), monto, fechaPago:'', medioPagoId:medioId, esIngreso });
+    // Resetear checkbox
+    const chk = document.getElementById('corr-es-ingreso'); if (chk) chk.checked = false;
     guardar(); e.target.reset(); render();
 }
 function altaTransferencia(e) {
@@ -687,7 +696,7 @@ function elimCorriente(id) {
     const c=listaCorrientes.find(x=>x.id===id);
     if (c && c.fechaPago && esCuentaLiq(c.medioPagoId)) {
         const bk=listaBancos.find(b=>b.id===c.medioPagoId);
-        if (bk) bk.saldo+=c.monto;
+        if (bk) bk.saldo += c.esIngreso ? -c.monto : c.monto;
     }
     listaCorrientes=listaCorrientes.filter(x=>x.id!==id); guardar(); render();
 }
