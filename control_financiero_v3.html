@@ -459,8 +459,14 @@ function render() {
         tT.appendChild(tr);
     });
 
-    // Servicios
-    listaServicios.forEach(s => {
+    // Servicios — orden: pendiente > parcial > pagado, luego alfabético
+    const serviciosOrdenados = [...listaServicios].sort((a, b) => {
+        const estado = s => s.pagado >= s.presupuesto && s.presupuesto > 0 ? 2 : s.pagado > 0 ? 1 : 0;
+        const ea = estado(a), eb = estado(b);
+        if (ea !== eb) return ea - eb;
+        return a.nombre.localeCompare(b.nombre, 'es');
+    });
+    serviciosOrdenados.forEach(s => {
         const medioSel = selMedios(s.medioPagoId, v => { s.medioPagoId = v; guardar(); calcDash(); });
         const estadoSpan = document.createElement('span');
         estadoSpan.id = 'est-' + s.id;
