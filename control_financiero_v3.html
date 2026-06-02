@@ -6,7 +6,6 @@
     <meta name="theme-color" content="#1e293b">
     <link rel="manifest" href="manifest.json">
     <title>Control Financiero v3.2</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: sans-serif; background: #f1f5f9; padding: 0; color: #334155; margin: 0; }
@@ -1533,6 +1532,19 @@ let gdriveToken = null;
 
 function driveGetToken(callback) {
     if (gdriveToken) { callback(gdriveToken); return; }
+    // Cargar script de Google si no está cargado
+    if (typeof google === 'undefined') {
+        const s = document.createElement('script');
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.onload = () => driveIniciarToken(callback);
+        s.onerror = () => alert('No se pudo cargar Google. Verificá tu conexión.');
+        document.head.appendChild(s);
+        return;
+    }
+    driveIniciarToken(callback);
+}
+
+function driveIniciarToken(callback) {
     const client = google.accounts.oauth2.initTokenClient({
         client_id: GDRIVE_CLIENT_ID,
         scope: GDRIVE_SCOPE,
