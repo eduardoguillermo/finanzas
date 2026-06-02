@@ -1105,7 +1105,7 @@ function buildReportes() {
     wrap.insertAdjacentHTML('beforeend', tablaClase);
 
     // Gráfico de torta: un sector por servicio fijo
-    const srvConPres = listaServicios.filter(s => s.presupuesto > 0);
+    const srvConPres = [...listaServicios.filter(s => s.presupuesto > 0)].sort((a,b) => b.presupuesto - a.presupuesto);
     if (srvConPres.length > 0) {
         const totalTorta = srvConPres.reduce((a,s)=>a+s.presupuesto,0);
         // Paleta de colores
