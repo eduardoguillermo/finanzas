@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#1e293b">
     <link rel="manifest" href="manifest.json">
     <title>Control Financiero v3.2</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: sans-serif; background: #f1f5f9; padding: 0; color: #334155; margin: 0; }
@@ -101,6 +102,19 @@
         .ro-muted { color: #64748b; }
         .ro-money { font-weight: bold; text-align: right; }
         .ro-green { color: #10b981; font-weight: bold; }
+
+        /* GOOGLE DRIVE */
+        .drive-modal { position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:2000;display:flex;align-items:center;justify-content:center; }
+        .drive-box { background:white;border-radius:12px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden; }
+        .drive-header { background:#1e293b;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
+        .drive-header h3 { margin:0;color:white;font-size:15px; }
+        .drive-body { padding:20px;max-height:50vh;overflow-y:auto; }
+        .drive-file { display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:8px;cursor:pointer;transition:background 0.1s; }
+        .drive-file:hover { background:#f1f5f9; }
+        .drive-file-name { font-size:13px;font-weight:bold;color:#1e293b; }
+        .drive-file-date { font-size:11px;color:#64748b;margin-top:2px; }
+        .drive-footer { padding:16px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px; }
+        .btn-gdrive { background:#4285f4;color:white; }
 
         /* MISC */
         .hidden { display: none !important; }
@@ -401,6 +415,8 @@ function bindEventosMesActual() {
     document.getElementById('btn-exportar').addEventListener('click', exportar);
     document.getElementById('btn-importar-trigger').addEventListener('click', () => document.getElementById('input-backup').click());
     document.getElementById('btn-nuevo-mes').addEventListener('click', nuevoMes);
+    document.getElementById('btn-gdrive-exportar').addEventListener('click', driveExportar);
+    document.getElementById('btn-gdrive-importar').addEventListener('click', driveImportar);
 }
 
 // ═══════════════════════════════════════════
@@ -1507,6 +1523,137 @@ function renderCuotas() {
 // ═══════════════════════════════════════════
 function v(id) { return document.getElementById(id)?.value?.trim()||''; }
 function n(id) { return parseFloat(document.getElementById(id)?.value)||0; }
+
+// ═══════════════════════════════════════════
+//  GOOGLE DRIVE
+// ═══════════════════════════════════════════
+const GDRIVE_CLIENT_ID = '1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+let gdriveToken = null;
+
+function driveGetToken(callback) {
+    if (gdriveToken) { callback(gdriveToken); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+        client_id: GDRIVE_CLIENT_ID,
+        scope: GDRIVE_SCOPE,
+        callback: resp => {
+            if (resp.error) { alert('Error al conectar con Google Drive: ' + resp.error); return; }
+            gdriveToken = resp.access_token;
+            callback(gdriveToken);
+        }
+    });
+    client.requestAccessToken();
+}
+
+function driveExportar() {
+    driveGetToken(token => {
+        const ahora = new Date();
+        const fecha = ahora.getFullYear() +
+            String(ahora.getMonth()+1).padStart(2,'0') +
+            String(ahora.getDate()).padStart(2,'0') + '_' +
+            String(ahora.getHours()).padStart(2,'0') +
+            String(ahora.getMinutes()).padStart(2,'0');
+        const nombre = `backup_finanzas_${fecha}.json`;
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses});
+
+        const meta = JSON.stringify({ name: nombre, parents: ['appDataFolder'] });
+        const blob = new Blob([data], { type: 'application/json' });
+        const form = new FormData();
+        form.append('metadata', new Blob([meta], { type: 'application/json' }));
+        form.append('file', blob);
+
+        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            body: form
+        })
+        .then(r => r.json())
+        .then(f => {
+            if (f.id) alert('✅ Backup guardado en Google Drive:
+' + nombre);
+            else { alert('Error al subir: ' + JSON.stringify(f)); gdriveToken = null; }
+        })
+        .catch(e => { alert('Error: ' + e.message); gdriveToken = null; });
+    });
+}
+
+function driveImportar() {
+    driveGetToken(token => {
+        // Listar archivos de backup
+        fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=20", {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const archivos = (data.files || []).filter(f => f.name.startsWith('backup_finanzas_'));
+            mostrarModalDrive(archivos, token);
+        })
+        .catch(e => { alert('Error al listar Drive: ' + e.message); gdriveToken = null; });
+    });
+}
+
+function mostrarModalDrive(archivos, token) {
+    const existente = document.getElementById('modal-drive');
+    if (existente) existente.remove();
+
+    const ov = document.createElement('div');
+    ov.className = 'drive-modal'; ov.id = 'modal-drive';
+
+    let items = '';
+    if (archivos.length === 0) {
+        items = '<p style="color:#64748b;text-align:center;padding:20px;">No hay backups en Drive todavía.<br>Usá "Subir a Drive" para crear el primero.</p>';
+    } else {
+        archivos.forEach(f => {
+            const fecha = new Date(f.modifiedTime).toLocaleString('es-AR');
+            items += `<div class="drive-file" onclick="driveCargarArchivo('${f.id}','${f.name}')">
+                <div>
+                    <div class="drive-file-name">📄 ${f.name}</div>
+                    <div class="drive-file-date">${fecha}</div>
+                </div>
+                <span style="font-size:11px;color:#4285f4;font-weight:bold;">Restaurar →</span>
+            </div>`;
+        });
+    }
+
+    ov.innerHTML = `<div class="drive-box">
+        <div class="drive-header">
+            <h3>☁️ Backups en Google Drive</h3>
+            <button onclick="document.getElementById('modal-drive').remove()" style="background:transparent;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
+        </div>
+        <div class="drive-body">${items}</div>
+        <div class="drive-footer">
+            <button class="btn" style="background:#e2e8f0;color:#334155;" onclick="document.getElementById('modal-drive').remove()">Cancelar</button>
+        </div>
+    </div>`;
+    document.body.appendChild(ov);
+    // Guardar token para uso del modal
+    window._driveToken = token;
+}
+
+function driveCargarArchivo(id, nombre) {
+    if (!confirm('¿Restaurar el backup "' + nombre + '"?
+Se reemplazarán todos los datos actuales.')) return;
+    document.getElementById('modal-drive').remove();
+
+    fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', {
+        headers: { Authorization: 'Bearer ' + window._driveToken }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.listaBancos || !res.listaServicios) { alert('Backup inválido.'); return; }
+        listaBancos         = res.listaBancos;
+        listaTarjetas       = res.listaTarjetas       || [];
+        listaServicios      = res.listaServicios;
+        listaCorrientes     = res.listaCorrientes     || [];
+        listaRubros         = res.listaRubros         || [];
+        listaTransferencias = res.listaTransferencias || [];
+        listaCuotas         = res.listaCuotas         || [];
+        historicoMeses      = res.historicoMeses      || [];
+        guardar(); renderTabs(); renderContenido();
+        alert('✅ Backup restaurado: ' + nombre);
+    })
+    .catch(e => alert('Error al descargar: ' + e.message));
+}
 
 // ═══════════════════════════════════════════
 //  SERVICE WORKER
