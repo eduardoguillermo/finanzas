@@ -347,13 +347,23 @@ function buildMesActual() {
                   <div><label>Presupuesto ($)</label><input type="number" id="srv-presupuesto" required placeholder="0" step="1"></div>
                   <div><label>Vto.</label><input type="date" id="srv-vto" required></div>
                 </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                  <div>
+                    <label>Clase</label>
+                    <select id="srv-clase" required>
+                      <option value="M">M — Mío</option>
+                      <option value="O">O — Oma</option>
+                      <option value="X">X — Otros</option>
+                    </select>
+                  </div>
+                </div>
                 <button type="submit" class="btn btn-add btn-indigo">Configurar Vencimiento Fijo</button>
               </form>
             </div>
             <table><thead><tr>
-              <th style="width:22%">Servicio</th><th style="width:14%" class="tc">Vto.</th>
-              <th style="width:11%" class="tr">Presup.</th><th style="width:11%" class="tr">Pagado</th>
-              <th style="width:12%" class="tc">F.Pago</th><th style="width:17%">Medio</th>
+              <th style="width:20%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:13%" class="tc">Vto.</th>
+              <th style="width:10%" class="tr">Presup.</th><th style="width:10%" class="tr">Pagado</th>
+              <th style="width:11%" class="tc">F.Pago</th><th style="width:15%">Medio</th>
               <th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th>
             </tr></thead><tbody id="t-servicios"></tbody></table>
           </div>
@@ -473,9 +483,18 @@ function render() {
         estadoSpan.style.cssText = 'font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;';
         const tdEst = document.createElement('td'); tdEst.className='tc'; tdEst.appendChild(estadoSpan);
 
+        const selClase = document.createElement('select'); selClase.className='inp';
+        ['M','O','X'].forEach(op => {
+            const o=document.createElement('option'); o.value=op; o.innerText=op;
+            if((s.clase||'M')===op) o.selected=true; selClase.appendChild(o);
+        });
+        selClase.onchange = e => { s.clase=e.target.value; guardar(); };
+        const tdClase = document.createElement('td'); tdClase.className='tc'; tdClase.appendChild(selClase);
+
         const tr = document.createElement('tr');
         [
             tdHTML(`<b>${s.nombre}</b>`),
+            tdClase,
             tdInpDate(s.fVto,  v => { s.fVto  = v; guardar(); }),
             tdInpNum(s.presupuesto, v => { s.presupuesto = v; guardar(); calcDash(); }, 'tr'),
             tdInpNum(s.pagado,      v => { s.pagado      = v; guardar(); calcDash(); }, 'tr'),
@@ -816,7 +835,7 @@ function nuevoMes() {
                 presupuesto: c.montoCuota,
                 pagado: 0, fVto: '', fPago: '',
                 medioPagoId: medioId,
-                esCuota: true, cuotaId: c.id
+                clase: c.clase || 'M', esCuota: true, cuotaId: c.id
             });
         }
     });
@@ -1021,14 +1040,16 @@ function buildReportes() {
     let tablaSrv = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;">
         <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos del Mes</h4>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Servicio</th><th style="padding:6px;text-align:right;color:#475569;">Presup.</th><th style="padding:6px;text-align:right;color:#475569;">Pagado</th><th style="padding:6px;text-align:right;color:#475569;">Pendiente</th><th style="padding:6px;text-align:center;color:#475569;">Estado</th></tr>`;
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Servicio</th><th style="padding:6px;text-align:center;color:#475569;">Clase</th><th style="padding:6px;text-align:right;color:#475569;">Presup.</th><th style="padding:6px;text-align:right;color:#475569;">Pagado</th><th style="padding:6px;text-align:right;color:#475569;">Pendiente</th><th style="padding:6px;text-align:center;color:#475569;">Estado</th></tr>`;
     listaServicios.forEach(s => {
         const pend = Math.max(0, s.presupuesto-s.pagado);
         let estColor='#c5221f', estBg='#fce8e6', estTxt='PENDIENTE';
         if(s.pagado>=s.presupuesto&&s.presupuesto>0){estColor='#137333';estBg='#e6f4ea';estTxt='PAGADO';}
         else if(s.pagado>0){estColor='#b06000';estBg='#fef7e0';estTxt='PARCIAL';}
+        const claseColor = {'M':'#0284c7','O':'#a855f7','X':'#64748b'};
         tablaSrv += `<tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td>
+            <td style="padding:5px 6px;text-align:center;"><span style="font-size:11px;font-weight:bold;padding:2px 8px;border-radius:4px;background:${claseColor[s.clase||'M']}22;color:${claseColor[s.clase||'M']};">${s.clase||'M'}</span></td>
             <td style="padding:5px 6px;text-align:right;">${fmt(s.presupuesto)}</td>
             <td style="padding:5px 6px;text-align:right;color:#10b981;">${fmt(s.pagado)}</td>
             <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmt(pend)}</td>
@@ -1043,6 +1064,35 @@ function buildReportes() {
         <td></td>
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaSrv);
+
+    // Reporte por clase de gasto
+    const clases = [{k:'M',label:'M — Mío',color:'#0284c7'},{k:'O',label:'O — Oma',color:'#a855f7'},{k:'X',label:'X — Otros',color:'#64748b'}];
+    let tablaClase = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #6366f1;padding:16px;margin-bottom:16px;">
+        <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Servicios Fijos por Clase</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Clase</th><th style="padding:6px;text-align:right;color:#475569;">Presupuestado</th><th style="padding:6px;text-align:right;color:#475569;">Pagado</th><th style="padding:6px;text-align:right;color:#475569;">Pendiente</th><th style="padding:6px;text-align:right;color:#475569;">% del total</th></tr>`;
+    clases.forEach(cl => {
+        const srvClase = listaServicios.filter(s=>(s.clase||'M')===cl.k);
+        const pres = srvClase.reduce((a,s)=>a+s.presupuesto,0);
+        const pag  = srvClase.reduce((a,s)=>a+s.pagado,0);
+        const pend = srvClase.reduce((a,s)=>a+Math.max(0,s.presupuesto-s.pagado),0);
+        const pct  = totalPres>0 ? ((pres/totalPres)*100).toFixed(1) : '0.0';
+        tablaClase += `<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;"><span style="font-weight:bold;padding:2px 8px;border-radius:4px;background:${cl.color}22;color:${cl.color};">${cl.label}</span></td>
+            <td style="padding:5px 6px;text-align:right;font-weight:bold;">${fmt(pres)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#10b981;">${fmt(pag)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmt(pend)}</td>
+            <td style="padding:5px 6px;text-align:right;">${pct}%</td>
+        </tr>`;
+    });
+    tablaClase += `<tr style="background:#f8fafc;font-weight:bold;">
+        <td style="padding:6px;">TOTAL</td>
+        <td style="padding:6px;text-align:right;">${fmt(totalPres)}</td>
+        <td style="padding:6px;text-align:right;color:#10b981;">${fmt(totalPag)}</td>
+        <td style="padding:6px;text-align:right;color:#ef4444;">${fmt(totalPend)}</td>
+        <td></td>
+    </tr></table></div>`;
+    wrap.insertAdjacentHTML('beforeend', tablaClase);
 
     // Gastos corrientes por rubro
     const porRubro = {};
