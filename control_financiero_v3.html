@@ -404,18 +404,20 @@ function buildMesActual() {
 }
 
 function bindEventosMesActual() {
-    document.getElementById('form-banco').addEventListener('submit', altaBanco);
-    document.getElementById('form-tarjeta').addEventListener('submit', altaTarjeta);
-    document.getElementById('form-servicio').addEventListener('submit', altaServicio);
-    document.getElementById('form-corriente').addEventListener('submit', altaCorriente);
-    document.getElementById('form-transf').addEventListener('submit', altaTransferencia);
-    document.getElementById('form-rubro').addEventListener('submit', altaRubro);
-    document.getElementById('input-backup').addEventListener('change', importar);
-    document.getElementById('btn-exportar').addEventListener('click', exportar);
-    document.getElementById('btn-importar-trigger').addEventListener('click', () => document.getElementById('input-backup').click());
-    document.getElementById('btn-nuevo-mes').addEventListener('click', nuevoMes);
-    document.getElementById('btn-gdrive-exportar').addEventListener('click', driveExportar);
-    document.getElementById('btn-gdrive-importar').addEventListener('click', driveImportar);
+function bindEventosMesActual() {
+    const get = id => document.getElementById(id);
+    get('form-banco')?.addEventListener('submit', altaBanco);
+    get('form-tarjeta')?.addEventListener('submit', altaTarjeta);
+    get('form-servicio')?.addEventListener('submit', altaServicio);
+    get('form-corriente')?.addEventListener('submit', altaCorriente);
+    get('form-transf')?.addEventListener('submit', altaTransferencia);
+    get('form-rubro')?.addEventListener('submit', altaRubro);
+    get('input-backup')?.addEventListener('change', importar);
+    get('btn-exportar')?.addEventListener('click', exportar);
+    get('btn-importar-trigger')?.addEventListener('click', () => get('input-backup')?.click());
+    get('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
+    get('btn-gdrive-exportar')?.addEventListener('click', driveExportar);
+    get('btn-gdrive-importar')?.addEventListener('click', driveImportar);
 }
 
 // ═══════════════════════════════════════════
