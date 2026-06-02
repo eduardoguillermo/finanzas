@@ -982,21 +982,32 @@ function buildReportes() {
     grid1.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;';
 
     // Card: Saldos bancarios
+    // mDeb para bancos: solo servicios fijos pagados (los corrientes con autoDescontar ya están en el saldo)
+    const mDebBancos = {};
+    listaBancos.forEach(b => mDebBancos[b.id] = 0);
+    listaServicios.forEach(s => { if(s.pagado>0 && mDebBancos[s.medioPagoId]!==undefined) mDebBancos[s.medioPagoId]+=s.pagado; });
+    // Para cuentas SIN autoDescontar, sumar también los corrientes confirmados
+    listaCorrientes.forEach(c => {
+        if(c.fechaPago && mDebBancos[c.medioPagoId]!==undefined) {
+            const b = listaBancos.find(x=>x.id===c.medioPagoId);
+            if (b && !b.autoDescontar && !esCuentaLiq(c.medioPagoId)) mDebBancos[c.medioPagoId]+=c.monto;
+        }
+    });
+    // mDeb para tarjetas (sin cambios)
     const mDeb = {};
-    listaBancos.forEach(b => mDeb[b.id] = 0);
     listaTarjetas.forEach(t => mDeb[t.id] = 0);
     listaServicios.forEach(s => { if(s.pagado>0 && mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
     listaCorrientes.forEach(c => { if(c.fechaPago && mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto; });
 
     let totalBancos=0, totalGastadoBancos=0;
-    listaBancos.forEach(b => { totalBancos+=b.saldo; totalGastadoBancos+=(mDeb[b.id]||0); });
+    listaBancos.forEach(b => { totalBancos+=b.saldo; totalGastadoBancos+=(mDebBancos[b.id]||0); });
 
     let cardBancos = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;">
         <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🏦 Cuentas Bancarias</h4>
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Cuenta</th><th style="padding:6px;text-align:right;color:#475569;">Saldo Base</th><th style="padding:6px;text-align:right;color:#475569;">Gastado</th><th style="padding:6px;text-align:right;color:#475569;">Disponible</th></tr>`;
+        <tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;color:#475569;">Cuenta</th><th style="padding:6px;text-align:right;color:#475569;">Saldo</th><th style="padding:6px;text-align:right;color:#475569;">Gastado (fijos)</th><th style="padding:6px;text-align:right;color:#475569;">Disponible</th></tr>`;
     listaBancos.forEach(b => {
-        const gastado = mDeb[b.id]||0;
+        const gastado = mDebBancos[b.id]||0;
         const disp = b.saldo - gastado;
         cardBancos += `<tr style="border-bottom:1px solid #f1f5f9;">
             <td style="padding:5px 6px;font-weight:bold;">${b.nombre}</td>
