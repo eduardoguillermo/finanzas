@@ -130,6 +130,7 @@
 // ═══════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════
+console.log('CF v3.2: script iniciando');
 const K = {
     rubros: 'f_r_v2_2', bancos: 'f_bancos_v2_4', tarjetas: 'f_tarjetas_v2_4',
     servicios: 'f_servicios_v2_4', corrientes: 'f_corrientes_v2_4',
@@ -214,15 +215,21 @@ function renderTabs() {
 function renderContenido() {
     const app = document.getElementById('app-content');
     app.innerHTML = '';
-    if (tabActivo === null) {
-        app.appendChild(buildMesActual());
-        bindEventosMesActual();
-        render();
-    } else if (tabActivo === 'reportes') {
-        app.appendChild(buildReportes());
-    } else {
-        const mes = historicoMeses.find(m => m.id === tabActivo);
-        if (mes) app.appendChild(buildHistorico(mes));
+    try {
+        if (tabActivo === null) {
+            app.appendChild(buildMesActual());
+            bindEventosMesActual();
+            render();
+        } else if (tabActivo === 'reportes') {
+            app.appendChild(buildReportes());
+        } else {
+            const mes = historicoMeses.find(m => m.id === tabActivo);
+            if (mes) app.appendChild(buildHistorico(mes));
+        }
+    } catch(err) {
+        app.innerHTML = `<div style="padding:40px;color:#ef4444;font-family:monospace;">
+            <b>Error al renderizar:</b><br>${err.message}<br><br>
+            <small>${err.stack}</small></div>`;
     }
 }
 
@@ -243,6 +250,8 @@ function buildMesActual() {
           <button class="btn btn-blue" id="btn-exportar">💾 Exportar Backup</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar Backup</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
+          <button class="btn btn-gdrive no-print" id="btn-gdrive-exportar" title="Subir a Drive">☁️ Drive</button>
+          <button class="btn btn-gdrive no-print" id="btn-gdrive-importar" title="Restaurar desde Drive">📂 Drive</button>
           <button class="btn btn-dark" onclick="window.print()">🖨️ PDF</button>
         </div>
       </header>
