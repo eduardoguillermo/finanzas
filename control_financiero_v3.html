@@ -896,17 +896,18 @@ function importar(event) {
     r.onload=e=>{
         try {
             const res=JSON.parse(e.target.result);
-            if (!res.listaBancos||!res.listaServicios) { alert('Backup inválido.'); return; }
-            listaBancos         = res.listaBancos;
+            if (!res.listaBancos) { alert('Backup invalido: falta listaBancos.'); return; }
+            listaBancos         = res.listaBancos         || [];
             listaTarjetas       = res.listaTarjetas       || [];
-            listaServicios      = res.listaServicios;
+            listaServicios      = res.listaServicios      || [];
             listaCorrientes     = res.listaCorrientes     || [];
             listaRubros         = res.listaRubros         || [];
             listaTransferencias = res.listaTransferencias || [];
             listaCuotas         = res.listaCuotas         || [];
             historicoMeses      = res.historicoMeses      || [];
             guardar(); renderTabs(); renderContenido();
-        } catch(err) { alert('Error al importar. Archivo inválido.'); }
+            alert('Backup importado correctamente.');
+        } catch(err) { alert('Error al importar: ' + err.message); }
     };
     r.readAsText(file); event.target.value='';
 }
