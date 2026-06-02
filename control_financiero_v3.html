@@ -674,8 +674,8 @@ function calcDash() {
 
     let totalPag=0, fijosPend=0;
     listaServicios.forEach(s => {
-        if (s.pagado>0 && mDeb[s.medioPagoId]!==undefined) { mDeb[s.medioPagoId]+=s.pagado; totalPag+=s.pagado; }
-        if (s.presupuesto>s.pagado) fijosPend+=(s.presupuesto-s.pagado);
+        if (s.pagado>0 && mDeb[s.medioPagoId]!==undefined) { mDeb[s.medioPagoId]+=Math.round(s.pagado); totalPag+=Math.round(s.pagado); }
+        if (s.presupuesto>s.pagado) fijosPend+=Math.round(s.presupuesto-s.pagado);
         // Estado badge
         const sp=document.getElementById('est-'+s.id);
         if (sp) {
@@ -685,18 +685,22 @@ function calcDash() {
         }
     });
     listaCorrientes.forEach(c => {
-        if (c.fechaPago) { // solo impacta si tiene fecha de pago confirmada
-            totalPag+=c.monto;
-            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto;
+        if (c.fechaPago) {
+            totalPag+=Math.round(c.monto);
+            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=Math.round(c.monto);
         }
     });
 
+    // Redondear todos los saldos para eliminar centavos acumulados
+    listaBancos.forEach(b => { b.saldo = Math.round(b.saldo); });
+    listaTarjetas.forEach(t => { t.saldo = Math.round(t.saldo); });
+
     let sumaBancos=0;
-    listaBancos.forEach(b => sumaBancos+=(b.saldo-(mDeb[b.id]||0)));
+    listaBancos.forEach(b => sumaBancos+=b.saldo);
 
     let sumaTarjetas=0;
     listaTarjetas.forEach(t => {
-        const total=t.saldo+(mDeb[t.id]||0);
+        const total=Math.round(t.saldo+(mDeb[t.id]||0));
         sumaTarjetas+=total;
         const inp=document.getElementById('saldo-t-'+t.id);
         if (inp) { if (inp._setVal) inp._setVal(total); else if (document.activeElement!==inp) inp.value=fmtN(total); }
@@ -704,8 +708,8 @@ function calcDash() {
 
     setTxt('d-bancos',   fmt(sumaBancos));
     setTxt('d-tarjetas', fmt(sumaTarjetas));
-    setTxt('d-pagado',   fmt(totalPag));
-    setTxt('d-pendiente',fmt(fijosPend));
+    setTxt('d-pagado',   fmt(Math.round(totalPag)));
+    setTxt('d-pendiente',fmt(Math.round(fijosPend)));
     const cp=document.getElementById('card-pend');
     if (cp) cp.style.borderLeftColor = fijosPend>0 ? '#ef4444' : '#10b981';
 }
