@@ -1039,8 +1039,6 @@ function buildReportes() {
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaClase);
 
-    wrap.insertAdjacentHTML('beforeend', tablaClase);
-
     // Gráfico de torta: un sector por servicio fijo
     const srvConPres = [...listaServicios.filter(s => s.presupuesto > 0)].sort((a,b) => b.presupuesto - a.presupuesto);
     if (srvConPres.length > 0) {
@@ -1159,6 +1157,89 @@ function buildReportes() {
         <td></td>
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaCorr);
+
+
+    // ── SECCIÓN DÓLARES ──────────────────────────────────
+    wrap.insertAdjacentHTML('beforeend', `<h3 style="margin:24px 0 16px;font-size:16px;font-weight:bold;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Mes Actual</h3>`);
+
+    if (listaCuentasUSD.length > 0 || listaTarjetasUSD.length > 0 || listaServiciosUSD.length > 0) {
+        const mDU = {};
+        listaTarjetasUSD.forEach(t => mDU[t.id] = 0);
+        listaServiciosUSD.forEach(s => { if(s.pagado>0 && mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
+        listaCorrientesUSD.forEach(c => { if(c.fechaPago && mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+
+        const totalDisp = listaCuentasUSD.reduce((a,c)=>a+c.saldo, 0);
+        const totalTarj = listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU[t.id]||0)), 0);
+        const balance = totalDisp - totalTarj;
+        const tc = tipoCambio;
+
+        const gridUSD = document.createElement('div');
+        gridUSD.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;';
+        gridUSD.innerHTML =
+            `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;">
+                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4>
+                <p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(totalDisp)}</p>
+                <small style="color:#64748b;">${fmtARS(totalDisp*tc)}</small>
+            </div>
+            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;">
+                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar (tarjetas)</h4>
+                <p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(totalTarj)}</p>
+                <small style="color:#64748b;">${fmtARS(totalTarj*tc)}</small>
+            </div>
+            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${balance>=0?'#16a34a':'#ef4444'};padding:16px;">
+                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4>
+                <p style="margin:0;font-size:20px;font-weight:bold;color:${balance>=0?'#16a34a':'#ef4444'};">${fmtUSD(balance)}</p>
+                <small style="color:#64748b;">${fmtARS(Math.abs(balance)*tc)}</small>
+            </div>
+            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${balance<0?'#ef4444':'#94a3b8'};padding:16px;">
+                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4>
+                <p style="margin:0;font-size:20px;font-weight:bold;color:${balance<0?'#ef4444':'#94a3b8'};">${balance<0?fmtUSD(Math.abs(balance)):'—'}</p>
+                <small style="color:#64748b;">${balance<0?fmtARS(Math.abs(balance)*tc):''}</small>
+            </div>`;
+        wrap.appendChild(gridUSD);
+
+        // Tabla servicios USD
+        if (listaServiciosUSD.length > 0) {
+            let tSrvUSD = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;">
+                <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmtARS(tc)}</h4>
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <tr style="background:#f8fafc;">
+                    <th style="padding:6px;text-align:left;color:#475569;">Servicio</th>
+                    <th style="padding:6px;text-align:right;color:#475569;">Presup. (USD)</th>
+                    <th style="padding:6px;text-align:right;color:#475569;">Pagado (USD)</th>
+                    <th style="padding:6px;text-align:right;color:#475569;">Pendiente (USD)</th>
+                    <th style="padding:6px;text-align:right;color:#475569;">Pend. (ARS)</th>
+                    <th style="padding:6px;text-align:center;color:#475569;">Estado</th>
+                </tr>`;
+            let totalPresUSD=0, totalPagUSD=0, totalPendUSD=0;
+            listaServiciosUSD.forEach((s,ri) => {
+                const pend = Math.max(0, s.presupuesto - s.pagado);
+                totalPresUSD+=s.presupuesto; totalPagUSD+=s.pagado; totalPendUSD+=pend;
+                let estColor='#c5221f', estBg='#fce8e6', estTxt='PENDIENTE';
+                if(s.pagado>=s.presupuesto&&s.presupuesto>0){estColor='#137333';estBg='#e6f4ea';estTxt='PAGADO';}
+                else if(s.pagado>0){estColor='#b06000';estBg='#fef7e0';estTxt='PARCIAL';}
+                tSrvUSD += `<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td>
+                    <td style="padding:5px 6px;text-align:right;">${fmtUSD(s.presupuesto)}</td>
+                    <td style="padding:5px 6px;text-align:right;color:#10b981;">${fmtUSD(s.pagado)}</td>
+                    <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmtUSD(pend)}</td>
+                    <td style="padding:5px 6px;text-align:right;color:#64748b;">${fmtARS(pend*tc)}</td>
+                    <td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${estBg};color:${estColor};">${estTxt}</span></td>
+                </tr>`;
+            });
+            tSrvUSD += `<tr style="background:#f8fafc;font-weight:bold;">
+                <td style="padding:6px;">TOTAL</td>
+                <td style="padding:6px;text-align:right;">${fmtUSD(totalPresUSD)}</td>
+                <td style="padding:6px;text-align:right;color:#10b981;">${fmtUSD(totalPagUSD)}</td>
+                <td style="padding:6px;text-align:right;color:#ef4444;">${fmtUSD(totalPendUSD)}</td>
+                <td style="padding:6px;text-align:right;">${fmtARS(totalPendUSD*tc)}</td>
+                <td></td>
+            </tr></table></div>`;
+            wrap.insertAdjacentHTML('beforeend', tSrvUSD);
+        }
+    } else {
+        wrap.insertAdjacentHTML('beforeend', `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>`);
+    }
 
     // ── REPORTE 2: ACUMULADO 12 MESES ──────────────────────────
     wrap.insertAdjacentHTML('beforeend', `<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>`);
