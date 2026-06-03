@@ -2038,7 +2038,7 @@ function driveSubir() {
         const ahora = new Date();
         const ts = ahora.getFullYear() + String(ahora.getMonth()+1).padStart(2,'0') + String(ahora.getDate()).padStart(2,'0') + '_' + String(ahora.getHours()).padStart(2,'0') + String(ahora.getMinutes()).padStart(2,'0');
         const nombre = 'backup_finanzas_' + ts + '.json';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio});
         const meta = JSON.stringify({name: nombre, parents: ['appDataFolder']});
         const form = new FormData();
         form.append('metadata', new Blob([meta], {type: 'application/json'}));
@@ -2147,6 +2147,11 @@ function driveCargarArchivo(id, nombre, token, modal) {
         listaTransferencias = res.listaTransferencias || [];
         listaCuotas         = res.listaCuotas         || [];
         historicoMeses      = res.historicoMeses      || [];
+        listaCuentasUSD     = res.listaCuentasUSD     || [];
+        listaTarjetasUSD    = res.listaTarjetasUSD    || [];
+        listaServiciosUSD   = res.listaServiciosUSD   || [];
+        listaCorrientesUSD  = res.listaCorrientesUSD  || [];
+        tipoCambio          = res.tipoCambio          || 1200;
         guardar(); renderTabs(); renderContenido();
         alert('Backup restaurado: ' + nombre);
     })
