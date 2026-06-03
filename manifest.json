@@ -1,0 +1,39 @@
+{
+  "name": "Control Financiero",
+  "short_name": "Finanzas",
+  "description": "Auditoría Financiera y Conciliación Unificada",
+  "id": "/finanzas/control_financiero_v3.html",
+  "start_url": "/finanzas/control_financiero_v3.html",
+  "scope": "/finanzas/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e293b",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Control Financiero"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "Control Financiero"
+    }
+  ]
+}
