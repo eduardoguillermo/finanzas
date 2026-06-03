@@ -1887,13 +1887,32 @@ function driveGetToken(callback) {
         const client = google.accounts.oauth2.initTokenClient({
             client_id: GDRIVE_CLIENT_ID,
             scope: GDRIVE_SCOPE,
+            hint: 'factory.viking.systems@gmail.com',
+            prompt: '',
             callback: resp => {
-                if (resp.error) { alert('Error Google: ' + resp.error); return; }
+                if (resp.error && resp.error !== 'interaction_required') {
+                    alert('Error Google: ' + resp.error); return;
+                }
+                if (resp.error === 'interaction_required') {
+                    // Si requiere interacción, mostrar selector
+                    const c2 = google.accounts.oauth2.initTokenClient({
+                        client_id: GDRIVE_CLIENT_ID,
+                        scope: GDRIVE_SCOPE,
+                        hint: 'factory.viking.systems@gmail.com',
+                        callback: r2 => {
+                            if (r2.error) { alert('Error Google: ' + r2.error); return; }
+                            gToken = r2.access_token;
+                            callback(gToken);
+                        }
+                    });
+                    c2.requestAccessToken();
+                    return;
+                }
                 gToken = resp.access_token;
                 callback(gToken);
             }
         });
-        client.requestAccessToken();
+        client.requestAccessToken({prompt: ''});
     });
 }
 
