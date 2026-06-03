@@ -1450,6 +1450,42 @@ function n(id) { return parseFloat(document.getElementById(id)?.value)||0; }
 // ═══════════════════════════════════════════
 //  DÓLARES
 // ═══════════════════════════════════════════
+
+function actualizarEquivalenciasUSD() {
+    // Actualizar equivalencias en pesos en tabla de cuentas
+    const rowsCU = document.querySelectorAll('#t-cuentas-usd tr');
+    let i = 0;
+    listaCuentasUSD.forEach(c => {
+        if (rowsCU[i]) {
+            const tds = rowsCU[i].querySelectorAll('td');
+            if (tds[2]) tds[2].innerText = fmtARS(c.saldo * tipoCambio);
+        }
+        i++;
+    });
+    // Fila total cuentas
+    if (rowsCU[i]) {
+        const tds = rowsCU[i].querySelectorAll('td');
+        const totalCU = listaCuentasUSD.reduce((a,c)=>a+c.saldo,0);
+        if (tds[2]) tds[2].innerText = fmtARS(totalCU * tipoCambio);
+    }
+
+    // Actualizar equivalencias en tabla de tarjetas
+    const mDU = {};
+    listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
+    listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
+    listaCorrientesUSD.forEach(c=>{ if(c.fechaPago&&mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+
+    const rowsTU = document.querySelectorAll('#t-tarjetas-usd tr');
+    let j = 0;
+    listaTarjetasUSD.forEach(t => {
+        const total = t.saldo + (mDU[t.id]||0);
+        if (rowsTU[j]) {
+            const tds = rowsTU[j].querySelectorAll('td');
+            if (tds[3]) tds[3].innerText = fmtARS(total * tipoCambio);
+        }
+        j++;
+    });
+}
 function buildDolares() {
     const d = document.createElement('div');
     d.innerHTML = `
@@ -1553,9 +1589,9 @@ function bindEventosDolares() {
     get('form-tarjeta-usd')?.addEventListener('submit', altaTarjetaUSD);
     get('form-servicio-usd')?.addEventListener('submit', altaServicioUSD);
     get('form-corriente-usd')?.addEventListener('submit', altaCorrienteUSD);
-    get('tc-input')?.addEventListener('change', e => {
+    get('tc-input')?.addEventListener('input', e => {
         tipoCambio = parseFloat(e.target.value) || 1200;
-        guardar(); renderDolares();
+        guardar(); calcDashUSD(); actualizarEquivalenciasUSD();
     });
 }
 
