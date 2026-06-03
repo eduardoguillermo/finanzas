@@ -1786,12 +1786,12 @@ function renderDolares() {
         listaCuentasUSD.forEach(c=>addOpt(selMedioUSD,c.id,'🏦 '+c.nombre));
     }
 
-    // mDeb USD
+    // mDeb USD - incluir todos los corrientes (con y sin fecha) para mostrar consumo real
     const mDU = {};
     listaCuentasUSD.forEach(c=>mDU[c.id]=0);
     listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
     listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
-    listaCorrientesUSD.forEach(c=>{ if(c.fechaPago&&mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+    listaCorrientesUSD.forEach(c=>{ if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
 
     // Cuentas USD
     let totalCU=0;
@@ -1946,7 +1946,7 @@ function calcDashUSD() {
         }
     });
     listaCorrientesUSD.forEach(c=>{
-        if(c.fechaPago&&mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1);
+        if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1);
     });
 
     const disponible=listaCuentasUSD.reduce((a,c)=>a+c.saldo,0);
