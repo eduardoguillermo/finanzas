@@ -367,7 +367,10 @@ function render() {
         tog.style.cssText='width:16px;height:16px;cursor:pointer;accent-color:#4f46e5;';
         tog.onchange=e=>{ b.autoDescontar=e.target.checked; guardar(); };
         tdT.appendChild(tog);
-        tB.appendChild(fila([tdHTML(`<b>${b.nombre}</b>`), tdInpNum(b.saldo,v=>{ b.saldo=v; guardar(); calcDash(); },'tr'), tdT, tdBtn('✕',()=>elimBanco(b.id))]));
+        const inpB = inpNum(b.saldo, v=>{ b.saldo=v; guardar(); calcDash(); });
+        inpB.id = 'saldo-b-'+b.id;
+        const tdSB = el('td','tr'); tdSB.appendChild(inpB);
+        tB.appendChild(fila([tdHTML(`<b>${b.nombre}</b>`), tdSB, tdT, tdBtn('✕',()=>elimBanco(b.id))]));
     });
     if(!listaBancos.length) tB.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas.</td></tr>';
     // Tarjetas
@@ -473,7 +476,12 @@ function calcDash() {
             else { if(mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]-=Math.round(c.monto); }
         }
     });
-    let sumaBancos=0; listaBancos.forEach(b=>{ b.saldo=Math.round(b.saldo); sumaBancos+=b.saldo; });
+    let sumaBancos=0;
+    listaBancos.forEach(b=>{
+        b.saldo=Math.round(b.saldo); sumaBancos+=b.saldo;
+        const inpB=document.getElementById('saldo-b-'+b.id);
+        if(inpB){ if(inpB._setVal) inpB._setVal(b.saldo); else if(document.activeElement!==inpB) inpB.value=fmtN(b.saldo); }
+    });
     let sumaTarjetas=0;
     listaTarjetas.forEach(t=>{
         t.saldo=Math.round(t.saldo);
