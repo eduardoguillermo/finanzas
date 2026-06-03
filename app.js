@@ -6,10 +6,7 @@ console.log('CF v3.2: script iniciando');
 const K = {
     rubros: 'f_r_v2_2', bancos: 'f_bancos_v2_4', tarjetas: 'f_tarjetas_v2_4',
     servicios: 'f_servicios_v2_4', corrientes: 'f_corrientes_v2_4',
-    transferencias: 'f_transferencias_v3', cuotas: 'f_cuotas_v3', historico: 'f_historico_v3',
-    cuentasUSD: 'f_cuentasUSD_v3', tarjetasUSD: 'f_tarjetasUSD_v3',
-    serviciosUSD: 'f_serviciosUSD_v3', corrientesUSD: 'f_corrientesUSD_v3',
-    tipoCambio: 'f_tipoCambio_v3'
+    transferencias: 'f_transferencias_v3', cuotas: 'f_cuotas_v3', historico: 'f_historico_v3'
 };
 
 let listaRubros         = leer(K.rubros)         || ["Carnicería / Verdulería", "Supermercado / Almacén", "Gastos Auto / Combustible"];
@@ -20,11 +17,6 @@ let listaCorrientes     = leer(K.corrientes)     || [];
 let listaTransferencias = leer(K.transferencias) || [];
 let listaCuotas         = leer(K.cuotas)         || [];
 let historicoMeses      = leer(K.historico)      || [];
-let listaCuentasUSD     = leer(K.cuentasUSD)     || [];
-let listaTarjetasUSD    = leer(K.tarjetasUSD)    || [];
-let listaServiciosUSD   = leer(K.serviciosUSD)   || [];
-let listaCorrientesUSD  = leer(K.corrientesUSD)  || [];
-let tipoCambio          = leer(K.tipoCambio)     || 1200;
 let tabActivo = null;
 
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
@@ -38,11 +30,6 @@ function guardar() {
     localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
     localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
     localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
-    localStorage.setItem(K.cuentasUSD,     JSON.stringify(listaCuentasUSD));
-    localStorage.setItem(K.tarjetasUSD,    JSON.stringify(listaTarjetasUSD));
-    localStorage.setItem(K.serviciosUSD,   JSON.stringify(listaServiciosUSD));
-    localStorage.setItem(K.corrientesUSD,  JSON.stringify(listaCorrientesUSD));
-    localStorage.setItem(K.tipoCambio,     JSON.stringify(tipoCambio));
 }
 
 function fmt(n) { return '$ ' + Math.round(n).toLocaleString('es-AR', {maximumFractionDigits:0}); }
@@ -70,13 +57,6 @@ function renderTabs() {
     tAct.innerHTML = '<span>📊 Mes Actual</span>';
     tAct.onclick = () => { tabActivo = null; renderTabs(); renderContenido(); };
     bar.appendChild(tAct);
-
-    const tUSD = document.createElement('div');
-    tUSD.className = 'tab' + (tabActivo === 'dolares' ? ' activo' : '');
-    tUSD.style.cssText = tabActivo === 'dolares' ? 'background:#f0fdf4;color:#15803d;border-color:#86efac;' : '';
-    tUSD.innerHTML = '<span>💵 Dólares</span>';
-    tUSD.onclick = () => { tabActivo = 'dolares'; renderTabs(); renderContenido(); };
-    bar.appendChild(tUSD);
 
     const tRep = document.createElement('div');
     tRep.className = 'tab' + (tabActivo === 'reportes' ? ' activo' : '');
@@ -112,10 +92,6 @@ function renderContenido() {
             app.appendChild(buildMesActual());
             bindEventosMesActual();
             render();
-        } else if (tabActivo === 'dolares') {
-            app.appendChild(buildDolares());
-            bindEventosDolares();
-            renderDolares();
         } else if (tabActivo === 'reportes') {
             app.appendChild(buildReportes());
         } else {
@@ -146,8 +122,6 @@ function buildMesActual() {
           <button class="btn btn-blue" id="btn-exportar">💾 Exportar Backup</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar Backup</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
-          <button class="btn no-print" id="btn-drive-up" style="background:#4285f4;color:white;padding:9px 12px;">☁️ Subir</button>
-          <button class="btn no-print" id="btn-drive-down" style="background:#4285f4;color:white;padding:9px 12px;">📂 Restaurar</button>
           <button class="btn btn-dark" onclick="window.print()">🖨️ PDF</button>
         </div>
       </header>
@@ -297,11 +271,7 @@ function buildMesActual() {
                   <div><label>Monto ($)</label><input type="number" id="corr-monto" required placeholder="0" step="1"></div>
                   <div><label>Pagar con</label><select id="corr-medio" required></select></div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                  <input type="checkbox" id="corr-es-ingreso" style="width:16px;height:16px;accent-color:#10b981;cursor:pointer;">
-                  <label for="corr-es-ingreso" style="font-size:13px;color:#334155;text-transform:none;font-weight:bold;cursor:pointer;">Es un ingreso</label>
-                </div>
-                <button type="submit" class="btn btn-add btn-green">Asentar</button>
+                <button type="submit" class="btn btn-add btn-green">Asentar Gasto Corriente</button>
               </form>
             </div>
             <div id="wrap-corrientes"></div>
@@ -324,8 +294,6 @@ function bindEventosMesActual() {
     get('btn-exportar')?.addEventListener('click', exportar);
     get('btn-importar-trigger')?.addEventListener('click', () => get('input-backup')?.click());
     get('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
-    get('btn-drive-up')?.addEventListener('click', driveSubir);
-    get('btn-drive-down')?.addEventListener('click', driveRestaurar);
 }
 
 // ═══════════════════════════════════════════
@@ -492,16 +460,15 @@ function render() {
             inpFP.onchange = e => {
                 const fechaAnterior = c.fechaPago;
                 const fechaNueva = e.target.value;
-                const factor = c.esIngreso ? 1 : -1;
-                // Si pasa de sin fecha a con fecha: ajustar saldo en cuentas liquidables
+                // Si pasa de sin fecha a con fecha: descontar saldo en cuentas liquidables
                 if (!fechaAnterior && fechaNueva && esCuentaLiq(c.medioPagoId)) {
                     const bk = listaBancos.find(b => b.id === c.medioPagoId);
-                    if (bk) bk.saldo += c.monto * factor;
+                    if (bk) bk.saldo -= c.monto;
                 }
-                // Si pasa de con fecha a sin fecha: revertir
+                // Si pasa de con fecha a sin fecha: restaurar saldo en cuentas liquidables
                 if (fechaAnterior && !fechaNueva && esCuentaLiq(c.medioPagoId)) {
                     const bk = listaBancos.find(b => b.id === c.medioPagoId);
-                    if (bk) bk.saldo -= c.monto * factor;
+                    if (bk) bk.saldo += c.monto;
                 }
                 c.fechaPago = fechaNueva;
                 guardar(); render();
@@ -623,9 +590,8 @@ function calcDash() {
     });
     listaCorrientes.forEach(c => {
         if (c.fechaPago) {
-            const factor = c.esIngreso ? -1 : 1;
-            totalPag += Math.round(c.monto) * (c.esIngreso ? 0 : 1); // ingresos no suman al total pagado
-            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId] += Math.round(c.monto) * factor;
+            totalPag+=Math.round(c.monto);
+            if (mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=Math.round(c.monto);
         }
     });
 
@@ -677,11 +643,8 @@ function altaCorriente(e) {
     const medioId = v('corr-medio');
     if (!medioId) { alert('Configure un medio de pago.'); return; }
     const monto = n('corr-monto');
-    const esIngreso = document.getElementById('corr-es-ingreso')?.checked || false;
     // No descontar saldo al dar de alta — se descuenta al confirmar con fecha de pago
-    listaCorrientes.push({ id:'c_'+Date.now(), rubro:v('corr-rubro'), detalle:v('corr-detalle'), monto, fechaPago:'', medioPagoId:medioId, esIngreso });
-    // Resetear checkbox
-    const chk = document.getElementById('corr-es-ingreso'); if (chk) chk.checked = false;
+    listaCorrientes.push({ id:'c_'+Date.now(), rubro:v('corr-rubro'), detalle:v('corr-detalle'), monto, fechaPago:'', medioPagoId:medioId });
     guardar(); e.target.reset(); render();
 }
 function altaTransferencia(e) {
@@ -720,7 +683,7 @@ function elimCorriente(id) {
     const c=listaCorrientes.find(x=>x.id===id);
     if (c && c.fechaPago && esCuentaLiq(c.medioPagoId)) {
         const bk=listaBancos.find(b=>b.id===c.medioPagoId);
-        if (bk) bk.saldo += c.esIngreso ? -c.monto : c.monto;
+        if (bk) bk.saldo+=c.monto;
     }
     listaCorrientes=listaCorrientes.filter(x=>x.id!==id); guardar(); render();
 }
@@ -753,8 +716,7 @@ function nuevoMes() {
         id: 'mes_'+Date.now(),
         nombre: nombre+sufijo,
         fechaCierre: new Date().toISOString(),
-        datos: { listaBancos:clon(listaBancos), listaTarjetas:clon(listaTarjetas), listaServicios:clon(listaServicios), listaCorrientes:clon(listaCorrientes), listaTransferencias:clon(listaTransferencias), listaRubros:clon(listaRubros), listaCuotas:clon(listaCuotas),
-                 listaCuentasUSD:clon(listaCuentasUSD), listaTarjetasUSD:clon(listaTarjetasUSD), listaServiciosUSD:clon(listaServiciosUSD), listaCorrientesUSD:clon(listaCorrientesUSD), tipoCambio }
+        datos: { listaBancos:clon(listaBancos), listaTarjetas:clon(listaTarjetas), listaServicios:clon(listaServicios), listaCorrientes:clon(listaCorrientes), listaTransferencias:clon(listaTransferencias), listaRubros:clon(listaRubros), listaCuotas:clon(listaCuotas) }
     });
 
     // Ajustar saldos
@@ -802,7 +764,7 @@ function exportar() {
         String(ahora.getDate()).padStart(2,'0') + '_' +
         String(ahora.getHours()).padStart(2,'0') +
         String(ahora.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses};
     const a=document.createElement('a'); a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     a.download=`backup_finanzas_${fecha}.json`; document.body.appendChild(a); a.click(); a.remove();
 }
@@ -821,11 +783,6 @@ function importar(event) {
             listaTransferencias = res.listaTransferencias || [];
             listaCuotas         = res.listaCuotas         || [];
             historicoMeses      = res.historicoMeses      || [];
-            listaCuentasUSD     = res.listaCuentasUSD     || [];
-            listaTarjetasUSD    = res.listaTarjetasUSD    || [];
-            listaServiciosUSD   = res.listaServiciosUSD   || [];
-            listaCorrientesUSD  = res.listaCorrientesUSD  || [];
-            tipoCambio          = res.tipoCambio          || 1200;
             guardar(); renderTabs(); renderContenido();
             alert('Backup importado correctamente.');
         } catch(err) { alert('Error al importar: ' + err.message); }
@@ -1039,6 +996,8 @@ function buildReportes() {
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaClase);
 
+    wrap.insertAdjacentHTML('beforeend', tablaClase);
+
     // Gráfico de torta: un sector por servicio fijo
     const srvConPres = [...listaServicios.filter(s => s.presupuesto > 0)].sort((a,b) => b.presupuesto - a.presupuesto);
     if (srvConPres.length > 0) {
@@ -1157,89 +1116,6 @@ function buildReportes() {
         <td></td>
     </tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend', tablaCorr);
-
-
-    // ── SECCIÓN DÓLARES ──────────────────────────────────
-    wrap.insertAdjacentHTML('beforeend', `<h3 style="margin:24px 0 16px;font-size:16px;font-weight:bold;color:#16a34a;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Mes Actual</h3>`);
-
-    if (listaCuentasUSD.length > 0 || listaTarjetasUSD.length > 0 || listaServiciosUSD.length > 0) {
-        const mDU = {};
-        listaTarjetasUSD.forEach(t => mDU[t.id] = 0);
-        listaServiciosUSD.forEach(s => { if(s.pagado>0 && mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
-        listaCorrientesUSD.forEach(c => { if(c.fechaPago && mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
-
-        const totalDisp = listaCuentasUSD.reduce((a,c)=>a+c.saldo, 0);
-        const totalTarj = listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU[t.id]||0)), 0);
-        const balance = totalDisp - totalTarj;
-        const tc = tipoCambio;
-
-        const gridUSD = document.createElement('div');
-        gridUSD.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;';
-        gridUSD.innerHTML =
-            `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;">
-                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4>
-                <p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(totalDisp)}</p>
-                <small style="color:#64748b;">${fmtARS(totalDisp*tc)}</small>
-            </div>
-            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;">
-                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar (tarjetas)</h4>
-                <p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(totalTarj)}</p>
-                <small style="color:#64748b;">${fmtARS(totalTarj*tc)}</small>
-            </div>
-            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${balance>=0?'#16a34a':'#ef4444'};padding:16px;">
-                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4>
-                <p style="margin:0;font-size:20px;font-weight:bold;color:${balance>=0?'#16a34a':'#ef4444'};">${fmtUSD(balance)}</p>
-                <small style="color:#64748b;">${fmtARS(Math.abs(balance)*tc)}</small>
-            </div>
-            <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${balance<0?'#ef4444':'#94a3b8'};padding:16px;">
-                <h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4>
-                <p style="margin:0;font-size:20px;font-weight:bold;color:${balance<0?'#ef4444':'#94a3b8'};">${balance<0?fmtUSD(Math.abs(balance)):'—'}</p>
-                <small style="color:#64748b;">${balance<0?fmtARS(Math.abs(balance)*tc):''}</small>
-            </div>`;
-        wrap.appendChild(gridUSD);
-
-        // Tabla servicios USD
-        if (listaServiciosUSD.length > 0) {
-            let tSrvUSD = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;">
-                <h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmtARS(tc)}</h4>
-                <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <tr style="background:#f8fafc;">
-                    <th style="padding:6px;text-align:left;color:#475569;">Servicio</th>
-                    <th style="padding:6px;text-align:right;color:#475569;">Presup. (USD)</th>
-                    <th style="padding:6px;text-align:right;color:#475569;">Pagado (USD)</th>
-                    <th style="padding:6px;text-align:right;color:#475569;">Pendiente (USD)</th>
-                    <th style="padding:6px;text-align:right;color:#475569;">Pend. (ARS)</th>
-                    <th style="padding:6px;text-align:center;color:#475569;">Estado</th>
-                </tr>`;
-            let totalPresUSD=0, totalPagUSD=0, totalPendUSD=0;
-            listaServiciosUSD.forEach((s,ri) => {
-                const pend = Math.max(0, s.presupuesto - s.pagado);
-                totalPresUSD+=s.presupuesto; totalPagUSD+=s.pagado; totalPendUSD+=pend;
-                let estColor='#c5221f', estBg='#fce8e6', estTxt='PENDIENTE';
-                if(s.pagado>=s.presupuesto&&s.presupuesto>0){estColor='#137333';estBg='#e6f4ea';estTxt='PAGADO';}
-                else if(s.pagado>0){estColor='#b06000';estBg='#fef7e0';estTxt='PARCIAL';}
-                tSrvUSD += `<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td>
-                    <td style="padding:5px 6px;text-align:right;">${fmtUSD(s.presupuesto)}</td>
-                    <td style="padding:5px 6px;text-align:right;color:#10b981;">${fmtUSD(s.pagado)}</td>
-                    <td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmtUSD(pend)}</td>
-                    <td style="padding:5px 6px;text-align:right;color:#64748b;">${fmtARS(pend*tc)}</td>
-                    <td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${estBg};color:${estColor};">${estTxt}</span></td>
-                </tr>`;
-            });
-            tSrvUSD += `<tr style="background:#f8fafc;font-weight:bold;">
-                <td style="padding:6px;">TOTAL</td>
-                <td style="padding:6px;text-align:right;">${fmtUSD(totalPresUSD)}</td>
-                <td style="padding:6px;text-align:right;color:#10b981;">${fmtUSD(totalPagUSD)}</td>
-                <td style="padding:6px;text-align:right;color:#ef4444;">${fmtUSD(totalPendUSD)}</td>
-                <td style="padding:6px;text-align:right;">${fmtARS(totalPendUSD*tc)}</td>
-                <td></td>
-            </tr></table></div>`;
-            wrap.insertAdjacentHTML('beforeend', tSrvUSD);
-        }
-    } else {
-        wrap.insertAdjacentHTML('beforeend', `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>`);
-    }
 
     // ── REPORTE 2: ACUMULADO 12 MESES ──────────────────────────
     wrap.insertAdjacentHTML('beforeend', `<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>`);
@@ -1525,638 +1401,6 @@ function renderCuotas() {
 // ═══════════════════════════════════════════
 function v(id) { return document.getElementById(id)?.value?.trim()||''; }
 function n(id) { return parseFloat(document.getElementById(id)?.value)||0; }
-
-
-
-// ═══════════════════════════════════════════
-//  DÓLARES
-// ═══════════════════════════════════════════
-
-function actualizarEquivalenciasUSD() {
-    // Actualizar equivalencias en pesos en tabla de cuentas
-    const rowsCU = document.querySelectorAll('#t-cuentas-usd tr');
-    let i = 0;
-    listaCuentasUSD.forEach(c => {
-        if (rowsCU[i]) {
-            const tds = rowsCU[i].querySelectorAll('td');
-            if (tds[2]) tds[2].innerText = fmtARS(c.saldo * tipoCambio);
-        }
-        i++;
-    });
-    // Fila total cuentas
-    if (rowsCU[i]) {
-        const tds = rowsCU[i].querySelectorAll('td');
-        const totalCU = listaCuentasUSD.reduce((a,c)=>a+c.saldo,0);
-        if (tds[2]) tds[2].innerText = fmtARS(totalCU * tipoCambio);
-    }
-
-    // Actualizar equivalencias en tabla de tarjetas
-    const mDU = {};
-    listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
-    listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
-    listaCorrientesUSD.forEach(c=>{ if(c.fechaPago&&mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
-
-    const rowsTU = document.querySelectorAll('#t-tarjetas-usd tr');
-    let j = 0;
-    listaTarjetasUSD.forEach(t => {
-        const total = t.saldo + (mDU[t.id]||0);
-        if (rowsTU[j]) {
-            const tds = rowsTU[j].querySelectorAll('td');
-            if (tds[3]) tds[3].innerText = fmtARS(total * tipoCambio);
-        }
-        j++;
-    });
-}
-function buildDolares() {
-    const d = document.createElement('div');
-    d.innerHTML = `
-    <div class="container">
-      <header class="no-print" style="border-bottom:3px solid #16a34a;">
-        <div>
-          <h2 style="margin:0;font-size:20px;">💵 Gestión en Dólares</h2>
-          <p class="version-tag" style="color:#16a34a;">Cuentas, tarjetas y operatoria en USD</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <label style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Tipo de cambio (ARS/USD)</label>
-          <input id="tc-input" type="number" value="${tipoCambio}" step="1" style="width:130px;padding:8px;border:2px solid #86efac;border-radius:6px;font-size:16px;font-weight:bold;color:#15803d;text-align:right;">
-        </div>
-      </header>
-
-      <div class="grid-dashboard" style="margin-top:20px;">
-        <div class="card-bal" style="border-left:5px solid #16a34a;"><h4>USD Disponibles</h4><p id="usd-disponible" style="color:#16a34a;">USD 0</p><small id="usd-disponible-ars" style="color:#64748b;font-size:12px;"></small></div>
-        <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>USD a Pagar (tarjetas)</h4><p id="usd-apagar" style="color:#a855f7;">USD 0</p><small id="usd-apagar-ars" style="color:#64748b;font-size:12px;"></small></div>
-        <div class="card-bal" id="card-usd-balance" style="border-left:5px solid #f59e0b;"><h4>Balance USD</h4><p id="usd-balance" style="color:#f59e0b;">USD 0</p><small id="usd-balance-ars" style="color:#64748b;font-size:12px;"></small></div>
-        <div class="card-bal" id="card-usd-comprar" style="border-left:5px solid #94a3b8;"><h4>USD a Comprar</h4><p id="usd-comprar" style="color:#94a3b8;">—</p><small id="usd-comprar-ars" style="color:#64748b;font-size:12px;"></small></div>
-      </div>
-
-      <div class="grid-principal">
-        <div>
-          <div class="panel no-print" style="border-top:4px solid #16a34a;">
-            <h3 class="panel-title">🏦 Cuentas en USD</h3>
-            <div class="form-block">
-              <form id="form-cuenta-usd">
-                <div class="form-group"><label>Nombre</label><input type="text" id="cusd-nombre" required placeholder="Ej. Billetera USD, Brubank USD"></div>
-                <div class="form-group"><label>Saldo (USD)</label><input type="number" id="cusd-saldo" required value="0" step="0.01"></div>
-                <button type="submit" class="btn btn-add" style="background:#16a34a;">Añadir Cuenta USD</button>
-              </form>
-            </div>
-            <table><thead><tr><th style="width:45%">Cuenta</th><th style="width:30%" class="tr">Saldo (USD)</th><th style="width:20%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead>
-            <tbody id="t-cuentas-usd"></tbody></table>
-          </div>
-
-          <div class="panel no-print" style="border-top:4px solid #a855f7;">
-            <h3 class="panel-title">💳 Tarjetas en USD</h3>
-            <div class="form-block">
-              <form id="form-tarjeta-usd">
-                <div class="form-group"><label>Nombre</label><input type="text" id="tusd-nombre" required placeholder="Ej. Visa Santander USD"></div>
-                <div class="form-group"><label>Saldo base (USD)</label><input type="number" id="tusd-saldo" required value="0" step="0.01"></div>
-                <button type="submit" class="btn btn-add" style="background:#a855f7;">Registrar Tarjeta USD</button>
-              </form>
-            </div>
-            <table><thead><tr><th style="width:38%">Tarjeta</th><th style="width:22%" class="tr">Saldo base</th><th style="width:18%" class="tr">Consumo mes</th><th style="width:17%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead>
-            <tbody id="t-tarjetas-usd"></tbody></table>
-          </div>
-        </div>
-
-        <div>
-          <div class="panel" style="border-top:4px solid #4f46e5;">
-            <h3 class="panel-title">📋 Servicios Fijos en USD</h3>
-            <div class="form-block no-print">
-              <form id="form-servicio-usd">
-                <div class="form-row">
-                  <div style="flex:2"><label>Descripción</label><input type="text" id="susd-nombre" required placeholder="Ej. Netflix, Spotify, AWS"></div>
-                  <div><label>Monto (USD)</label><input type="number" id="susd-presupuesto" required placeholder="0" step="0.01"></div>
-                  <div><label>Vto.</label><input type="date" id="susd-vto" required></div>
-                </div>
-                <button type="submit" class="btn btn-add" style="background:#4f46e5;">Configurar Servicio USD</button>
-              </form>
-            </div>
-            <table><thead><tr>
-              <th style="width:22%">Servicio</th><th style="width:13%" class="tc">Vto.</th>
-              <th style="width:11%" class="tr">Presup.</th><th style="width:11%" class="tr">Pagado</th>
-              <th style="width:12%" class="tc">F.Pago</th><th style="width:14%">Medio</th>
-              <th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th>
-            </tr></thead><tbody id="t-servicios-usd"></tbody></table>
-          </div>
-
-          <div class="panel" style="border-top:4px solid #10b981;">
-            <h3 class="panel-title">🛍️ Gastos Corrientes en USD</h3>
-            <div class="form-block no-print">
-              <form id="form-corriente-usd">
-                <div class="form-row">
-                  <div style="flex:1.5"><label>Rubro</label><select id="corr-usd-rubro" required></select></div>
-                  <div style="flex:2"><label>Detalle</label><input type="text" id="corr-usd-detalle" required placeholder="Ej. Amazon, Booking"></div>
-                  <div><label>Monto (USD)</label><input type="number" id="corr-usd-monto" required placeholder="0" step="0.01"></div>
-                  <div><label>Pagar con</label><select id="corr-usd-medio" required></select></div>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                  <input type="checkbox" id="corr-usd-ingreso" style="width:16px;height:16px;accent-color:#10b981;cursor:pointer;">
-                  <label for="corr-usd-ingreso" style="font-size:13px;color:#334155;text-transform:none;font-weight:bold;cursor:pointer;">Es un ingreso</label>
-                </div>
-                <button type="submit" class="btn btn-add" style="background:#10b981;">Asentar Gasto en USD</button>
-              </form>
-            </div>
-            <div id="wrap-corrientes-usd"></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    return d;
-}
-
-function bindEventosDolares() {
-    const get = id => document.getElementById(id);
-    get('form-cuenta-usd')?.addEventListener('submit', altaCuentaUSD);
-    get('form-tarjeta-usd')?.addEventListener('submit', altaTarjetaUSD);
-    get('form-servicio-usd')?.addEventListener('submit', altaServicioUSD);
-    get('form-corriente-usd')?.addEventListener('submit', altaCorrienteUSD);
-    get('tc-input')?.addEventListener('input', e => {
-        tipoCambio = parseFloat(e.target.value) || 1200;
-        guardar(); calcDashUSD(); actualizarEquivalenciasUSD();
-    });
-}
-
-function altaCuentaUSD(e) {
-    e.preventDefault();
-    listaCuentasUSD.push({ id:'cu_'+Date.now(), nombre:v('cusd-nombre'), saldo:parseFloat(document.getElementById('cusd-saldo').value)||0 });
-    guardar(); e.target.reset(); renderDolares();
-}
-
-function altaTarjetaUSD(e) {
-    e.preventDefault();
-    listaTarjetasUSD.push({ id:'tu_'+Date.now(), nombre:v('tusd-nombre'), saldo:parseFloat(document.getElementById('tusd-saldo').value)||0 });
-    guardar(); e.target.reset(); renderDolares();
-}
-
-function altaServicioUSD(e) {
-    e.preventDefault();
-    const medioId = listaTarjetasUSD[0]?.id || listaCuentasUSD[0]?.id || '';
-    listaServiciosUSD.push({ id:'su_'+Date.now(), nombre:v('susd-nombre'), presupuesto:parseFloat(document.getElementById('susd-presupuesto').value)||0, pagado:0, fVto:v('susd-vto'), fPago:'', medioPagoId:medioId });
-    guardar(); e.target.reset(); renderDolares();
-}
-
-function altaCorrienteUSD(e) {
-    e.preventDefault();
-    const medioId = document.getElementById('corr-usd-medio').value;
-    if (!medioId) { alert('Configure un medio de pago USD.'); return; }
-    const monto = parseFloat(document.getElementById('corr-usd-monto').value)||0;
-    const esIngreso = document.getElementById('corr-usd-ingreso')?.checked || false;
-    listaCorrientesUSD.push({ id:'cc_'+Date.now(), rubro:document.getElementById('corr-usd-rubro').value, detalle:v('corr-usd-detalle'), monto, fechaPago:'', medioPagoId:medioId, esIngreso });
-    const chk = document.getElementById('corr-usd-ingreso'); if(chk) chk.checked=false;
-    guardar(); e.target.reset(); renderDolares();
-}
-
-function elimCuentaUSD(id) { if(confirm('Remover cuenta USD?')) { listaCuentasUSD=listaCuentasUSD.filter(c=>c.id!==id); guardar(); renderDolares(); } }
-function elimTarjetaUSD(id) { if(confirm('Remover tarjeta USD?')) { listaTarjetasUSD=listaTarjetasUSD.filter(t=>t.id!==id); guardar(); renderDolares(); } }
-function elimServicioUSD(id) { listaServiciosUSD=listaServiciosUSD.filter(s=>s.id!==id); guardar(); renderDolares(); }
-function elimCorrienteUSD(id) {
-    const c = listaCorrientesUSD.find(x=>x.id===id);
-    listaCorrientesUSD=listaCorrientesUSD.filter(x=>x.id!==id);
-    guardar(); renderDolares();
-}
-
-function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function parseUSD(str) {
-    // Soporta: 6.50, 6,50, 1.234,56, 1234.56
-    const s = String(str).trim();
-    // Si tiene coma Y punto: el último es el decimal
-    if (s.includes(',') && s.includes('.')) {
-        const lastComma = s.lastIndexOf(',');
-        const lastDot   = s.lastIndexOf('.');
-        if (lastComma > lastDot) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
-        else return parseFloat(s.replace(/,/g,'')) || 0;
-    }
-    // Solo coma: puede ser decimal (6,50) o miles (1,234)
-    if (s.includes(',')) {
-        const parts = s.split(',');
-        if (parts[parts.length-1].length <= 2) return parseFloat(s.replace(',','.')) || 0;
-        return parseFloat(s.replace(/,/g,'')) || 0;
-    }
-    // Solo punto: puede ser decimal (6.50) o miles (1.234)
-    if (s.includes('.')) {
-        const parts = s.split('.');
-        if (parts[parts.length-1].length <= 2) return parseFloat(s) || 0;
-        return parseFloat(s.replace(/\./g,'')) || 0;
-    }
-    return parseFloat(s) || 0;
-}
-function inpNumUSD(val, onChange) {
-    const inp = document.createElement('input'); inp.type='text'; inp.className='inp tr';
-    let lastRaw = Math.round(val*100)/100;
-    inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    inp.addEventListener('focus', () => { inp.value = lastRaw; });
-    inp.addEventListener('change', e => {
-        const v = parseUSD(e.target.value);
-        lastRaw = Math.round(v*100)/100;
-        onChange(lastRaw);
-        inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    });
-    inp.addEventListener('blur', e => {
-        const v = parseUSD(e.target.value);
-        if (v !== lastRaw) { lastRaw = Math.round(v*100)/100; onChange(lastRaw); }
-        inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    });
-    inp._setVal = v => { lastRaw = Math.round(v*100)/100; if(document.activeElement!==inp) inp.value = lastRaw.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
-    return inp;
-}
-function fmtARS(n) { return '$ ' + Math.round(n).toLocaleString('es-AR'); }
-
-function renderDolares() {
-    const tCU = document.getElementById('t-cuentas-usd');
-    const tTU = document.getElementById('t-tarjetas-usd');
-    const tSU = document.getElementById('t-servicios-usd');
-    if (!tCU) return;
-
-    tCU.innerHTML=''; tTU.innerHTML=''; tSU.innerHTML='';
-
-    // Medios de pago USD para selects
-    const selMedioSrv = () => {
-        const sel = document.createElement('select'); sel.className='inp';
-        listaTarjetasUSD.forEach(t=>addOpt(sel,t.id,'💳 '+t.nombre));
-        listaCuentasUSD.forEach(c=>addOpt(sel,c.id,'🏦 '+c.nombre));
-        return sel;
-    };
-
-    const selRubroUSD = document.getElementById('corr-usd-rubro');
-    const selMedioUSD = document.getElementById('corr-usd-medio');
-    if (selRubroUSD) { selRubroUSD.innerHTML=''; listaRubros.forEach(r=>addOpt(selRubroUSD,r,r)); }
-    if (selMedioUSD) {
-        selMedioUSD.innerHTML='';
-        listaTarjetasUSD.forEach(t=>addOpt(selMedioUSD,t.id,'💳 '+t.nombre));
-        listaCuentasUSD.forEach(c=>addOpt(selMedioUSD,c.id,'🏦 '+c.nombre));
-    }
-
-    // mDeb USD - incluir todos los corrientes (con y sin fecha) para mostrar consumo real
-    const mDU = {};
-    listaCuentasUSD.forEach(c=>mDU[c.id]=0);
-    listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
-    listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
-    listaCorrientesUSD.forEach(c=>{ if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
-
-    // Cuentas USD
-    let totalCU=0;
-    listaCuentasUSD.forEach(c => {
-        totalCU+=c.saldo;
-        const tr=document.createElement('tr');
-        const tdN=tdHTML('<b>'+c.nombre+'</b>');
-        const tdS=document.createElement('td'); tdS.className='tr';
-        const inp=inpNumUSD(c.saldo, val=>{ c.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#16a34a'; inp.style.fontWeight='bold';
-        tdS.appendChild(inp);
-        const tdA=document.createElement('td'); tdA.className='tr'; tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(c.saldo*tipoCambio);
-        const tdX=tdBtn('✕',()=>elimCuentaUSD(c.id));
-        tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdA); tr.appendChild(tdX);
-        tCU.appendChild(tr);
-    });
-    // Total cuentas
-    if (listaCuentasUSD.length>0) {
-        const trT=document.createElement('tr'); trT.style.background='#f8fafc';
-        trT.innerHTML='<td><b>Total</b></td><td class="tr" style="color:#16a34a;font-weight:bold;">'+fmtUSD(totalCU)+'</td><td class="tr" style="font-weight:bold;">'+fmtARS(totalCU*tipoCambio)+'</td><td></td>';
-        tCU.appendChild(trT);
-    } else {
-        tCU.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas USD.</td></tr>';
-    }
-
-    // Tarjetas USD
-    let totalTU=0;
-    listaTarjetasUSD.forEach(t => {
-        const consumo=mDU[t.id]||0;
-        const total=t.saldo+consumo;
-        totalTU+=total;
-        const tr=document.createElement('tr');
-        const tdN=tdHTML('<b>'+t.nombre+'</b>');
-        const tdS=document.createElement('td'); tdS.className='tr';
-        // Mostrar saldo base editable; el total con consumo se refleja en el dashboard
-        const inp=inpNumUSD(t.saldo, val=>{ t.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#a855f7'; inp.style.fontWeight='bold';
-        tdS.appendChild(inp);
-        // Columna consumo del mes
-        const tdCon=document.createElement('td'); tdCon.className='tr'; tdCon.style.cssText='color:#6366f1;font-size:12px;font-weight:bold;';
-        tdCon.innerText = consumo > 0 ? fmtUSD(consumo) : '—';
-        const tdA=document.createElement('td'); tdA.className='tr'; tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(total*tipoCambio);
-        const tdX=tdBtn('✕',()=>elimTarjetaUSD(t.id));
-        tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdCon); tr.appendChild(tdA); tr.appendChild(tdX);
-        tTU.appendChild(tr);
-    });
-    if (listaTarjetasUSD.length>0) {
-        const trT=document.createElement('tr'); trT.style.background='#f8fafc';
-        trT.innerHTML='<td><b>Total</b></td><td class="tr" style="color:#a855f7;font-weight:bold;">'+fmtUSD(totalTU)+'</td><td class="tr" style="font-weight:bold;">'+fmtARS(totalTU*tipoCambio)+'</td><td></td>';
-        tTU.appendChild(trT);
-    } else {
-        tTU.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas USD.</td></tr>';
-    }
-
-    // Servicios USD (ordenados: pendiente > parcial > pagado, luego alfabético)
-    const srvOrd=[...listaServiciosUSD].sort((a,b)=>{
-        const est=s=>s.pagado>=s.presupuesto&&s.presupuesto>0?2:s.pagado>0?1:0;
-        return est(a)!==est(b)?est(a)-est(b):a.nombre.localeCompare(b.nombre,'es');
-    });
-
-    srvOrd.forEach(s => {
-        const medioSel=document.createElement('select'); medioSel.className='inp';
-        listaTarjetasUSD.forEach(t=>addOpt(medioSel,t.id,'💳 '+t.nombre,t.id===s.medioPagoId));
-        listaCuentasUSD.forEach(c=>addOpt(medioSel,c.id,'🏦 '+c.nombre,c.id===s.medioPagoId));
-        medioSel.onchange=e=>{ s.medioPagoId=e.target.value; guardar(); calcDashUSD(); };
-
-        const estSpan=document.createElement('span'); estSpan.id='estu-'+s.id;
-        estSpan.style.cssText='font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;';
-        const tdEst=document.createElement('td'); tdEst.className='tc'; tdEst.appendChild(estSpan);
-
-        const tr=document.createElement('tr');
-        [
-            tdHTML('<b>'+s.nombre+'</b>'),
-            tdInpDate(s.fVto, val=>{ s.fVto=val; guardar(); }),
-            (()=>{ const td=document.createElement('td'); td.className='tr'; const i=inpNumUSD(s.presupuesto,val=>{s.presupuesto=val;guardar();calcDashUSD();}); td.appendChild(i); return td; })(),
-            (()=>{ const td=document.createElement('td'); td.className='tr'; const i=inpNumUSD(s.pagado,val=>{
-                const diff=val-s.pagado;
-                if(diff!==0){
-                    const cuenta=listaTarjetasUSD.find(t=>t.id===s.medioPagoId)||listaCuentasUSD.find(c=>c.id===s.medioPagoId);
-                    if(cuenta){ const esTarj=!!listaTarjetasUSD.find(t=>t.id===s.medioPagoId); if(esTarj) cuenta.saldo+=diff; else cuenta.saldo-=diff; }
-                }
-                s.pagado=val; guardar(); calcDashUSD();
-            }); td.appendChild(i); return td; })(),
-            tdInpDate(s.fPago, val=>{ s.fPago=val; guardar(); }),
-            (()=>{ const td=document.createElement('td'); td.appendChild(medioSel); return td; })(),
-            tdEst,
-            tdBtn('✕',()=>elimServicioUSD(s.id))
-        ].forEach(td=>tr.appendChild(td));
-        tSU.appendChild(tr);
-    });
-    if (listaServiciosUSD.length===0) tSU.innerHTML='<tr><td colspan="8" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios USD.</td></tr>';
-
-    // Corrientes USD
-    const wrapCU=document.getElementById('wrap-corrientes-usd');
-    if (wrapCU) {
-        wrapCU.innerHTML='';
-        const tbl=document.createElement('table');
-        const thead=document.createElement('thead');
-        thead.innerHTML='<tr><th style="width:20%">Rubro</th><th style="width:27%">Detalle</th><th style="width:17%">Medio</th><th style="width:13%;text-align:center;">F. Pago</th><th style="width:15%;text-align:right;">Monto (USD)</th><th style="width:8%" class="no-print"></th></tr>';
-        const tbody=document.createElement('tbody');
-        tbl.appendChild(thead); tbl.appendChild(tbody); wrapCU.appendChild(tbl);
-
-        if (listaCorrientesUSD.length===0) {
-            tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin gastos corrientes en USD.</td></tr>';
-        } else {
-            listaCorrientesUSD.forEach(c => {
-                const medio=listaTarjetasUSD.find(t=>t.id===c.medioPagoId)||listaCuentasUSD.find(x=>x.id===c.medioPagoId);
-                const medNom=(medio?(listaTarjetasUSD.find(t=>t.id===c.medioPagoId)?'💳 ':'🏦 ')+medio.nombre:'Desconocido');
-
-                const selR=document.createElement('select'); selR.className='inp';
-                listaRubros.forEach(r=>addOpt(selR,r,r,r===c.rubro));
-                selR.onchange=e=>{ c.rubro=e.target.value; guardar(); };
-
-                const inpD=document.createElement('input'); inpD.type='text'; inpD.className='inp'; inpD.value=c.detalle;
-                inpD.onchange=e=>{ c.detalle=e.target.value.trim(); guardar(); };
-
-                const inpFP=document.createElement('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
-                inpFP.onchange=e=>{ c.fechaPago=e.target.value; guardar(); calcDashUSD(); };
-
-                const inpM=inpNumUSD(c.monto, val=>{ c.monto=val; guardar(); calcDashUSD(); });
-                inpM.style.cssText='font-weight:bold;color:'+(c.esIngreso?'#0284c7':'#10b981')+';';
-
-                const tdR=document.createElement('td'); tdR.appendChild(selR);
-                const tdD=document.createElement('td'); tdD.appendChild(inpD);
-                const tdM=document.createElement('td'); tdM.style.color='#64748b'; tdM.innerText=(c.esIngreso?'⬆ ':'')+medNom;
-                const tdFP=document.createElement('td'); tdFP.className='tc'; tdFP.appendChild(inpFP);
-                const tdMon=document.createElement('td'); tdMon.className='tr'; tdMon.appendChild(inpM);
-                const tdX=document.createElement('td'); tdX.className='tc no-print';
-                const btnX=document.createElement('button'); btnX.className='btn-del'; btnX.innerText='✕';
-                btnX.onclick=()=>elimCorrienteUSD(c.id); tdX.appendChild(btnX);
-
-                const tr=document.createElement('tr');
-                [tdR,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td));
-                tbody.appendChild(tr);
-            });
-        }
-    }
-
-    calcDashUSD();
-}
-
-function calcDashUSD() {
-    const mDU={};
-    listaCuentasUSD.forEach(c=>mDU[c.id]=0);
-    listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
-
-    listaServiciosUSD.forEach(s=>{
-        if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado;
-        const sp=document.getElementById('estu-'+s.id);
-        if(sp){
-            if(s.pagado>=s.presupuesto&&s.presupuesto>0){sp.innerText='PAGADO';sp.style.background='#e6f4ea';sp.style.color='#137333';}
-            else if(s.pagado>0){sp.innerText='PARCIAL';sp.style.background='#fef7e0';sp.style.color='#b06000';}
-            else{sp.innerText='PENDIENTE';sp.style.background='#fce8e6';sp.style.color='#c5221f';}
-        }
-    });
-    listaCorrientesUSD.forEach(c=>{
-        if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1);
-    });
-
-    const disponible=listaCuentasUSD.reduce((a,c)=>a+c.saldo,0);
-    const apagar=listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU[t.id]||0)),0);
-    const balance=disponible-apagar;
-    const tc=tipoCambio;
-
-    setTxt('usd-disponible', fmtUSD(disponible));
-    setTxt('usd-disponible-ars', fmtARS(disponible*tc));
-    setTxt('usd-apagar', fmtUSD(apagar));
-    setTxt('usd-apagar-ars', fmtARS(apagar*tc));
-    setTxt('usd-balance', fmtUSD(balance));
-    setTxt('usd-balance-ars', fmtARS(Math.abs(balance)*tc));
-
-    const dBalance=document.getElementById('usd-balance');
-    const cardBalance=document.getElementById('card-usd-balance');
-    const dComprar=document.getElementById('usd-comprar');
-    const dComprarARS=document.getElementById('usd-comprar-ars');
-    const cardComprar=document.getElementById('card-usd-comprar');
-
-    if(dBalance) dBalance.style.color=balance>=0?'#16a34a':'#ef4444';
-    if(cardBalance) cardBalance.style.borderLeftColor=balance>=0?'#16a34a':'#ef4444';
-
-    if(balance<0){
-        const falta=Math.abs(balance);
-        if(dComprar){ dComprar.innerText=fmtUSD(falta); dComprar.style.color='#ef4444'; }
-        if(dComprarARS) dComprarARS.innerText=fmtARS(falta*tc);
-        if(cardComprar) cardComprar.style.borderLeftColor='#ef4444';
-    } else {
-        if(dComprar){ dComprar.innerText='—'; dComprar.style.color='#94a3b8'; }
-        if(dComprarARS) dComprarARS.innerText='';
-        if(cardComprar) cardComprar.style.borderLeftColor='#94a3b8';
-    }
-}
-
-// ═══════════════════════════════════════════
-//  GOOGLE DRIVE
-// ═══════════════════════════════════════════
-const GDRIVE_CLIENT_ID = '1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-let gToken = null;
-
-function driveCargarGoogle(callback) {
-    if (typeof google !== 'undefined') { callback(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload = callback;
-    s.onerror = () => alert('No se pudo cargar Google. Verificá tu conexión.');
-    document.head.appendChild(s);
-}
-
-function driveGetToken(callback) {
-    driveCargarGoogle(() => {
-        if (gToken) { callback(gToken); return; }
-        const client = google.accounts.oauth2.initTokenClient({
-            client_id: GDRIVE_CLIENT_ID,
-            scope: GDRIVE_SCOPE,
-            hint: 'factory.viking.systems@gmail.com',
-            prompt: '',
-            callback: resp => {
-                if (resp.error && resp.error !== 'interaction_required') {
-                    alert('Error Google: ' + resp.error); return;
-                }
-                if (resp.error === 'interaction_required') {
-                    // Si requiere interacción, mostrar selector
-                    const c2 = google.accounts.oauth2.initTokenClient({
-                        client_id: GDRIVE_CLIENT_ID,
-                        scope: GDRIVE_SCOPE,
-                        hint: 'factory.viking.systems@gmail.com',
-                        callback: r2 => {
-                            if (r2.error) { alert('Error Google: ' + r2.error); return; }
-                            gToken = r2.access_token;
-                            callback(gToken);
-                        }
-                    });
-                    c2.requestAccessToken();
-                    return;
-                }
-                gToken = resp.access_token;
-                callback(gToken);
-            }
-        });
-        client.requestAccessToken({prompt: ''});
-    });
-}
-
-function driveSubir() {
-    driveGetToken(token => {
-        const ahora = new Date();
-        const ts = ahora.getFullYear() + String(ahora.getMonth()+1).padStart(2,'0') + String(ahora.getDate()).padStart(2,'0') + '_' + String(ahora.getHours()).padStart(2,'0') + String(ahora.getMinutes()).padStart(2,'0');
-        const nombre = 'backup_finanzas_' + ts + '.json';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio});
-        const meta = JSON.stringify({name: nombre, parents: ['appDataFolder']});
-        const form = new FormData();
-        form.append('metadata', new Blob([meta], {type: 'application/json'}));
-        form.append('file', new Blob([data], {type: 'application/json'}));
-        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: {Authorization: 'Bearer ' + token},
-            body: form
-        })
-        .then(r => r.json())
-        .then(f => {
-            if (f.id) alert('Backup guardado en Drive: ' + nombre);
-            else { alert('Error al subir: ' + JSON.stringify(f)); gToken = null; }
-        })
-        .catch(e => { alert('Error: ' + e.message); gToken = null; });
-    });
-}
-
-function driveRestaurar() {
-    driveGetToken(token => {
-        fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=20', {
-            headers: {Authorization: 'Bearer ' + token}
-        })
-        .then(r => r.json())
-        .then(data => {
-            const archivos = (data.files || []).filter(f => f.name.startsWith('backup_finanzas_'));
-            mostrarModalDrive(archivos, token);
-        })
-        .catch(e => { alert('Error al listar Drive: ' + e.message); gToken = null; });
-    });
-}
-
-function mostrarModalDrive(archivos, token) {
-    const existente = document.getElementById('modal-drive');
-    if (existente) existente.remove();
-
-    const ov = document.createElement('div');
-    ov.id = 'modal-drive';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:2000;display:flex;align-items:center;justify-content:center;';
-
-    const box = document.createElement('div');
-    box.style.cssText = 'background:white;border-radius:12px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;';
-
-    const header = document.createElement('div');
-    header.style.cssText = 'background:#1e293b;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;';
-    const h3 = document.createElement('h3');
-    h3.style.cssText = 'margin:0;color:white;font-size:15px;';
-    h3.innerText = 'Backups en Google Drive';
-    const btnX = document.createElement('button');
-    btnX.innerText = '✕';
-    btnX.style.cssText = 'background:transparent;border:none;color:white;font-size:18px;cursor:pointer;';
-    btnX.onclick = () => ov.remove();
-    header.appendChild(h3); header.appendChild(btnX);
-
-    const body = document.createElement('div');
-    body.style.cssText = 'padding:20px;max-height:50vh;overflow-y:auto;';
-
-    if (archivos.length === 0) {
-        body.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px;">Sin backups en Drive. Usá Subir primero.</p>';
-    } else {
-        archivos.forEach(f => {
-            const item = document.createElement('div');
-            item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:8px;cursor:pointer;';
-            item.onmouseover = () => item.style.background = '#f1f5f9';
-            item.onmouseout  = () => item.style.background = '';
-            const fecha = new Date(f.modifiedTime).toLocaleString('es-AR');
-            const left = document.createElement('div');
-            left.innerHTML = '<div style="font-size:13px;font-weight:bold;color:#1e293b;">' + f.name + '</div><div style="font-size:11px;color:#64748b;">' + fecha + '</div>';
-            const btn = document.createElement('span');
-            btn.innerText = 'Restaurar →';
-            btn.style.cssText = 'font-size:11px;color:#4285f4;font-weight:bold;';
-            item.appendChild(left); item.appendChild(btn);
-            item.onclick = () => driveCargarArchivo(f.id, f.name, token, ov);
-            body.appendChild(item);
-        });
-    }
-
-    const footer = document.createElement('div');
-    footer.style.cssText = 'padding:16px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;';
-    const btnCancelar = document.createElement('button');
-    btnCancelar.className = 'btn';
-    btnCancelar.style.cssText = 'background:#e2e8f0;color:#334155;';
-    btnCancelar.innerText = 'Cancelar';
-    btnCancelar.onclick = () => ov.remove();
-    footer.appendChild(btnCancelar);
-
-    box.appendChild(header); box.appendChild(body); box.appendChild(footer);
-    ov.appendChild(box);
-    document.body.appendChild(ov);
-}
-
-function driveCargarArchivo(id, nombre, token, modal) {
-    if (!confirm('Restaurar ' + nombre + '? Se reemplazaran todos los datos.')) return;
-    modal.remove();
-    fetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media', {
-        headers: {Authorization: 'Bearer ' + token}
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (!res.listaBancos) { alert('Backup invalido.'); return; }
-        listaBancos         = res.listaBancos         || [];
-        listaTarjetas       = res.listaTarjetas       || [];
-        listaServicios      = res.listaServicios      || [];
-        listaCorrientes     = res.listaCorrientes     || [];
-        listaRubros         = res.listaRubros         || [];
-        listaTransferencias = res.listaTransferencias || [];
-        listaCuotas         = res.listaCuotas         || [];
-        historicoMeses      = res.historicoMeses      || [];
-        listaCuentasUSD     = res.listaCuentasUSD     || [];
-        listaTarjetasUSD    = res.listaTarjetasUSD    || [];
-        listaServiciosUSD   = res.listaServiciosUSD   || [];
-        listaCorrientesUSD  = res.listaCorrientesUSD  || [];
-        tipoCambio          = res.tipoCambio          || 1200;
-        guardar(); renderTabs(); renderContenido();
-        alert('Backup restaurado: ' + nombre);
-    })
-    .catch(e => alert('Error al descargar: ' + e.message));
-}
 
 // ═══════════════════════════════════════════
 //  SERVICE WORKER
