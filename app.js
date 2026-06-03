@@ -1496,7 +1496,7 @@ function buildDolares() {
                 <button type="submit" class="btn btn-add" style="background:#a855f7;">Registrar Tarjeta USD</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:45%">Tarjeta</th><th style="width:30%" class="tr">Consumo (USD)</th><th style="width:20%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead>
+            <table><thead><tr><th style="width:38%">Tarjeta</th><th style="width:22%" class="tr">Saldo base</th><th style="width:18%" class="tr">Consumo mes</th><th style="width:17%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead>
             <tbody id="t-tarjetas-usd"></tbody></table>
           </div>
         </div>
@@ -1599,19 +1599,43 @@ function elimCorrienteUSD(id) {
 }
 
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function parseUSD(str) {
+    // Soporta: 6.50, 6,50, 1.234,56, 1234.56
+    const s = String(str).trim();
+    // Si tiene coma Y punto: el último es el decimal
+    if (s.includes(',') && s.includes('.')) {
+        const lastComma = s.lastIndexOf(',');
+        const lastDot   = s.lastIndexOf('.');
+        if (lastComma > lastDot) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+        else return parseFloat(s.replace(/,/g,'')) || 0;
+    }
+    // Solo coma: puede ser decimal (6,50) o miles (1,234)
+    if (s.includes(',')) {
+        const parts = s.split(',');
+        if (parts[parts.length-1].length <= 2) return parseFloat(s.replace(',','.')) || 0;
+        return parseFloat(s.replace(/,/g,'')) || 0;
+    }
+    // Solo punto: puede ser decimal (6.50) o miles (1.234)
+    if (s.includes('.')) {
+        const parts = s.split('.');
+        if (parts[parts.length-1].length <= 2) return parseFloat(s) || 0;
+        return parseFloat(s.replace(/\./g,'')) || 0;
+    }
+    return parseFloat(s) || 0;
+}
 function inpNumUSD(val, onChange) {
     const inp = document.createElement('input'); inp.type='text'; inp.className='inp tr';
-    inp.value = fmtUSD(val).replace('USD ','');
     let lastRaw = Math.round(val*100)/100;
+    inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     inp.addEventListener('focus', () => { inp.value = lastRaw; });
     inp.addEventListener('change', e => {
-        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        const v = parseUSD(e.target.value);
         lastRaw = Math.round(v*100)/100;
         onChange(lastRaw);
         inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     });
     inp.addEventListener('blur', e => {
-        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        const v = parseUSD(e.target.value);
         if (v !== lastRaw) { lastRaw = Math.round(v*100)/100; onChange(lastRaw); }
         inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     });
@@ -1684,11 +1708,15 @@ function renderDolares() {
         const tr=document.createElement('tr');
         const tdN=tdHTML('<b>'+t.nombre+'</b>');
         const tdS=document.createElement('td'); tdS.className='tr';
+        // Mostrar saldo base editable; el total con consumo se refleja en el dashboard
         const inp=inpNumUSD(t.saldo, val=>{ t.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#a855f7'; inp.style.fontWeight='bold';
         tdS.appendChild(inp);
+        // Columna consumo del mes
+        const tdCon=document.createElement('td'); tdCon.className='tr'; tdCon.style.cssText='color:#6366f1;font-size:12px;font-weight:bold;';
+        tdCon.innerText = consumo > 0 ? fmtUSD(consumo) : '—';
         const tdA=document.createElement('td'); tdA.className='tr'; tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(total*tipoCambio);
         const tdX=tdBtn('✕',()=>elimTarjetaUSD(t.id));
-        tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdA); tr.appendChild(tdX);
+        tr.appendChild(tdN); tr.appendChild(tdS); tr.appendChild(tdCon); tr.appendChild(tdA); tr.appendChild(tdX);
         tTU.appendChild(tr);
     });
     if (listaTarjetasUSD.length>0) {
