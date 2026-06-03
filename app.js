@@ -1599,6 +1599,25 @@ function elimCorrienteUSD(id) {
 }
 
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function inpNumUSD(val, onChange) {
+    const inp = document.createElement('input'); inp.type='text'; inp.className='inp tr';
+    inp.value = fmtUSD(val).replace('USD ','');
+    let lastRaw = Math.round(val*100)/100;
+    inp.addEventListener('focus', () => { inp.value = lastRaw; });
+    inp.addEventListener('change', e => {
+        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        lastRaw = Math.round(v*100)/100;
+        onChange(lastRaw);
+        inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    });
+    inp.addEventListener('blur', e => {
+        const v = parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.')) || 0;
+        if (v !== lastRaw) { lastRaw = Math.round(v*100)/100; onChange(lastRaw); }
+        inp.value = lastRaw.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    });
+    inp._setVal = v => { lastRaw = Math.round(v*100)/100; if(document.activeElement!==inp) inp.value = lastRaw.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    return inp;
+}
 function fmtARS(n) { return '$ ' + Math.round(n).toLocaleString('es-AR'); }
 
 function renderDolares() {
@@ -1640,7 +1659,7 @@ function renderDolares() {
         const tr=document.createElement('tr');
         const tdN=tdHTML('<b>'+c.nombre+'</b>');
         const tdS=document.createElement('td'); tdS.className='tr';
-        const inp=inpNum(c.saldo, val=>{ c.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#16a34a'; inp.style.fontWeight='bold';
+        const inp=inpNumUSD(c.saldo, val=>{ c.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#16a34a'; inp.style.fontWeight='bold';
         tdS.appendChild(inp);
         const tdA=document.createElement('td'); tdA.className='tr'; tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(c.saldo*tipoCambio);
         const tdX=tdBtn('✕',()=>elimCuentaUSD(c.id));
@@ -1665,7 +1684,7 @@ function renderDolares() {
         const tr=document.createElement('tr');
         const tdN=tdHTML('<b>'+t.nombre+'</b>');
         const tdS=document.createElement('td'); tdS.className='tr';
-        const inp=inpNum(t.saldo, val=>{ t.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#a855f7'; inp.style.fontWeight='bold';
+        const inp=inpNumUSD(t.saldo, val=>{ t.saldo=val; guardar(); calcDashUSD(); }); inp.style.color='#a855f7'; inp.style.fontWeight='bold';
         tdS.appendChild(inp);
         const tdA=document.createElement('td'); tdA.className='tr'; tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(total*tipoCambio);
         const tdX=tdBtn('✕',()=>elimTarjetaUSD(t.id));
@@ -1700,15 +1719,15 @@ function renderDolares() {
         [
             tdHTML('<b>'+s.nombre+'</b>'),
             tdInpDate(s.fVto, val=>{ s.fVto=val; guardar(); }),
-            tdInpNum(s.presupuesto, val=>{ s.presupuesto=val; guardar(); calcDashUSD(); },'tr'),
-            tdInpNum(s.pagado, val=>{
+            (()=>{ const td=document.createElement('td'); td.className='tr'; const i=inpNumUSD(s.presupuesto,val=>{s.presupuesto=val;guardar();calcDashUSD();}); td.appendChild(i); return td; })(),
+            (()=>{ const td=document.createElement('td'); td.className='tr'; const i=inpNumUSD(s.pagado,val=>{
                 const diff=val-s.pagado;
                 if(diff!==0){
                     const cuenta=listaTarjetasUSD.find(t=>t.id===s.medioPagoId)||listaCuentasUSD.find(c=>c.id===s.medioPagoId);
                     if(cuenta){ const esTarj=!!listaTarjetasUSD.find(t=>t.id===s.medioPagoId); if(esTarj) cuenta.saldo+=diff; else cuenta.saldo-=diff; }
                 }
                 s.pagado=val; guardar(); calcDashUSD();
-            },'tr'),
+            }); td.appendChild(i); return td; })(),
             tdInpDate(s.fPago, val=>{ s.fPago=val; guardar(); }),
             (()=>{ const td=document.createElement('td'); td.appendChild(medioSel); return td; })(),
             tdEst,
@@ -1745,7 +1764,7 @@ function renderDolares() {
                 const inpFP=document.createElement('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
                 inpFP.onchange=e=>{ c.fechaPago=e.target.value; guardar(); calcDashUSD(); };
 
-                const inpM=inpNum(c.monto, val=>{ c.monto=val; guardar(); calcDashUSD(); });
+                const inpM=inpNumUSD(c.monto, val=>{ c.monto=val; guardar(); calcDashUSD(); });
                 inpM.style.cssText='font-weight:bold;color:'+(c.esIngreso?'#0284c7':'#10b981')+';';
 
                 const tdR=document.createElement('td'); tdR.appendChild(selR);
