@@ -112,6 +112,10 @@ function renderContenido() {
             app.appendChild(buildMesActual());
             bindEventosMesActual();
             render();
+        } else if (tabActivo === 'dolares') {
+            app.appendChild(buildDolares());
+            bindEventosDolares();
+            renderDolares();
         } else if (tabActivo === 'reportes') {
             app.appendChild(buildReportes());
         } else {
