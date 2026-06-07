@@ -1196,12 +1196,7 @@ function buildInversiones() {
               '</div>' +
               '<button type="submit" class="btn btn-add" style="background:#6366f1;">Agregar Acción</button>' +
             '</form></div>' +
-            '<table><thead><tr>' +
-              '<th style="width:18%">Ticker</th><th style="width:22%">Descripción</th>' +
-              '<th style="width:8%" class="tc">Cant.</th><th style="width:20%" class="tr">Precio ($)</th>' +
-              '<th style="width:10%" class="tc">Var.%</th><th style="width:17%" class="tr">Valuación ($)</th>' +
-              '<th style="width:5%" class="no-print"></th>' +
-            '</tr></thead><tbody id="t-acciones"></tbody></table>' +
+            '<div id="t-acciones"></div>' +
           '</div>' +
         '</div>' +
         '<div>' +
@@ -1251,28 +1246,66 @@ function renderInstrumentos() {
 }
 
 function renderAcciones() {
-    const tbl = document.getElementById('t-acciones'); if(!tbl) return;
-    tbl.innerHTML = '';
-    if(!listaAcciones.length){ tbl.innerHTML='<tr><td colspan="7" class="tc" style="color:#94a3b8;padding:12px;">Sin acciones. Agregá un ticker para empezar.</td></tr>'; return; }
+    const wrap = document.getElementById('t-acciones'); if(!wrap) return;
+    wrap.innerHTML = '';
+    if(!listaAcciones.length){
+        wrap.innerHTML='<p style="color:#94a3b8;padding:12px;text-align:center;font-size:13px;">Sin acciones. Agregá un ticker para empezar.</p>';
+        return;
+    }
     listaAcciones.forEach(function(a) {
         const cot = _cotizaciones[a.ticker] || {};
         const precio = cot.precio || 0, variacion = cot.variacion || 0, valuacion = precio * a.cant;
         const varColor = variacion > 0 ? '#16a34a' : variacion < 0 ? '#ef4444' : '#64748b';
-        const varStr = variacion > 0 ? '+'+variacion.toFixed(2)+'%' : variacion.toFixed(2)+'%';
-        const inpCant = el('input'); inpCant.type='number'; inpCant.className='inp'; inpCant.value=a.cant; inpCant.min='1';
-        inpCant.style.cssText = 'width:60px;text-align:center;';
+        const varStr = (variacion > 0 ? '+' : '') + variacion.toFixed(2) + '%';
+        const varBg = variacion > 0 ? '#dcfce7' : variacion < 0 ? '#fee2e2' : '#f1f5f9';
+
+        const card = el('div');
+        card.style.cssText = 'border:1px solid #e2e8f0;border-left:4px solid #6366f1;border-radius:6px;padding:12px;margin-bottom:8px;background:white;';
+
+        // Fila 1: ticker + descripción + botón eliminar
+        const row1 = el('div');
+        row1.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+        const tickerSpan = el('span');
+        tickerSpan.style.cssText = 'font-weight:bold;color:#6366f1;font-size:15px;';
+        tickerSpan.innerText = a.ticker;
+        const descSpan = el('span');
+        descSpan.style.cssText = 'font-size:12px;color:#64748b;margin-left:10px;';
+        descSpan.innerText = a.desc;
+        const izq = el('div'); izq.appendChild(tickerSpan); izq.appendChild(descSpan);
+        const btnX = el('button','btn-del'); btnX.innerText='✕'; btnX.onclick=function(){ elimAccion(a.id); };
+        row1.appendChild(izq); row1.appendChild(btnX);
+
+        // Fila 2: cantidad editable + precio + variación + valuación
+        const row2 = el('div');
+        row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:center;';
+
+        const mkCell = function(label, valor, color) {
+            const c = el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 8px;';
+            const l = el('div'); l.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;'; l.innerText=label;
+            const v = el('div'); v.style.cssText='font-size:14px;font-weight:bold;color:'+(color||'#1e293b')+';'; v.innerText=valor;
+            c.appendChild(l); c.appendChild(v); return c;
+        };
+
+        // Celda cantidad: editable
+        const celdaCant = el('div'); celdaCant.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 8px;';
+        const lCant = el('div'); lCant.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;'; lCant.innerText='Cantidad';
+        const inpCant = el('input'); inpCant.type='number'; inpCant.value=a.cant; inpCant.min='1';
+        inpCant.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:#1e293b;background:white;text-align:center;';
         inpCant.onchange = function(e){ a.cant=parseInt(e.target.value)||1; guardar(); renderAcciones(); calcDashInv(); };
-        const tdCant = el('td','tc'); tdCant.appendChild(inpCant);
-        const tdVar = el('td','tc'); tdVar.style.cssText='font-weight:bold;color:'+varColor+';font-size:12px;'; tdVar.innerText=precio?varStr:'—';
-        tbl.appendChild(fila([
-            tdHTML('<b style="color:#6366f1;">'+a.ticker+'</b>'),
-            tdTxt(a.desc),
-            tdCant,
-            tdTxt(precio?fmt(precio):'Cargando...','tr'),
-            tdVar,
-            tdTxt(valuacion?fmt(valuacion):'—','tr'),
-            tdBtn('✕',function(){ elimAccion(a.id); })
-        ]));
+        celdaCant.appendChild(lCant); celdaCant.appendChild(inpCant);
+
+        const celdaVar = el('div'); celdaVar.style.cssText='background:'+varBg+';border-radius:4px;padding:6px 8px;';
+        const lVar = el('div'); lVar.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;'; lVar.innerText='Variación';
+        const vVar = el('div'); vVar.style.cssText='font-size:14px;font-weight:bold;color:'+varColor+';'; vVar.innerText=precio?varStr:'—';
+        celdaVar.appendChild(lVar); celdaVar.appendChild(vVar);
+
+        row2.appendChild(celdaCant);
+        row2.appendChild(mkCell('Precio', precio?fmt(precio):'Actualizando...', '#1e293b'));
+        row2.appendChild(celdaVar);
+        row2.appendChild(mkCell('Valuación', valuacion?fmt(valuacion):'—', '#6366f1'));
+
+        card.appendChild(row1); card.appendChild(row2);
+        wrap.appendChild(card);
     });
 }
 
