@@ -1003,8 +1003,9 @@ function buildReportes() {
     }
 
     const porR={},porRSF={};
-    listaCorrientes.filter(c=>c.fechaPago).forEach(c=>{ porR[c.rubro]=(porR[c.rubro]||0)+c.monto; });
-    listaCorrientes.filter(c=>!c.fechaPago).forEach(c=>{ porRSF[c.rubro]=(porRSF[c.rubro]||0)+c.monto; });
+    const esPagoTarjeta = r => r && r.toLowerCase().includes('tarjeta');
+    listaCorrientes.filter(c=>c.fechaPago&&!esPagoTarjeta(c.rubro)).forEach(c=>{ porR[c.rubro]=(porR[c.rubro]||0)+c.monto; });
+    listaCorrientes.filter(c=>!c.fechaPago&&!esPagoTarjeta(c.rubro)).forEach(c=>{ porRSF[c.rubro]=(porRSF[c.rubro]||0)+c.monto; });
     const totCorr=Object.values(porR).reduce((a,b)=>a+b,0);
     const todosR=new Set([...Object.keys(porR),...Object.keys(porRSF)]);
     let tCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Sin confirmar</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
