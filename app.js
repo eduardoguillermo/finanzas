@@ -1190,17 +1190,17 @@ function buildInversiones() {
             '<h3 class="panel-title">📈 Acciones</h3>' +
             '<div class="form-block"><form id="form-accion">' +
               '<div class="form-row">' +
-                '<div><label>Ticker</label><input type="text" id="acc-ticker" required placeholder="Ej. YPFD.BA" style="text-transform:uppercase;"></div>' +
+                '<div><label>Ticker (con .BA)</label><input type="text" id="acc-ticker" required placeholder="YPFD.BA" style="text-transform:uppercase;" title="Incluir sufijo .BA para acciones argentinas"></div>' +
                 '<div style="flex:2"><label>Descripción</label><input type="text" id="acc-desc" required placeholder="Ej. YPF Derecho"></div>' +
                 '<div><label>Cantidad</label><input type="number" id="acc-cant" required value="1" step="1" min="1"></div>' +
               '</div>' +
               '<button type="submit" class="btn btn-add" style="background:#6366f1;">Agregar Acción</button>' +
             '</form></div>' +
             '<table><thead><tr>' +
-              '<th style="width:12%">Ticker</th><th style="width:25%">Descripción</th>' +
-              '<th style="width:10%" class="tc">Cant.</th><th style="width:15%" class="tr">Precio</th>' +
-              '<th style="width:10%" class="tc">Var.%</th><th style="width:18%" class="tr">Valuación ($)</th>' +
-              '<th style="width:10%" class="no-print"></th>' +
+              '<th style="width:18%">Ticker</th><th style="width:22%">Descripción</th>' +
+              '<th style="width:8%" class="tc">Cant.</th><th style="width:20%" class="tr">Precio ($)</th>' +
+              '<th style="width:10%" class="tc">Var.%</th><th style="width:17%" class="tr">Valuación ($)</th>' +
+              '<th style="width:5%" class="no-print"></th>' +
             '</tr></thead><tbody id="t-acciones"></tbody></table>' +
           '</div>' +
         '</div>' +
@@ -1308,6 +1308,10 @@ async function actualizarInversiones() {
             const proxy = 'https://corsproxy.io/?' + url;
             const res = await fetch(proxy);
             const data = await res.json();
+            if(!data.chart || !data.chart.result || !data.chart.result[0]) {
+                console.warn('Sin datos para '+acc.ticker+'. Error:', data.chart && data.chart.error);
+                continue;
+            }
             const result = data.chart.result[0];
             const meta = result.meta;
             const timestamps = result.timestamp;
