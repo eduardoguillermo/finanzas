@@ -1002,15 +1002,6 @@ function buildReportes() {
         dibujarTorta('torta-srv','torta-srv-ley', srvConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmt);
     }
 
-    // Torta corrientes pesos por rubro
-    const itemsCorrPesos = Object.entries(porR).map(function(e){ return {label:e[0],valor:e[1]}; });
-    if(itemsCorrPesos.length>0){
-        const divTC = mkTortaDiv('torta-corr','torta-corr-ley','Distribución Gastos Corrientes por Rubro','#10b981');
-        wrap.appendChild(divTC);
-        dibujarTorta('torta-corr','torta-corr-ley', itemsCorrPesos, fmt);
-    }
-
-    // Gastos corrientes por rubro
     const porR={},porRSF={};
     listaCorrientes.filter(c=>c.fechaPago).forEach(c=>{ porR[c.rubro]=(porR[c.rubro]||0)+c.monto; });
     listaCorrientes.filter(c=>!c.fechaPago).forEach(c=>{ porRSF[c.rubro]=(porRSF[c.rubro]||0)+c.monto; });
@@ -1020,6 +1011,14 @@ function buildReportes() {
     [...todosR].sort().forEach(r=>{ const pg=porR[r]||0,sf=porRSF[r]||0,pct=totCorr>0?((pg/totCorr)*100).toFixed(1):'0.0'; tCorr+=`<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${r}</td><td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pg)}</td><td style="padding:5px 6px;text-align:right;color:#94a3b8;">${fmt(sf)}</td><td style="padding:5px 6px;text-align:right;">${pct}%</td></tr>`; });
     tCorr+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;color:#10b981;">${fmt(totCorr)}</td><td style="text-align:right;color:#94a3b8;">${fmt(Object.values(porRSF).reduce((a,b)=>a+b,0))}</td><td></td></tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend',tCorr);
+    // Torta corrientes pesos por rubro
+    const itemsCorrPesos = Object.entries(porR).map(function(e){ return {label:e[0],valor:e[1]}; });
+    if(itemsCorrPesos.length>0){
+        const divTC = mkTortaDiv('torta-corr','torta-corr-ley','Distribución Gastos Corrientes por Rubro','#10b981');
+        wrap.appendChild(divTC);
+        dibujarTorta('torta-corr','torta-corr-ley', itemsCorrPesos, fmt);
+    }
+
 
     // ── SECCIÓN DÓLARES ────────────────────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#16a34a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Mes Actual</h3>');
