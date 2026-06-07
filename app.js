@@ -1305,7 +1305,7 @@ async function actualizarInversiones() {
         const acc = listaAcciones[i];
         try {
             const url = 'https://query2.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
-            const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            const proxy = 'https://corsproxy.io/?' + url;
             const res = await fetch(proxy);
             const data = await res.json();
             const result = data.chart.result[0];
