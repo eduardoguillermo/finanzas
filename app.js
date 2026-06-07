@@ -1304,11 +1304,10 @@ async function actualizarInversiones() {
     for(let i=0; i<listaAcciones.length; i++) {
         const acc = listaAcciones[i];
         try {
-            const url = 'https://query1.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
-            const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            const url = 'https://query2.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
+            const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
             const res = await fetch(proxy);
-            const wrap = await res.json();
-            const data = JSON.parse(wrap.contents);
+            const data = await res.json();
             const result = data.chart.result[0];
             const meta = result.meta;
             const timestamps = result.timestamp;
