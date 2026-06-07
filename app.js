@@ -905,6 +905,44 @@ function elimTarjetaUSD(id)   { if(confirm('¿Remover tarjeta USD?')) { listaTar
 function elimServicioUSD(id)  { listaServiciosUSD=listaServiciosUSD.filter(s=>s.id!==id);                                          guardar(); renderDolares(); }
 function elimCorrienteUSD(id) { listaCorrientesUSD=listaCorrientesUSD.filter(x=>x.id!==id);                                       guardar(); renderDolares(); }
 
+
+function dibujarTorta(canvasId, leyId, items, fmtVal) {
+    const total = items.reduce(function(a,i){ return a+i.valor; }, 0);
+    if (!total) return;
+    const paleta = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
+    const itemsOrd = items.slice().sort(function(a,b){ return b.valor-a.valor; });
+    setTimeout(function(){
+        const tw = document.getElementById(canvasId); if(!tw) return;
+        const cv = el('canvas'); cv.width=300; cv.height=300; tw.appendChild(cv);
+        const ctx = cv.getContext('2d'); const cx=150,cy=150,r=120,ri=60; let ang=-Math.PI/2;
+        itemsOrd.forEach(function(it,i){
+            const pct=it.valor/total, a2=ang+pct*2*Math.PI, col=paleta[i%paleta.length];
+            ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang,a2); ctx.closePath();
+            ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke();
+            if(pct>0.05){ const ma=ang+(a2-ang)/2;
+                ctx.fillStyle='white'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                ctx.fillText((pct*100).toFixed(0)+'%', cx+(r*0.68)*Math.cos(ma), cy+(r*0.68)*Math.sin(ma)); }
+            ang=a2;
+        });
+        ctx.beginPath(); ctx.arc(cx,cy,ri,0,2*Math.PI); ctx.fillStyle='white'; ctx.fill();
+        ctx.fillStyle='#1e293b'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('Total',cx,cy-10); ctx.fillStyle='#4f46e5'; ctx.fillText(fmtVal(total),cx,cy+10);
+        const ley = document.getElementById(leyId);
+        if(ley){ ley.innerHTML=''; itemsOrd.forEach(function(it,i){
+            const d=el('div'); d.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+            d.innerHTML='<div style="width:12px;height:12px;border-radius:3px;background:'+paleta[i%paleta.length]+';flex-shrink:0;"></div>';
+            const span1=el('span'); span1.style.cssText='font-size:12px;font-weight:bold;color:#1e293b;'; span1.innerText=it.label;
+            const span2=el('span'); span2.style.cssText='font-size:11px;color:#64748b;'; span2.innerText=fmtVal(it.valor)+' · '+(it.valor/total*100).toFixed(1)+'%';
+            d.appendChild(span1); d.appendChild(span2); ley.appendChild(d);
+        }); }
+    },50);
+}
+function mkTortaDiv(canvasId, leyId, titulo, color) {
+    const d = el('div');
+    d.style.cssText = 'background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid '+color+';padding:20px;margin-bottom:16px;';
+    d.innerHTML = '<h4 style="margin:0 0 16px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 '+titulo+'</h4><div style="display:flex;align-items:flex-start;justify-content:center;gap:32px;flex-wrap:wrap;"><div id="'+canvasId+'"></div><div id="'+leyId+'" style="max-height:320px;overflow-y:auto;"></div></div>';
+    return d;
+}
 // ═══════════════════════════════════════════
 //  REPORTES
 // ═══════════════════════════════════════════
@@ -956,22 +994,20 @@ function buildReportes() {
     wrap.insertAdjacentHTML('beforeend',tCl);
 
     // Gráfico torta
-    const srvConPres=[...listaServicios.filter(s=>s.presupuesto>0)].sort((a,b)=>b.presupuesto-a.presupuesto);
+    // Torta servicios fijos pesos
+    const srvConPres = listaServicios.filter(function(s){ return s.presupuesto>0; });
     if(srvConPres.length>0){
-        const paleta=['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
-        const totT2=srvConPres.reduce((a,s)=>a+s.presupuesto,0);
-        const divT=el('div'); divT.style.cssText='background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:20px;margin-bottom:16px;';
-        divT.innerHTML=`<h4 style="margin:0 0 16px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 Distribución Presupuesto · Servicios Fijos</h4><div style="display:flex;align-items:flex-start;justify-content:center;gap:32px;flex-wrap:wrap;"><div id="torta-wrap"></div><div id="torta-ley" style="max-height:320px;overflow-y:auto;"></div></div>`;
+        const divT = mkTortaDiv('torta-srv','torta-srv-ley','Distribución Presupuesto · Servicios Fijos','#4f46e5');
         wrap.appendChild(divT);
-        setTimeout(()=>{
-            const tw=document.getElementById('torta-wrap'); if(!tw) return;
-            const cv=el('canvas'); cv.width=300; cv.height=300; tw.appendChild(cv);
-            const ctx=cv.getContext('2d'); const cx=150,cy=150,r=120,ri=60; let ang=-Math.PI/2;
-            srvConPres.forEach((s,i)=>{ const pct=s.presupuesto/totT2,a2=ang+pct*2*Math.PI,col=paleta[i%paleta.length]; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang,a2); ctx.closePath(); ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke(); if(pct>0.05){ const ma=ang+(a2-ang)/2; ctx.fillStyle='white'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText((pct*100).toFixed(0)+'%',cx+(r*0.68)*Math.cos(ma),cy+(r*0.68)*Math.sin(ma)); } ang=a2; });
-            ctx.beginPath(); ctx.arc(cx,cy,ri,0,2*Math.PI); ctx.fillStyle='white'; ctx.fill();
-            ctx.fillStyle='#1e293b'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Total',cx,cy-10); ctx.fillStyle='#4f46e5'; ctx.fillText(fmt(totT2),cx,cy+10);
-            const ley=document.getElementById('torta-ley'); if(ley) ley.innerHTML=srvConPres.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="width:12px;height:12px;border-radius:3px;background:${paleta[i%paleta.length]};flex-shrink:0;"></div><span style="font-size:12px;font-weight:bold;color:#1e293b;">${s.nombre}</span><span style="font-size:11px;color:#64748b;">${fmt(s.presupuesto)} · ${(s.presupuesto/totT2*100).toFixed(1)}%</span></div>`).join('');
-        },50);
+        dibujarTorta('torta-srv','torta-srv-ley', srvConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmt);
+    }
+
+    // Torta corrientes pesos por rubro
+    const itemsCorrPesos = Object.entries(porR).map(function(e){ return {label:e[0],valor:e[1]}; });
+    if(itemsCorrPesos.length>0){
+        const divTC = mkTortaDiv('torta-corr','torta-corr-ley','Distribución Gastos Corrientes por Rubro','#10b981');
+        wrap.appendChild(divTC);
+        dibujarTorta('torta-corr','torta-corr-ley', itemsCorrPesos, fmt);
     }
 
     // Gastos corrientes por rubro
@@ -1001,6 +1037,24 @@ function buildReportes() {
             tSU+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmtUSD(tpU)}</td><td style="text-align:right;color:#10b981;">${fmtUSD(pgU)}</td><td style="text-align:right;color:#ef4444;">${fmtUSD(peU)}</td><td style="text-align:right;">${fmtARS(peU*tc)}</td><td></td></tr></table></div>`;
             wrap.insertAdjacentHTML('beforeend',tSU);
         }
+        // Torta servicios fijos USD
+        const srvUSDConPres = listaServiciosUSD.filter(function(s){ return s.presupuesto>0; });
+        if(srvUSDConPres.length>0){
+            const divTSU = mkTortaDiv('torta-srv-usd','torta-srv-usd-ley','Distribución Presupuesto · Servicios Fijos USD','#4f46e5');
+            wrap.appendChild(divTSU);
+            dibujarTorta('torta-srv-usd','torta-srv-usd-ley', srvUSDConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmtUSD);
+        }
+
+        // Torta corrientes USD por rubro
+        const porRubroUSD = {};
+        listaCorrientesUSD.filter(function(c){ return !c.esIngreso; }).forEach(function(c){ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
+        const itemsCorrUSD = Object.entries(porRubroUSD).map(function(e){ return {label:e[0],valor:e[1]}; });
+        if(itemsCorrUSD.length>0){
+            const divTCU = mkTortaDiv('torta-corr-usd','torta-corr-usd-ley','Distribución Gastos Corrientes USD por Rubro','#10b981');
+            wrap.appendChild(divTCU);
+            dibujarTorta('torta-corr-usd','torta-corr-usd-ley', itemsCorrUSD, fmtUSD);
+        }
+
     } else { wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>'); }
 
     // ── REPORTE 2: ACUMULADO 12 MESES ─────────────────
