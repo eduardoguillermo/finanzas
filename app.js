@@ -735,7 +735,7 @@ function buildDolares() {
                 <button type="submit" class="btn btn-add" style="background:#a855f7;">Registrar Tarjeta USD</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:35%">Tarjeta</th><th style="width:22%" class="tr">Saldo base</th><th style="width:22%" class="tr">Consumo mes</th><th style="width:16%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead><tbody id="t-tusd"></tbody></table>
+            <div id="t-tusd"></div>
           </div>
         </div>
         <div>
@@ -857,17 +857,30 @@ function renderDolares() {
     });
     if(listaCuentasUSD.length){ const trT=el('tr'); trT.style.background='#f8fafc'; trT.innerHTML=`<td><b>Total</b></td><td class="tr" style="color:#16a34a;font-weight:bold;">${fmtUSD(totCU)}</td><td class="tr" style="font-weight:bold;">${fmtARS(totCU*tipoCambio)}</td><td></td>`; tCU.appendChild(trT); }
     else tCU.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas USD.</td></tr>';
-    // Tarjetas USD
+    // Tarjetas USD - cards
     let totTU=0;
-    listaTarjetasUSD.forEach(t=>{ const consumo=mDU[t.id]||0, total=t.saldo+consumo; totTU+=total;
-        const inp=inpNumUSD(t.saldo,v=>{ t.saldo=v; guardar(); calcDashUSD(); }); inp.style.color='#a855f7'; inp.style.fontWeight='bold';
-        const tdS=el('td','tr'); tdS.appendChild(inp);
-        const tdC=el('td','tr'); tdC.style.cssText='color:#6366f1;font-size:12px;font-weight:bold;'; tdC.innerText=consumo>0?fmtUSD(consumo):'—';
-        const tdA=el('td','tr'); tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(total*tipoCambio);
-        tTU.appendChild(fila([tdHTML(`<b>${t.nombre}</b>`),tdS,tdC,tdA,tdBtn('✕',()=>elimTarjetaUSD(t.id))]));
-    });
-    if(listaTarjetasUSD.length){ const trT=el('tr'); trT.style.background='#f8fafc'; trT.innerHTML=`<td><b>Total</b></td><td></td><td class="tr" style="color:#a855f7;font-weight:bold;">${fmtUSD(totTU)}</td><td class="tr" style="font-weight:bold;">${fmtARS(totTU*tipoCambio)}</td><td></td>`; tTU.appendChild(trT); }
-    else tTU.innerHTML='<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas USD.</td></tr>';
+    if(!listaTarjetasUSD.length){ tTU.innerHTML='<p style="color:#94a3b8;padding:12px;text-align:center;">Sin tarjetas USD.</p>'; }
+    else {
+        listaTarjetasUSD.forEach(function(t){
+            const consumo=mDU[t.id]||0, total=t.saldo+consumo; totTU+=total;
+            const card=el('div'); card.style.cssText='border:1px solid #e2e8f0;border-left:4px solid #a855f7;border-radius:6px;padding:12px;margin-bottom:8px;background:white;';
+            const row1=el('div'); row1.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+            const nom=el('span'); nom.style.cssText='font-weight:bold;color:#1e293b;font-size:14px;'; nom.innerText=t.nombre;
+            const btnX=el('button','btn-del'); btnX.innerText='\u2715'; btnX.onclick=function(){ elimTarjetaUSD(t.id); };
+            row1.appendChild(nom); row1.appendChild(btnX);
+            const mkC=function(label,node,color){ const c=el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 10px;'; const l=el('div'); l.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; l.innerText=label; const v=el('div'); v.style.cssText='font-size:15px;font-weight:bold;color:'+(color||'#1e293b')+';'; if(typeof node==='string') v.innerText=node; else v.appendChild(node); c.appendChild(l); c.appendChild(v); return c; };
+            const inp=inpNumUSD(t.saldo,function(v){ t.saldo=v; guardar(); calcDashUSD(); });
+            inp.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 8px;font-size:15px;font-weight:bold;color:#a855f7;background:white;text-align:right;';
+            const row2=el('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;';
+            row2.appendChild(mkC('Saldo Base',inp,'#a855f7'));
+            row2.appendChild(mkC('Consumo Mes',consumo>0?fmtUSD(consumo):'\u2014','#6366f1'));
+            const cP=el('div'); cP.style.cssText='background:#f0f9ff;border-radius:4px;padding:6px 10px;'; const lP=el('div'); lP.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; lP.innerText='En Pesos'; const vP=el('div'); vP.style.cssText='font-size:15px;font-weight:bold;color:#0284c7;'; vP.innerText=fmtARS(total*tipoCambio); cP.appendChild(lP); cP.appendChild(vP);
+            card.appendChild(row1); card.appendChild(row2); card.appendChild(cP); tTU.appendChild(card);
+        });
+        const tot=el('div'); tot.style.cssText='background:#f8fafc;border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;';
+        tot.innerHTML='<span style="font-weight:bold;color:#1e293b;">Total</span><div style="text-align:right;"><div style="font-weight:bold;color:#a855f7;font-size:15px;">'+fmtUSD(totTU)+'</div><div style="font-size:13px;color:#0284c7;">'+fmtARS(totTU*tipoCambio)+'</div></div>';
+        tTU.appendChild(tot);
+    }
     // Servicios USD
     [...listaServiciosUSD].sort((a,b)=>{ const est=s=>s.pagado>=s.presupuesto&&s.presupuesto>0?2:s.pagado>0?1:0; return est(a)!==est(b)?est(a)-est(b):a.nombre.localeCompare(b.nombre,'es'); }).forEach(s=>{
         const medSel=el('select'); medSel.className='inp';
@@ -1525,25 +1538,34 @@ function dibujarLineaInv(canvasId, hist, acc, modo, dolarOficial) {
     valores.forEach(function(v,i){ if(i>0) ctx.lineTo(xPos(i), yPos(v)); });
     ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
 
-    // Grilla + Eje Y
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px Arial'; ctx.textAlign = 'right';
-    [minV, (minV+maxV)/2, maxV].forEach(function(v) {
+    // Eje Y - solo min y max con fondo blanco
+    [minV, maxV].forEach(function(v) {
         const y = yPos(v);
-        ctx.fillText(fmtEje(v), pad.l-4, y+3);
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y);
-        ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.stroke();
+        const label = fmtEje(v);
+        ctx.font = 'bold 13px Arial'; ctx.textAlign = 'left';
+        const tw3 = ctx.measureText(label).width + 8;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(pad.l+4, y-19, tw3, 17);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(label, pad.l+6, y-6);
     });
-
     // Eje X
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#94a3b8'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
     const step = Math.max(1, Math.floor(hist.length/5));
-    hist.forEach(function(h, i) { if(i%step===0 || i===hist.length-1) ctx.fillText(h.fecha, xPos(i), H-pad.b+14); });
-
-    // Punto final + valor
+    hist.forEach(function(h, i) { if(i%step===0 || i===hist.length-1) ctx.fillText(h.fecha, xPos(i), H-pad.b+16); });
+    // Punto final con caja
     const lastX = xPos(valores.length-1), lastY = yPos(valores[valores.length-1]);
-    ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, 2*Math.PI); ctx.fillStyle=col; ctx.fill();
-    ctx.fillStyle = col; ctx.font='bold 11px Arial'; ctx.textAlign='right';
-    ctx.fillText(fmtEje(valores[valores.length-1]), lastX-8, lastY-8);
+    ctx.beginPath(); ctx.arc(lastX, lastY, 5, 0, 2*Math.PI); ctx.fillStyle=col; ctx.fill();
+    const lastLabel = fmtEje(valores[valores.length-1]);
+    ctx.font = 'bold 13px Arial';
+    const tw2 = ctx.measureText(lastLabel).width + 14;
+    const bx = Math.min(lastX - tw2/2, W - pad.r - tw2 - 2);
+    const by = Math.max(pad.t + 2, lastY - 34);
+    ctx.fillStyle = col; ctx.fillRect(bx, by, tw2, 22);
+    ctx.fillStyle = 'white'; ctx.textAlign = 'center';
+    ctx.fillText(lastLabel, bx + tw2/2, by + 16);
 }
 
 // ═══════════════════════════════════════════
