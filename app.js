@@ -115,7 +115,7 @@ function renderContenido() {
     const app = document.getElementById('app-content');
     app.innerHTML = '';
     if      (tabActivo===null)       { app.appendChild(buildMesActual()); bindMesActual(); render(); }
-    else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); }
+    else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); actualizarTCDolares(); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
     else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); }
     else {
@@ -702,9 +702,9 @@ function buildDolares() {
     <div class="container">
       <header class="no-print" style="border-bottom:3px solid #16a34a;">
         <div><h2 style="margin:0;font-size:20px;">💵 Gestión en Dólares</h2><p class="version-tag" style="color:#16a34a;">Cuentas, tarjetas y operatoria en USD</p></div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <label style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Tipo de cambio (ARS/USD)</label>
-          <input id="tc-input" type="number" value="${tipoCambio}" step="1" style="width:130px;padding:8px;border:2px solid #86efac;border-radius:6px;font-size:16px;font-weight:bold;color:#15803d;text-align:right;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div id="dol-tc-badge" style="font-size:13px;font-weight:bold;color:#15803d;padding:8px 14px;background:#f0fdf4;border-radius:6px;border:2px solid #86efac;">USD Oficial: cargando...</div>
+          <button class="btn no-print" id="btn-dol-actualizar" style="background:#16a34a;color:white;">🔄 Actualizar TC</button>
         </div>
       </header>
       <div class="grid-dashboard" style="margin-top:20px;">
@@ -784,7 +784,8 @@ function bindDolares() {
     g('form-tusd')?.addEventListener('submit', altaTarjetaUSD);
     g('form-susd')?.addEventListener('submit', altaServicioUSD);
     g('form-ccusd')?.addEventListener('submit', altaCorrienteUSD);
-    g('tc-input')?.addEventListener('input', e=>{ tipoCambio=parseFloat(e.target.value)||1200; guardar(); calcDashUSD(); });
+    g('btn-dol-actualizar')?.addEventListener('click', actualizarTCDolares);
+
 }
 
 function calcMDU() {
@@ -794,6 +795,24 @@ function calcMDU() {
     listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
     listaCorrientesUSD.forEach(c=>{ if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
     return mDU;
+}
+
+async function actualizarTCDolares() {
+    const btn = document.getElementById('btn-dol-actualizar');
+    if(btn){ btn.disabled=true; btn.innerText='⏳ Actualizando...'; }
+    try {
+        const res = await fetch('https://api.bluelytics.com.ar/v2/latest');
+        const data = await res.json();
+        tipoCambio = data.oficial.value_sell;
+        guardar();
+        const badge = document.getElementById('dol-tc-badge');
+        if(badge) badge.innerText = 'USD Oficial: ' + fmt(tipoCambio) + ' (venta)';
+        calcDashUSD();
+    } catch(e) {
+        const badge = document.getElementById('dol-tc-badge');
+        if(badge) badge.innerText = 'USD Oficial: ' + fmt(tipoCambio) + ' (guardado)';
+    }
+    if(btn){ btn.disabled=false; btn.innerText='🔄 Actualizar TC'; }
 }
 
 function calcDashUSD() {
@@ -1274,9 +1293,14 @@ function renderInstrumentos() {
         };
 
         // Monto editable
-        const inpMonto = el('input'); inpMonto.type='number'; inpMonto.value=inst.monto; inpMonto.step=moneda==='USD'?'0.01':'1';
-        inpMonto.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:'+monedaColor+';background:white;text-align:right;';
-        inpMonto.onchange = function(e){ inst.monto=parseFloat(e.target.value)||0; guardar(); renderInstrumentos(); calcDashInv(); };
+        let inpMonto;
+        if(moneda === 'USD'){
+            inpMonto = inpNumUSD(inst.monto, function(v){ inst.monto=v; guardar(); renderInstrumentos(); calcDashInv(); });
+            inpMonto.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:'+monedaColor+';background:white;text-align:right;';
+        } else {
+            inpMonto = inpNum(inst.monto, function(v){ inst.monto=v; guardar(); renderInstrumentos(); calcDashInv(); });
+            inpMonto.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:'+monedaColor+';background:white;text-align:right;';
+        }
 
         const vEnPesos = el('div'); vEnPesos.style.cssText='font-size:14px;font-weight:bold;color:#0284c7;'; vEnPesos.innerText=moneda==='USD'?fmt(montoARS):'—';
         const vVto = el('div'); vVto.style.cssText='font-size:13px;font-weight:bold;color:#334155;'; vVto.innerText=vtoStr;
