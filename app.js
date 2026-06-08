@@ -1140,7 +1140,7 @@ function buildReportes() {
     const ultimos12=[...historicoMeses].slice(-12);
     const mesesData=ultimos12.map(m=>({nombre:m.nombre,datos:m.datos}));
     mesesData.push({nombre:'Mes Actual',datos:{listaCorrientes,listaRubros}});
-    const todosRub2=new Set(); mesesData.forEach(m=>(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago).forEach(c=>todosRub2.add(c.rubro)));
+    const todosRub2=new Set(); mesesData.forEach(m=>(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>todosRub2.add(c.rubro)));
     const rubrosArr=[...todosRub2].sort();
     if(!rubrosArr.length){ wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos históricos aún.</div>'); }
     else {
@@ -1149,13 +1149,13 @@ function buildReportes() {
         t2+=`<th style="padding:7px 8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>`;
         const totMes=new Array(mesesData.length).fill(0); let totGen=0;
         rubrosArr.forEach((rub,ri)=>{ let totR=0; t2+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};"><td style="padding:5px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
-            mesesData.forEach((m,mi)=>{ const s=(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub).reduce((a,c)=>a+c.monto,0); totMes[mi]+=s; totR+=s; t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`; });
+            mesesData.forEach((m,mi)=>{ const s=(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0); totMes[mi]+=s; totR+=s; t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`; });
             totGen+=totR; t2+=`<td style="padding:5px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td></tr>`; });
         t2+=`<tr style="background:#f1f5f9;font-weight:bold;"><td style="padding:7px 8px;color:#1e293b;">TOTAL MES</td>`;
         totMes.forEach(t=>{ t2+=`<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
         t2+=`<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td></tr></tbody></table></div>`;
         wrap.insertAdjacentHTML('beforeend',t2);
-        const topR=[...rubrosArr].map(r=>({rubro:r,total:mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r).reduce((b,c)=>b+c.monto,0),0)})).sort((a,b)=>b.total-a.total);
+        const topR=[...rubrosArr].map(r=>({rubro:r,total:mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((b,c)=>b+c.monto,0),0)})).sort((a,b)=>b.total-a.total);
         const totAc=topR.reduce((a,r)=>a+r.total,0);
         let res=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Participación por Rubro (acumulado)</h4>`;
         topR.forEach(r=>{ const pct=totAc>0?(r.total/totAc*100).toFixed(1):0; res+=`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="font-weight:bold;color:#334155;">${r.rubro}</span><span style="color:#64748b;">${fmt(r.total)} · ${pct}%</span></div><div style="background:#e2e8f0;border-radius:4px;height:10px;"><div style="background:linear-gradient(90deg,#f59e0b,#f97316);height:10px;border-radius:4px;width:${Math.round(pct)}%;"></div></div></div>`; });
