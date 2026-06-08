@@ -1182,11 +1182,7 @@ function buildInversiones() {
               '</div>' +
               '<button type="submit" class="btn btn-add btn-blue">Agregar Instrumento</button>' +
             '</form></div>' +
-            '<table><thead><tr>' +
-              '<th style="width:32%">Instrumento</th><th style="width:10%" class="tc">Mon.</th>' +
-              '<th style="width:18%" class="tr">Monto</th><th style="width:18%" class="tr">En pesos</th>' +
-              '<th style="width:13%" class="tc">Vto.</th><th style="width:9%" class="no-print"></th>' +
-            '</tr></thead><tbody id="t-instrumentos"></tbody></table>' +
+            '<div id="t-instrumentos"></div>' +
           '</div>' +
           '<div class="panel no-print" style="border-top:4px solid #6366f1;">' +
             '<h3 class="panel-title">📈 Acciones</h3>' +
@@ -1238,19 +1234,59 @@ function elimInstrumento(id) { listaInstrumentos=listaInstrumentos.filter(functi
 function elimAccion(id)      { listaAcciones=listaAcciones.filter(function(x){ return x.id!==id; });         guardar(); renderAcciones(); calcDashInv(); }
 
 function renderInstrumentos() {
-    const tbl = document.getElementById('t-instrumentos'); if(!tbl) return;
-    tbl.innerHTML = '';
-    if(!listaInstrumentos.length){ tbl.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:12px;">Sin instrumentos.</td></tr>'; return; }
+    const wrap = document.getElementById('t-instrumentos'); if(!wrap) return;
+    wrap.innerHTML = '';
+    if(!listaInstrumentos.length){
+        wrap.innerHTML='<p style="color:#94a3b8;padding:12px;text-align:center;font-size:13px;">Sin instrumentos.</p>';
+        return;
+    }
+    const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
     listaInstrumentos.forEach(function(inst) {
         const moneda = inst.moneda || 'ARS';
-        const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
         const montoARS = moneda === 'USD' ? inst.monto * tc : inst.monto;
         const montoStr = moneda === 'USD' ? fmtUSD(inst.monto) : fmt(inst.monto);
-        const monedaBadge = '<span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:'+(moneda==='USD'?'#dcfce7':'#dbeafe')+';color:'+(moneda==='USD'?'#15803d':'#1d4ed8')+';">'+moneda+'</span>';
-        const tdMonto = el('td','tr'); tdMonto.innerText = montoStr;
-        const tdARS = el('td','tr'); tdARS.style.color='#64748b'; tdARS.innerText = moneda==='USD' ? fmt(montoARS) : '—';
+        const monedaColor = moneda === 'USD' ? '#15803d' : '#1d4ed8';
+        const monedaBg    = moneda === 'USD' ? '#dcfce7' : '#dbeafe';
         const vtoStr = inst.vto ? new Date(inst.vto+'T00:00:00').toLocaleDateString('es-AR') : '—';
-        tbl.appendChild(fila([tdHTML('<b>'+inst.nombre+'</b>'), tdHTML(monedaBadge,'tc'), tdMonto, tdARS, tdTxt(vtoStr,'tc'), tdBtn('✕',function(){ elimInstrumento(inst.id); })]));
+        const borderColor = moneda === 'USD' ? '#16a34a' : '#0284c7';
+
+        const card = el('div');
+        card.style.cssText = 'border:1px solid #e2e8f0;border-left:4px solid '+borderColor+';border-radius:6px;padding:12px;margin-bottom:8px;background:white;';
+
+        // Fila 1: nombre + badge moneda + botón eliminar
+        const row1 = el('div');
+        row1.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+        const izq = el('div'); izq.style.cssText = 'display:flex;align-items:center;gap:8px;';
+        const nomSpan = el('span'); nomSpan.style.cssText='font-weight:bold;color:#1e293b;font-size:14px;'; nomSpan.innerText=inst.nombre;
+        const badge = el('span'); badge.style.cssText='font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;background:'+monedaBg+';color:'+monedaColor+';'; badge.innerText=moneda;
+        izq.appendChild(nomSpan); izq.appendChild(badge);
+        const btnX = el('button','btn-del'); btnX.innerText='✕'; btnX.onclick=function(){ elimInstrumento(inst.id); };
+        row1.appendChild(izq); row1.appendChild(btnX);
+
+        // Fila 2: monto editable + en pesos + vencimiento
+        const row2 = el('div');
+        row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;';
+
+        const mkCell = function(label, contenido) {
+            const c = el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 8px;';
+            const l = el('div'); l.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;'; l.innerText=label;
+            c.appendChild(l); c.appendChild(contenido); return c;
+        };
+
+        // Monto editable
+        const inpMonto = el('input'); inpMonto.type='number'; inpMonto.value=inst.monto; inpMonto.step=moneda==='USD'?'0.01':'1';
+        inpMonto.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:'+monedaColor+';background:white;text-align:right;';
+        inpMonto.onchange = function(e){ inst.monto=parseFloat(e.target.value)||0; guardar(); renderInstrumentos(); calcDashInv(); };
+
+        const vEnPesos = el('div'); vEnPesos.style.cssText='font-size:14px;font-weight:bold;color:#0284c7;'; vEnPesos.innerText=moneda==='USD'?fmt(montoARS):'—';
+        const vVto = el('div'); vVto.style.cssText='font-size:13px;font-weight:bold;color:#334155;'; vVto.innerText=vtoStr;
+
+        row2.appendChild(mkCell(moneda==='USD'?'Monto (USD)':'Monto ($)', inpMonto));
+        row2.appendChild(mkCell('En pesos', vEnPesos));
+        row2.appendChild(mkCell('Vencimiento', vVto));
+
+        card.appendChild(row1); card.appendChild(row2);
+        wrap.appendChild(card);
     });
 }
 
