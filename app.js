@@ -1176,14 +1176,16 @@ function buildInversiones() {
             '<div class="form-block"><form id="form-instrumento">' +
               '<div class="form-row">' +
                 '<div style="flex:2"><label>Nombre</label><input type="text" id="inst-nombre" required placeholder="Ej. Super Ahorro Santander"></div>' +
-                '<div><label>Monto ($)</label><input type="number" id="inst-monto" required value="0" step="1"></div>' +
+                '<div><label>Moneda</label><select id="inst-moneda"><option value="ARS">$ Pesos</option><option value="USD">USD Dólares</option></select></div>' +
+                '<div><label>Monto</label><input type="number" id="inst-monto" required value="0" step="0.01"></div>' +
                 '<div><label>Vencimiento</label><input type="date" id="inst-vto"></div>' +
               '</div>' +
               '<button type="submit" class="btn btn-add btn-blue">Agregar Instrumento</button>' +
             '</form></div>' +
             '<table><thead><tr>' +
-              '<th style="width:40%">Instrumento</th><th style="width:28%" class="tr">Monto ($)</th>' +
-              '<th style="width:22%" class="tc">Vencimiento</th><th style="width:10%" class="no-print"></th>' +
+              '<th style="width:32%">Instrumento</th><th style="width:10%" class="tc">Mon.</th>' +
+              '<th style="width:18%" class="tr">Monto</th><th style="width:18%" class="tr">En pesos</th>' +
+              '<th style="width:13%" class="tc">Vto.</th><th style="width:9%" class="no-print"></th>' +
             '</tr></thead><tbody id="t-instrumentos"></tbody></table>' +
           '</div>' +
           '<div class="panel no-print" style="border-top:4px solid #6366f1;">' +
@@ -1220,7 +1222,9 @@ function bindInversiones() {
 
 function altaInstrumento(e) {
     e.preventDefault();
-    listaInstrumentos.push({id:'inst_'+Date.now(), nombre:vGet('inst-nombre'), monto:nGet('inst-monto'), vto:vGet('inst-vto')});
+    const moneda = document.getElementById('inst-moneda').value;
+    const monto = parseFloat(document.getElementById('inst-monto').value) || 0;
+    listaInstrumentos.push({id:'inst_'+Date.now(), nombre:vGet('inst-nombre'), moneda, monto, vto:vGet('inst-vto')});
     guardar(); e.target.reset(); renderInstrumentos(); calcDashInv();
 }
 function altaAccion(e) {
@@ -1236,12 +1240,17 @@ function elimAccion(id)      { listaAcciones=listaAcciones.filter(function(x){ r
 function renderInstrumentos() {
     const tbl = document.getElementById('t-instrumentos'); if(!tbl) return;
     tbl.innerHTML = '';
-    if(!listaInstrumentos.length){ tbl.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin instrumentos.</td></tr>'; return; }
+    if(!listaInstrumentos.length){ tbl.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:12px;">Sin instrumentos.</td></tr>'; return; }
     listaInstrumentos.forEach(function(inst) {
-        const inp = inpNum(inst.monto, function(v){ inst.monto=v; guardar(); calcDashInv(); });
-        const tdM = el('td','tr'); tdM.appendChild(inp);
+        const moneda = inst.moneda || 'ARS';
+        const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
+        const montoARS = moneda === 'USD' ? inst.monto * tc : inst.monto;
+        const montoStr = moneda === 'USD' ? fmtUSD(inst.monto) : fmt(inst.monto);
+        const monedaBadge = '<span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:'+(moneda==='USD'?'#dcfce7':'#dbeafe')+';color:'+(moneda==='USD'?'#15803d':'#1d4ed8')+';">'+moneda+'</span>';
+        const tdMonto = el('td','tr'); tdMonto.innerText = montoStr;
+        const tdARS = el('td','tr'); tdARS.style.color='#64748b'; tdARS.innerText = moneda==='USD' ? fmt(montoARS) : '—';
         const vtoStr = inst.vto ? new Date(inst.vto+'T00:00:00').toLocaleDateString('es-AR') : '—';
-        tbl.appendChild(fila([tdHTML('<b>'+inst.nombre+'</b>'), tdM, tdTxt(vtoStr,'tc'), tdBtn('✕',function(){ elimInstrumento(inst.id); })]));
+        tbl.appendChild(fila([tdHTML('<b>'+inst.nombre+'</b>'), tdHTML(monedaBadge,'tc'), tdMonto, tdARS, tdTxt(vtoStr,'tc'), tdBtn('✕',function(){ elimInstrumento(inst.id); })]));
     });
 }
 
@@ -1277,7 +1286,7 @@ function renderAcciones() {
 
         // Fila 2: cantidad editable + precio + variación + valuación
         const row2 = el('div');
-        row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:center;';
+        row2.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;';
 
         const mkCell = function(label, valor, color) {
             const c = el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 8px;';
@@ -1310,7 +1319,10 @@ function renderAcciones() {
 }
 
 function calcDashInv() {
-    const totalManual = listaInstrumentos.reduce(function(a,i){ return a+i.monto; }, 0);
+    const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
+    const totalManual = listaInstrumentos.reduce(function(a,i){
+        return a + ((i.moneda==='USD') ? i.monto*tc : i.monto);
+    }, 0);
     const totalAcc = listaAcciones.reduce(function(a,ac){ const p=(_cotizaciones[ac.ticker]||{}).precio||0; return a+p*ac.cant; }, 0);
     const totalARS = totalManual + totalAcc;
     const totalUSD = _dolarOficial > 0 ? totalARS / _dolarOficial : 0;
