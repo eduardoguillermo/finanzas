@@ -318,9 +318,16 @@ function buildMesActual() {
                   <div><label>Monto ($)</label><input type="number" id="corr-monto" required placeholder="0" step="1"></div>
                   <div><label>Pagar con</label><select id="corr-medio" required></select></div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                  <input type="checkbox" id="corr-es-ingreso" style="width:16px;height:16px;accent-color:#10b981;cursor:pointer;">
-                  <label for="corr-es-ingreso" style="font-size:13px;color:#334155;text-transform:none;font-weight:bold;cursor:pointer;">Es un ingreso</label>
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+                  <div><label>Clase</label><select id="corr-clase" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;">
+                    <option value="M">M — Mío</option>
+                    <option value="O">O — Oma</option>
+                    <option value="X">X — Otros</option>
+                  </select></div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="corr-es-ingreso" style="width:16px;height:16px;accent-color:#10b981;cursor:pointer;">
+                    <label for="corr-es-ingreso" style="font-size:13px;color:#334155;text-transform:none;font-weight:bold;cursor:pointer;">Es un ingreso</label>
+                  </div>
                 </div>
                 <button type="submit" class="btn btn-add btn-green">Asentar Gasto Corriente</button>
               </form>
@@ -436,7 +443,7 @@ function render() {
     if(wC){
         wC.innerHTML='';
         const tbl=el('table'); tbl.style.cssText='width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;';
-        const thead=el('thead'); thead.innerHTML='<tr><th style="width:20%">Rubro</th><th style="width:27%">Detalle</th><th style="width:17%">Medio</th><th style="width:13%;text-align:center;">F. Pago</th><th style="width:15%;text-align:right;">Monto ($)</th><th style="width:8%" class="no-print"></th></tr>';
+        const thead=el('thead'); thead.innerHTML='<tr><th style="width:6%" class="tc">Clase</th><th style="width:18%">Rubro</th><th style="width:23%">Detalle</th><th style="width:15%">Medio</th><th style="width:12%;text-align:center;">F. Pago</th><th style="width:14%;text-align:right;">Monto ($)</th><th style="width:6%" class="no-print"></th></tr>';
         const tbody=el('tbody');
         if(!listaCorrientes.length) { tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin egresos corrientes.</td></tr>'; }
         else { listaCorrientes.forEach(c=>{
@@ -455,13 +462,19 @@ function render() {
                 c.monto=v; guardar(); calcDash();
             });
             inpM.style.cssText='font-weight:bold;color:'+(c.esIngreso?'#0284c7':'#10b981')+';';
+            const claseColor={'M':'#0284c7','O':'#a855f7','X':'#64748b'};
+            const cc=claseColor[c.clase||'M'];
+            const selCl=el('select'); selCl.className='inp'; selCl.style.cssText='padding:3px 4px;font-size:11px;font-weight:bold;color:'+cc+';border-color:'+cc+'44;background:'+cc+'11;';
+            ['M','O','X'].forEach(op=>{ const o=el('option'); o.value=op; o.innerText=op; if((c.clase||'M')===op) o.selected=true; selCl.appendChild(o); });
+            selCl.onchange=e=>{ c.clase=e.target.value; const nc=claseColor[c.clase]; selCl.style.cssText='padding:3px 4px;font-size:11px;font-weight:bold;color:'+nc+';border-color:'+nc+'44;background:'+nc+'11;'; guardar(); };
+            const tdCl=el('td','tc'); tdCl.appendChild(selCl);
             const tdR=el('td'); tdR.appendChild(selR);
             const tdD=el('td'); tdD.appendChild(inpD);
             const tdM=el('td'); tdM.style.color='#64748b'; tdM.innerText=(c.esIngreso?'⬆ ':'')+medioNom(c.medioPagoId);
             const tdFP=el('td','tc'); tdFP.appendChild(inpFP);
             const tdMon=el('td','tr'); tdMon.appendChild(inpM);
             const tdX=el('td','tc no-print'); const bX=el('button','btn-del'); bX.innerText='✕'; bX.onclick=()=>elimCorriente(c.id); tdX.appendChild(bX);
-            const tr=el('tr'); [tdR,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
+            const tr=el('tr'); [tdCl,tdR,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
         }); }
         tbl.appendChild(thead); tbl.appendChild(tbody); wC.appendChild(tbl);
     }
@@ -525,7 +538,8 @@ function altaCorriente(e) {
     e.preventDefault();
     const medioId=vGet('corr-medio'); if(!medioId){alert('Configure un medio de pago.'); return;}
     const monto=nGet('corr-monto'), esIngreso=document.getElementById('corr-es-ingreso')?.checked||false;
-    listaCorrientes.push({id:'c_'+Date.now(),rubro:vGet('corr-rubro'),detalle:vGet('corr-detalle'),monto,fechaPago:'',medioPagoId:medioId,esIngreso});
+    const clase=vGet('corr-clase')||'M';
+    listaCorrientes.push({id:'c_'+Date.now(),rubro:vGet('corr-rubro'),detalle:vGet('corr-detalle'),monto,fechaPago:'',medioPagoId:medioId,esIngreso,clase});
     const chk=document.getElementById('corr-es-ingreso'); if(chk) chk.checked=false;
     guardar(); e.target.reset(); render();
 }
@@ -1075,10 +1089,41 @@ function buildReportes() {
     listaCorrientes.filter(c=>!c.fechaPago&&!esPagoTarjeta(c.rubro)).forEach(c=>{ porRSF[c.rubro]=(porRSF[c.rubro]||0)+c.monto; });
     const totCorr=Object.values(porR).reduce((a,b)=>a+b,0);
     const todosR=new Set([...Object.keys(porR),...Object.keys(porRSF)]);
-    let tCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Sin confirmar</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
-    [...todosR].sort().forEach(r=>{ const pg=porR[r]||0,sf=porRSF[r]||0,pct=totCorr>0?((pg/totCorr)*100).toFixed(1):'0.0',col=colorRubro(r); tCorr+=`<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block;"></span><b style="color:${col};">${r}</b></span></td><td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pg)}</td><td style="padding:5px 6px;text-align:right;color:#94a3b8;">${fmt(sf)}</td><td style="padding:5px 6px;text-align:right;">${pct}%</td></tr>`; });
-    tCorr+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;color:#10b981;">${fmt(totCorr)}</td><td style="text-align:right;color:#94a3b8;">${fmt(Object.values(porRSF).reduce((a,b)=>a+b,0))}</td><td></td></tr></table></div>`;
+    // Tabla corrientes con clase
+    const claseColorMap={'M':'#0284c7','O':'#a855f7','X':'#64748b'};
+    // Calcular porR con clase
+    const porRConClase={};
+    listaCorrientes.filter(c=>c.fechaPago&&!esPagoTarjeta(c.rubro)).forEach(c=>{
+        if(!porRConClase[c.rubro]) porRConClase[c.rubro]={monto:0,clase:c.clase||'M'};
+        porRConClase[c.rubro].monto+=c.monto;
+    });
+    let tCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:center;">Clase</th><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Sin confirmar</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
+    [...todosR].sort().forEach(r=>{
+        const pg=porR[r]||0,sf=porRSF[r]||0,pct=totCorr>0?((pg/totCorr)*100).toFixed(1):'0.0',col=colorRubro(r);
+        const clase=(porRConClase[r]&&porRConClase[r].clase)||'M';
+        const cc=claseColorMap[clase];
+        tCorr+=`<tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 8px;border-radius:4px;background:${cc}22;color:${cc};">${clase}</span></td>
+            <td style="padding:5px 6px;"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block;"></span><b style="color:${col};">${r}</b></span></td>
+            <td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pg)}</td>
+            <td style="padding:5px 6px;text-align:right;color:#94a3b8;">${fmt(sf)}</td>
+            <td style="padding:5px 6px;text-align:right;">${pct}%</td>
+        </tr>`; });
+    tCorr+=`<tr style="background:#f8fafc;font-weight:bold;"><td></td><td>TOTAL</td><td style="text-align:right;color:#10b981;">${fmt(totCorr)}</td><td style="text-align:right;color:#94a3b8;">${fmt(Object.values(porRSF).reduce((a,b)=>a+b,0))}</td><td></td></tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend',tCorr);
+
+    // Subtotales corrientes por clase
+    const clases3=['M','O','X'], claseLabels={'M':'M — Mío','O':'O — Oma','X':'X — Otros'};
+    let tClaseCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Gastos Corrientes por Clase</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Clase</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
+    clases3.forEach(function(cl){
+        const total=listaCorrientes.filter(c=>c.fechaPago&&(c.clase||'M')===cl&&!esPagoTarjeta(c.rubro)).reduce((a,c)=>a+c.monto,0);
+        const pct=totCorr>0?((total/totCorr)*100).toFixed(1):'0.0';
+        const cc=claseColorMap[cl];
+        tClaseCorr+=`<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;"><span style="font-weight:bold;padding:2px 8px;border-radius:4px;background:${cc}22;color:${cc};">${claseLabels[cl]}</span></td><td style="padding:5px 6px;text-align:right;font-weight:bold;">${fmt(total)}</td><td style="padding:5px 6px;text-align:right;">${pct}%</td></tr>`;
+    });
+    tClaseCorr+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;color:#10b981;">${fmt(totCorr)}</td><td></td></tr></table></div>`;
+    wrap.insertAdjacentHTML('beforeend',tClaseCorr);
+
     // Card doble: servicios fijos + corrientes pesos
     const itemsCorrPesos = Object.entries(porR).map(function(e){ return {label:e[0],valor:e[1]}; });
     if(srvConPres.length>0 || itemsCorrPesos.length>0){
