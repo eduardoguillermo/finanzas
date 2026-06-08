@@ -986,6 +986,30 @@ function dibujarTorta(canvasId, leyId, items, fmtVal, coloresFijos) {
         }); }
     },50);
 }
+
+function mkTortaDoble(id1, ley1, tit1, id2, ley2, tit2, color1, color2) {
+    const d = el('div');
+    d.style.cssText = 'background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid '+color1+';padding:20px;margin-bottom:16px;';
+    d.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">' +
+            '<div>' +
+                '<h4 style="margin:0 0 14px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 '+tit1+'</h4>' +
+                '<div style="display:flex;align-items:flex-start;gap:16px;">' +
+                    '<div id="'+id1+'"></div>' +
+                    '<div id="'+ley1+'" style="max-height:240px;overflow-y:auto;flex:1;min-width:0;"></div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="border-left:1px solid #e2e8f0;padding-left:24px;">' +
+                '<h4 style="margin:0 0 14px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 '+tit2+'</h4>' +
+                '<div style="display:flex;align-items:flex-start;gap:16px;">' +
+                    '<div id="'+id2+'"></div>' +
+                    '<div id="'+ley2+'" style="max-height:240px;overflow-y:auto;flex:1;min-width:0;"></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    return d;
+}
+
 function mkTortaDiv(canvasId, leyId, titulo, color) {
     const d = el('div');
     d.style.cssText = 'background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid '+color+';padding:20px;margin-bottom:16px;';
@@ -1042,14 +1066,8 @@ function buildReportes() {
     tCl+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmt(totPres)}</td><td style="text-align:right;color:#10b981;">${fmt(totPag)}</td><td style="text-align:right;color:#ef4444;">${fmt(totPend)}</td><td></td></tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend',tCl);
 
-    // Gráfico torta
-    // Torta servicios fijos pesos
+    // Gráficos dobles pesos
     const srvConPres = listaServicios.filter(function(s){ return s.presupuesto>0; });
-    if(srvConPres.length>0){
-        const divT = mkTortaDiv('torta-srv','torta-srv-ley','Distribución Presupuesto · Servicios Fijos','#4f46e5');
-        wrap.appendChild(divT);
-        dibujarTorta('torta-srv','torta-srv-ley', srvConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmt);
-    }
 
     const porR={},porRSF={};
     const esPagoTarjeta = r => r && r.toLowerCase().includes('tarjeta');
@@ -1061,13 +1079,21 @@ function buildReportes() {
     [...todosR].sort().forEach(r=>{ const pg=porR[r]||0,sf=porRSF[r]||0,pct=totCorr>0?((pg/totCorr)*100).toFixed(1):'0.0',col=colorRubro(r); tCorr+=`<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;display:inline-block;"></span><b style="color:${col};">${r}</b></span></td><td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pg)}</td><td style="padding:5px 6px;text-align:right;color:#94a3b8;">${fmt(sf)}</td><td style="padding:5px 6px;text-align:right;">${pct}%</td></tr>`; });
     tCorr+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;color:#10b981;">${fmt(totCorr)}</td><td style="text-align:right;color:#94a3b8;">${fmt(Object.values(porRSF).reduce((a,b)=>a+b,0))}</td><td></td></tr></table></div>`;
     wrap.insertAdjacentHTML('beforeend',tCorr);
-    // Torta corrientes pesos por rubro
+    // Card doble: servicios fijos + corrientes pesos
     const itemsCorrPesos = Object.entries(porR).map(function(e){ return {label:e[0],valor:e[1]}; });
-    if(itemsCorrPesos.length>0){
-        const divTC = mkTortaDiv('torta-corr','torta-corr-ley','Distribución Gastos Corrientes por Rubro','#10b981');
-        wrap.appendChild(divTC);
-        const colsCorrPesos = itemsCorrPesos.map(function(it){ return colorRubro(it.label); });
-        dibujarTorta('torta-corr','torta-corr-ley', itemsCorrPesos, fmt, colsCorrPesos);
+    if(srvConPres.length>0 || itemsCorrPesos.length>0){
+        const divDoble = mkTortaDoble(
+            'torta-srv','torta-srv-ley','Servicios Fijos · Presupuesto',
+            'torta-corr','torta-corr-ley','Gastos Corrientes · por Rubro',
+            '#4f46e5','#10b981'
+        );
+        wrap.appendChild(divDoble);
+        if(srvConPres.length>0)
+            dibujarTorta('torta-srv','torta-srv-ley', srvConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmt);
+        if(itemsCorrPesos.length>0){
+            const colsCorrPesos = itemsCorrPesos.map(function(it){ return colorRubro(it.label); });
+            dibujarTorta('torta-corr','torta-corr-ley', itemsCorrPesos, fmt, colsCorrPesos);
+        }
     }
 
 
@@ -1087,23 +1113,24 @@ function buildReportes() {
             tSU+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmtUSD(tpU)}</td><td style="text-align:right;color:#10b981;">${fmtUSD(pgU)}</td><td style="text-align:right;color:#ef4444;">${fmtUSD(peU)}</td><td style="text-align:right;">${fmtARS(peU*tc)}</td><td></td></tr></table></div>`;
             wrap.insertAdjacentHTML('beforeend',tSU);
         }
-        // Torta servicios fijos USD
+        // Card doble USD: servicios fijos + corrientes
         const srvUSDConPres = listaServiciosUSD.filter(function(s){ return s.presupuesto>0; });
-        if(srvUSDConPres.length>0){
-            const divTSU = mkTortaDiv('torta-srv-usd','torta-srv-usd-ley','Distribución Presupuesto · Servicios Fijos USD','#4f46e5');
-            wrap.appendChild(divTSU);
-            dibujarTorta('torta-srv-usd','torta-srv-usd-ley', srvUSDConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmtUSD);
-        }
-
-        // Torta corrientes USD por rubro
         const porRubroUSD = {};
         listaCorrientesUSD.filter(function(c){ return !c.esIngreso; }).forEach(function(c){ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
         const itemsCorrUSD = Object.entries(porRubroUSD).map(function(e){ return {label:e[0],valor:e[1]}; });
-        if(itemsCorrUSD.length>0){
-            const divTCU = mkTortaDiv('torta-corr-usd','torta-corr-usd-ley','Distribución Gastos Corrientes USD por Rubro','#10b981');
-            wrap.appendChild(divTCU);
-            const colsCorrUSD = itemsCorrUSD.map(function(it){ return colorRubro(it.label); });
-            dibujarTorta('torta-corr-usd','torta-corr-usd-ley', itemsCorrUSD, fmtUSD, colsCorrUSD);
+        if(srvUSDConPres.length>0 || itemsCorrUSD.length>0){
+            const divDobleUSD = mkTortaDoble(
+                'torta-srv-usd','torta-srv-usd-ley','Servicios Fijos USD · Presupuesto',
+                'torta-corr-usd','torta-corr-usd-ley','Gastos Corrientes USD · por Rubro',
+                '#4f46e5','#10b981'
+            );
+            wrap.appendChild(divDobleUSD);
+            if(srvUSDConPres.length>0)
+                dibujarTorta('torta-srv-usd','torta-srv-usd-ley', srvUSDConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmtUSD);
+            if(itemsCorrUSD.length>0){
+                const colsCorrUSD = itemsCorrUSD.map(function(it){ return colorRubro(it.label); });
+                dibujarTorta('torta-corr-usd','torta-corr-usd-ley', itemsCorrUSD, fmtUSD, colsCorrUSD);
+            }
         }
 
     } else { wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>'); }
