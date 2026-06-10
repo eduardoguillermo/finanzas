@@ -143,10 +143,7 @@ function medioNom(id) {
 }
 function esCuentaLiq(id) {
     const b=listaBancos.find(x=>x.id===id);
-    if(!b) return false;
-    if(b.autoDescontar) return true;
-    const n=b.nombre.toLowerCase();
-    return n.includes('efectivo')||n.includes('mercado pago')||n.includes('mercadopago');
+    return b ? (b.autoDescontar===true) : false;
 }
 function inpNum(val, onChange) {
     const inp=el('input'); inp.type='text'; inp.className='inp tr';
@@ -373,7 +370,7 @@ function render() {
     [sMedio,sOrig,sDest,sMedCuota].forEach(s=>{ if(s) s.innerHTML=''; });
     listaBancos.forEach(b=>{ [sMedio,sOrig,sDest,sMedCuota].forEach(s=>{ if(s) addOpt(s,b.id,'🏦 '+b.nombre); }); });
     listaTarjetas.forEach(t=>{ [sMedio,sOrig,sDest,sMedCuota].forEach(s=>{ if(s) addOpt(s,t.id,'💳 '+t.nombre); }); });
-    if(sRubro){ sRubro.innerHTML=''; listaRubros.forEach(r=>addOpt(sRubro,r,r)); }
+    if(sRubro){ sRubro.innerHTML=''; [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>addOpt(sRubro,r,r)); }
     listaRubros.forEach(r=>{
         const b=el('div','rubro-badge'); 
         const col=colorRubro(r);
@@ -530,7 +527,7 @@ function altaBanco(e) { e.preventDefault(); listaBancos.push({id:'b_'+Date.now()
 function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.now(),nombre:vGet('tarjeta-nombre'),saldo:nGet('tarjeta-saldo')}); guardar(); e.target.reset(); render(); }
 function altaServicio(e) {
     e.preventDefault();
-    const medioId=listaBancos[0]?.id||listaTarjetas[0]?.id||'';
+    const medioId=(listaTarjetas[0]?.id)||(listaBancos.find(b=>!b.autoDescontar)?.id)||(listaBancos[0]?.id)||'';
     listaServicios.push({id:'s_'+Date.now(),nombre:vGet('srv-nombre'),presupuesto:nGet('srv-presupuesto'),pagado:0,fVto:vGet('srv-vto'),fPago:'',medioPagoId:medioId,clase:vGet('srv-clase')||'M'});
     guardar(); e.target.reset(); render();
 }
