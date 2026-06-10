@@ -1408,7 +1408,11 @@ function renderAcciones() {
     }
     listaAcciones.forEach(function(a) {
         const cot = _cotizaciones[a.ticker] || {};
-        const precio = cot.precio || 0, variacion = cot.variacion || 0, valuacion = precio * a.cant;
+        const precio = cot.precio || 0, variacion = cot.variacion || 0;
+        const esLocal = a.ticker.toUpperCase().endsWith('.BA');
+        const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
+        // Valuación siempre en pesos para el dashboard
+        const valuacionARS = esLocal ? precio * a.cant : precio * a.cant * tc;
         const varColor = variacion > 0 ? '#16a34a' : variacion < 0 ? '#ef4444' : '#64748b';
         const varStr = (variacion > 0 ? '+' : '') + variacion.toFixed(2) + '%';
         const varBg = variacion > 0 ? '#dcfce7' : variacion < 0 ? '#fee2e2' : '#f1f5f9';
@@ -1454,9 +1458,11 @@ function renderAcciones() {
         celdaVar.appendChild(lVar); celdaVar.appendChild(vVar);
 
         row2.appendChild(celdaCant);
-        row2.appendChild(mkCell('Precio', precio?fmt(precio):'Actualizando...', '#1e293b'));
+        const precioStr = precio ? (esLocal ? fmt(precio) : fmtUSD(precio)) : 'Actualizando...';
+        const valStr    = valuacionARS ? fmt(valuacionARS) + (esLocal ? '' : ' ≈') : '—';
+        row2.appendChild(mkCell('Precio', precioStr, '#1e293b'));
         row2.appendChild(celdaVar);
-        row2.appendChild(mkCell('Valuación', valuacion?fmt(valuacion):'—', '#6366f1'));
+        row2.appendChild(mkCell('Valuación (ARS)', valStr, '#6366f1'));
 
         card.appendChild(row1); card.appendChild(row2);
         wrap.appendChild(card);
@@ -1468,7 +1474,12 @@ function calcDashInv() {
     const totalManual = listaInstrumentos.reduce(function(a,i){
         return a + ((i.moneda==='USD') ? i.monto*tc : i.monto);
     }, 0);
-    const totalAcc = listaAcciones.reduce(function(a,ac){ const p=(_cotizaciones[ac.ticker]||{}).precio||0; return a+p*ac.cant; }, 0);
+    const totalAcc = listaAcciones.reduce(function(a,ac){
+        const p=(_cotizaciones[ac.ticker]||{}).precio||0;
+        const esL=ac.ticker.toUpperCase().endsWith('.BA');
+        const tc2=_dolarOficial>0?_dolarOficial:tipoCambio;
+        return a+(esL?p*ac.cant:p*ac.cant*tc2);
+    }, 0);
     const totalARS = totalManual + totalAcc;
     const totalUSD = _dolarOficial > 0 ? totalARS / _dolarOficial : 0;
     setTxt('inv-total-ars',     fmt(totalARS));
