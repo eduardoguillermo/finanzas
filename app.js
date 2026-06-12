@@ -2211,7 +2211,7 @@ function buildAnual() {
     wrap.appendChild(hdr);
 
     // Construir array de meses: hasta 12 históricos + mes actual
-    const ultimos = [...historicoMeses].slice(-12);
+    const ultimos = [...historicoMeses].slice(-12).filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026')));
     const mesesArr = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos, cerrado: true }));
     mesesArr.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaCuentasUSD, listaServiciosUSD, listaCorrientesUSD, tipoCambio }, cerrado: false });
 
@@ -2371,7 +2371,7 @@ function buildAnual() {
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#16a34a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Todos los Períodos</h3>');
 
     // Tabla métricas USD
-    const mesesUSD = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos }));
+    const mesesUSD = ultimos.filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026'))).map(m => ({ nombre: m.nombre, datos: m.datos }));
     mesesUSD.push({ nombre: 'Mes Actual', datos: { listaCuentasUSD, listaTarjetasUSD, listaServiciosUSD, listaCorrientesUSD } });
 
     function calcMesUSD(m) {
@@ -2570,7 +2570,7 @@ function exportarExcel() {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datCorrUSD), 'Corrientes USD');
 
         // ── Hoja 5: Resumen Anual ──
-        const ultimos = [...historicoMeses].slice(-12);
+        const ultimos = [...historicoMeses].slice(-12).filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026')));
         const mesesArr2 = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos }));
         mesesArr2.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes } });
 
