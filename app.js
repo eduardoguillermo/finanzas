@@ -288,7 +288,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.4.1</p>
+          <p class="version-tag">v3.5.3</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -305,7 +305,23 @@ function buildMesActual() {
         <div class="card-bal" style="border-left:5px solid #0284c7;"><h4>Efectivo / Banco Disponible</h4><p id="d-bancos" style="color:#0284c7;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Total Deuda Tarjetas</h4><p id="d-tarjetas" style="color:#a855f7;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
-        <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
+        <div class="card-bal" style="border-left:5px solid #f59e0b;cursor:pointer;" onclick="toggleProyectado()">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;">Saldo Proyectado <span id="d-proy-toggle" style="font-size:10px;color:#94a3b8;">▼ detalle</span></h4>
+          <p id="d-proyectado" style="color:#f59e0b;">$ 0</p>
+          <small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small>
+          <div id="d-proy-detalle" style="display:none;margin-top:10px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:11px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="color:#0284c7;">🏦 Banco disponible</span>
+              <span id="d-proy-banco" style="color:#0284c7;font-weight:bold;">$ 0</span>
+            </div>
+            <div id="d-proy-fijos-list"></div>
+            <div id="d-proy-corr-list"></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0;font-weight:bold;">
+              <span style="color:#f59e0b;">= Saldo proyectado</span>
+              <span id="d-proy-total" style="color:#f59e0b;">$ 0</span>
+            </div>
+          </div>
+        </div>
         <div class="card-bal" style="border-left:5px solid #6366f1;padding-bottom:12px;">
           <h4>Presupuesto Mes</h4>
           <div style="margin-top:8px;">
@@ -689,10 +705,39 @@ function calcDash() {
     const corrSinFecha = listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
     const saldoProyectado = sumaBancos - fijosPend - corrSinFecha;
     setTxt('d-proyectado', fmt(saldoProyectado));
+    setTxt('d-proy-total', fmt(saldoProyectado));
     const dp = document.getElementById('d-proyectado');
     if(dp) dp.style.color = saldoProyectado >= 0 ? '#f59e0b' : '#ef4444';
+    const dpT = document.getElementById('d-proy-total');
+    if(dpT) dpT.style.color = saldoProyectado >= 0 ? '#f59e0b' : '#ef4444';
     const dps = document.getElementById('d-proyectado-sub');
     if(dps) dps.innerText = 'Banco ' + fmt(sumaBancos) + ' − Pend. ' + fmt(fijosPend + corrSinFecha);
+    // Detalle proyectado
+    const dpBanco = document.getElementById('d-proy-banco');
+    if(dpBanco) dpBanco.innerText = fmt(sumaBancos);
+    const dpFijos = document.getElementById('d-proy-fijos-list');
+    if(dpFijos) {
+        const fijosItems = listaServicios.filter(s=>s.presupuesto>s.pagado);
+        if(fijosItems.length) {
+            dpFijos.innerHTML = '<div style="color:#64748b;font-size:10px;text-transform:uppercase;margin:4px 0 2px;">Fijos pendientes</div>' +
+                fijosItems.map(s=>{
+                    const pend = s.presupuesto - s.pagado;
+                    return '<div style="display:flex;justify-content:space-between;margin-bottom:2px;padding-left:8px;"><span style="color:#64748b;">− '+s.nombre+'</span><span style="color:#ef4444;">'+fmt(pend)+'</span></div>';
+                }).join('');
+        } else {
+            dpFijos.innerHTML = '<div style="color:#10b981;font-size:10px;padding:2px 0;">✓ Todos los fijos pagados</div>';
+        }
+    }
+    const dpCorr = document.getElementById('d-proy-corr-list');
+    if(dpCorr) {
+        const corrItems = listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso);
+        if(corrItems.length) {
+            dpCorr.innerHTML = '<div style="color:#64748b;font-size:10px;text-transform:uppercase;margin:4px 0 2px;">Corrientes sin pagar</div>' +
+                corrItems.map(c=>{
+                    return '<div style="display:flex;justify-content:space-between;margin-bottom:2px;padding-left:8px;"><span style="color:#64748b;">− '+(c.detalle||c.rubro||'Sin detalle')+'</span><span style="color:#f59e0b;">'+fmt(c.monto)+'</span></div>';
+                }).join('');
+        }
+    }
     // Presupuesto pesos — Fijos
     const totalSrvPresup = listaServicios.reduce((a,s)=>a+s.presupuesto,0);
     const totalSrvPag    = listaServicios.reduce((a,s)=>a+s.pagado,0);
@@ -2105,6 +2150,16 @@ if('serviceWorker' in navigator){
 // ═══════════════════════════════════════════
 //  RESUMEN ANUAL
 // ═══════════════════════════════════════════
+
+function toggleProyectado() {
+    const det = document.getElementById('d-proy-detalle');
+    const tog = document.getElementById('d-proy-toggle');
+    if(!det) return;
+    const visible = det.style.display !== 'none';
+    det.style.display = visible ? 'none' : 'block';
+    if(tog) tog.innerText = visible ? '▼ detalle' : '▲ cerrar';
+}
+
 function buildAnual() {
     const wrap = el('div','container'); wrap.style.paddingTop='20px';
 
@@ -2270,6 +2325,100 @@ function buildAnual() {
     <div style="font-size:11px;color:#64748b;">${fmt(peorMes.balance)}</div>
   </div>
 </div>`);
+
+    // ── GRÁFICO EVOLUCIÓN DE SALDOS ─────────────────────────
+    if (resultados.length >= 2) {
+        wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Evolución de Saldos · Banco y Balance</h3>');
+
+        const W = 700, H = 220, PAD = { top: 20, right: 20, bottom: 50, left: 80 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top - PAD.bottom;
+        const n = resultados.length;
+
+        const bancos  = resultados.map(r => r.banco);
+        const balances = resultados.map(r => r.balance);
+        const nombres  = resultados.map(r => r.nombre.replace(' de ',' ').replace('Mes Actual','Actual'));
+
+        const allVals = [...bancos, ...balances];
+        const minV = Math.min(...allVals);
+        const maxV = Math.max(...allVals);
+        const rng  = maxV - minV || 1;
+        const yMin = minV - rng * 0.1;
+        const yMax = maxV + rng * 0.1;
+        const yRng = yMax - yMin;
+
+        function xPos(i) { return PAD.left + (i / (n - 1)) * chartW; }
+        function yPos(v) { return PAD.top + chartH - ((v - yMin) / yRng) * chartH; }
+        function fmtK(v) {
+            const abs = Math.abs(v);
+            const sign = v < 0 ? '-' : '';
+            if(abs >= 1000000) return sign + (abs/1000000).toFixed(1) + 'M';
+            if(abs >= 1000)    return sign + Math.round(abs/1000) + 'K';
+            return sign + Math.round(abs);
+        }
+
+        // Línea banco (azul)
+        const ptsB = bancos.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
+        // Área banco
+        const areaB = 'M'+xPos(0)+','+yPos(bancos[0])+' '+bancos.map((v,i)=>'L'+xPos(i)+','+yPos(v)).join(' ')+' L'+xPos(n-1)+','+yPos(yMin)+' L'+xPos(0)+','+yPos(yMin)+' Z';
+        // Línea balance (verde/rojo según valor)
+        const ptsBal = balances.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
+
+        // Grilla horizontal (4 líneas)
+        let grid = '';
+        for(let i=0;i<=4;i++) {
+            const v = yMin + (yRng/4)*i;
+            const y = yPos(v);
+            grid += '<line x1="'+PAD.left+'" y1="'+y+'" x2="'+(PAD.left+chartW)+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>';
+            grid += '<text x="'+(PAD.left-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+fmtK(v)+'</text>';
+        }
+
+        // Línea de cero si está en rango
+        let zeroLine = '';
+        if(yMin <= 0 && yMax >= 0) {
+            const yz = yPos(0);
+            zeroLine = '<line x1="'+PAD.left+'" y1="'+yz+'" x2="'+(PAD.left+chartW)+'" y2="'+yz+'" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3"/>';
+        }
+
+        // Puntos y etiquetas X
+        let puntosBanco = '', puntosBalance = '', labelsX = '';
+        resultados.forEach((r,i) => {
+            const xb = xPos(i), yb = yPos(bancos[i]);
+            const xbal = xPos(i), ybal = yPos(balances[i]);
+            const balColor = balances[i] >= 0 ? '#10b981' : '#ef4444';
+            puntosBanco   += '<circle cx="'+xb+'" cy="'+yb+'" r="4" fill="#0284c7" stroke="white" stroke-width="2"/>';
+            puntosBalance += '<circle cx="'+xbal+'" cy="'+ybal+'" r="4" fill="'+balColor+'" stroke="white" stroke-width="2"/>';
+            // Label eje X (rotado, cada N si hay muchos)
+            const mostrar = n <= 7 || i % Math.ceil(n/7) === 0 || i === n-1;
+            if(mostrar) {
+                labelsX += '<text x="'+xb+'" y="'+(H-PAD.bottom+14)+'" text-anchor="middle" font-size="8" fill="#64748b" transform="rotate(-30 '+xb+' '+(H-PAD.bottom+14)+')">'+nombres[i]+'</text>';
+            }
+        });
+
+        const svgChart = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:20px;overflow-x:auto;">' +
+            '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:'+W+'px;display:block;">' +
+            // Área banco
+            '<path d="'+areaB+'" fill="#0284c7" opacity="0.08"/>' +
+            // Grilla
+            grid + zeroLine +
+            // Líneas
+            '<polyline points="'+ptsB+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+            '<polyline points="'+ptsBal+'" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,3"/>' +
+            // Puntos
+            puntosBanco + puntosBalance +
+            // Labels X
+            labelsX +
+            // Eje Y label
+            '<text x="12" y="'+(PAD.top+chartH/2)+'" text-anchor="middle" font-size="9" fill="#94a3b8" transform="rotate(-90 12 '+(PAD.top+chartH/2)+')">$ ARS</text>' +
+            // Leyenda
+            '<rect x="'+PAD.left+'" y="'+(H-16)+'" width="10" height="3" fill="#0284c7" rx="1"/>' +
+            '<text x="'+(PAD.left+14)+'" y="'+(H-12)+'" font-size="9" fill="#0284c7">Banco</text>' +
+            '<line x1="'+(PAD.left+60)+'" y1="'+(H-13)+'" x2="'+(PAD.left+70)+'" y2="'+(H-13)+'" stroke="#10b981" stroke-width="2" stroke-dasharray="4,2"/>' +
+            '<text x="'+(PAD.left+74)+'" y="'+(H-12)+'" font-size="9" fill="#10b981">Balance</text>' +
+            '</svg></div>';
+
+        wrap.insertAdjacentHTML('beforeend', svgChart);
+    }
 
     return wrap;
 }
