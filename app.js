@@ -101,32 +101,72 @@ function syncDebounce() {
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(syncSilencioso, 30000);
 }
+
+// ID del archivo sync único en Drive (para sobreescribir en lugar de crear nuevos)
+let _driveFileId = null;
+
 async function syncSilencioso() {
-    if(!gToken || _syncActivo) return;
+    // No bloquear si _syncActivo — forzamos reset si lleva más de 30s colgado
+    if(_syncActivo) { _syncActivo = false; }
+    if(!gToken) return;
     _syncActivo = true;
     syncSetBadge('sync');
     try {
-        const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-        const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
-        const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
-        const form=new FormData();
-        form.append('metadata',new Blob([meta],{type:'application/json'}));
-        form.append('file',new Blob([data],{type:'application/json'}));
-        const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+gToken},body:form});
-        const f=await r.json();
-        if(f.id){ _syncPendiente=false; syncSetBadge('ok'); }
-        else { if(f.error&&f.error.code===401) gToken=null; syncSetBadge('err'); }
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
+
+        // Si no tenemos el ID del archivo, buscarlo en Drive
+        if(!_driveFileId) {
+            const listR = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=name%3D%22backup_autosync.json%22',
+                {headers:{Authorization:'Bearer '+gToken}});
+            if(listR.ok) {
+                const listD = await listR.json();
+                if(listD.files && listD.files.length > 0) _driveFileId = listD.files[0].id;
+            } else if(listR.status === 401) { gToken=null; _syncActivo=false; syncSetBadge('err'); return; }
+        }
+
+        let resp;
+        if(_driveFileId) {
+            // Sobreescribir archivo existente (PATCH)
+            resp = await fetch('https://www.googleapis.com/upload/drive/v3/files/'+_driveFileId+'?uploadType=media',
+                {method:'PATCH', headers:{Authorization:'Bearer '+gToken,'Content-Type':'application/json'}, body:data});
+        } else {
+            // Crear archivo nuevo con nombre fijo
+            const meta = JSON.stringify({name:'backup_autosync.json',parents:['appDataFolder']});
+            const form = new FormData();
+            form.append('metadata', new Blob([meta],{type:'application/json'}));
+            form.append('file', new Blob([data],{type:'application/json'}));
+            resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+                {method:'POST', headers:{Authorization:'Bearer '+gToken}, body:form});
+        }
+
+        if(resp.ok) {
+            const f = await resp.json();
+            if(f.id) _driveFileId = f.id;
+            _syncPendiente = false;
+            syncSetBadge('ok');
+        } else {
+            if(resp.status === 401) { gToken=null; _driveFileId=null; }
+            syncSetBadge('err');
+        }
     } catch(e) { syncSetBadge('err'); }
     _syncActivo = false;
 }
+
 async function syncAlSalir() {
-    const b = document.getElementById('sync-badge');
-    if(!gToken) { alert('Para sincronizar antes de salir, primero autenticá Drive con el botón ☁️ Drive.'); return; }
-    if(!_syncPendiente) { if(confirm('✅ Todo sincronizado. ¿Cerrar la app?')) window.close(); return; }
+    if(!gToken) {
+        // Si no hay token, intentar obtenerlo silenciosamente
+        const ok = await new Promise(resolve => {
+            driveGetToken(t => { if(t) resolve(true); else resolve(false); });
+            setTimeout(()=>resolve(false), 8000);
+        });
+        if(!ok) { alert('Para sincronizar antes de salir, autenticá Drive con el botón ☁️ Drive.'); return; }
+    }
+    if(!_syncPendiente) {
+        alert('✅ Todo sincronizado. Ya podés cerrar la pestaña.');
+        return;
+    }
     clearTimeout(_syncTimer);
-    syncSetBadge('sync');
-    if(b) { b.innerText='☁️ Sincronizando...'; }
+    _syncActivo = false; // reset por si estaba colgado
     await syncSilencioso();
     if(!_syncPendiente) {
         alert('✅ Sincronizado con Drive. Ya podés cerrar la pestaña.');
@@ -134,6 +174,7 @@ async function syncAlSalir() {
         alert('⚠️ No se pudo sincronizar. Usá el botón ☁️ Drive manualmente antes de cerrar.');
     }
 }
+
 async function syncAlAbrir() {
     if(!gToken) return;
     await syncSilencioso();
@@ -288,7 +329,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.5.3</p>
+          <p class="version-tag">v3.5.4</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -2326,6 +2367,78 @@ function buildAnual() {
   </div>
 </div>`);
 
+    // ── RESUMEN USD ───────────────────────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#16a34a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Todos los Períodos</h3>');
+
+    // Tabla métricas USD
+    const mesesUSD = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos }));
+    mesesUSD.push({ nombre: 'Mes Actual', datos: { listaCuentasUSD, listaTarjetasUSD, listaServiciosUSD, listaCorrientesUSD } });
+
+    function calcMesUSD(m) {
+        const db = m.datos;
+        let cuentas = 0, egresado = 0, ingresos = 0;
+        (db.listaCuentasUSD||[]).forEach(b => cuentas += b.saldo);
+        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado);
+        (db.listaCorrientesUSD||[]).filter(c=>!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
+        });
+        return { cuentas, egresado, ingresos, balance: ingresos - egresado };
+    }
+
+    const resUSD = mesesUSD.map(m => ({ nombre: m.nombre, ...calcMesUSD(m) }));
+    const tieneUSD = resUSD.some(r => r.cuentas > 0 || r.egresado > 0 || r.ingresos > 0);
+
+    if(!tieneUSD) {
+        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:20px;text-align:center;color:#94a3b8;margin-bottom:20px;">Sin movimientos en dólares registrados.</div>');
+    } else {
+        const colsUSD = ['cuentas','ingresos','egresado','balance'];
+        const labUSD = { cuentas:'🏦 Cuentas USD', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
+        let tUSD = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #16a34a;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Métrica</th>';
+        resUSD.forEach(r => { tUSD += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
+        tUSD += '</tr></thead><tbody>';
+        colsUSD.forEach((col,ci) => {
+            const vals = resUSD.map(r=>r[col]);
+            const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
+            tUSD += '<tr style="background:'+(ci%2===0?'white':'#f8fafc')+'"><td style="padding:7px 8px;font-weight:bold;color:#334155;">'+labUSD[col]+'</td>';
+            resUSD.forEach(r => {
+                const v = r[col];
+                let color = '#334155';
+                if(col==='balance') color = v>=0?'#10b981':'#ef4444';
+                else if(col==='egresado') color = '#f59e0b';
+                else if(col==='ingresos') color = '#0284c7';
+                else if(col==='cuentas') color = '#16a34a';
+                const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
+                const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):col==='egresado'?'#f59e0b':col==='ingresos'?'#0284c7':'#16a34a';
+                tUSD += '<td style="padding:7px 8px;text-align:right;"><div style="font-weight:bold;color:'+color+';font-size:10px;">'+fmtUSD(v)+'</div><div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:'+barColor+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div></td>';
+            });
+            tUSD += '</tr>';
+        });
+        tUSD += '</tbody></table></div>';
+        wrap.insertAdjacentHTML('beforeend', tUSD);
+
+        // Tabla rubros USD acumulado
+        const rubsUSD = new Set();
+        mesesUSD.forEach(m => (m.datos.listaCorrientesUSD||[]).filter(c=>!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>rubsUSD.add(c.rubro||'Sin rubro')));
+        const rubArrUSD = [...rubsUSD].sort();
+        if(rubArrUSD.length) {
+            let tR = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Gastos por Rubro USD</h4><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Rubro</th>';
+            resUSD.forEach(r => { tR += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
+            tR += '<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>';
+            rubArrUSD.forEach((rub,ri) => {
+                let totR = 0;
+                tR += '<tr style="background:'+(ri%2===0?'white':'#f8fafc')+'"><td style="padding:6px 8px;font-weight:bold;color:#334155;">'+rub+'</td>';
+                mesesUSD.forEach(m => {
+                    const s = (m.datos.listaCorrientesUSD||[]).filter(c=>c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                    totR += s;
+                    tR += '<td style="padding:6px 8px;text-align:right;color:'+(s>0?'#10b981':'#94a3b8')+';font-weight:'+(s>0?'bold':'normal')+';font-size:10px;">'+(s>0?fmtUSD(s):'—')+'</td>';
+                });
+                tR += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;font-size:10px;">'+fmtUSD(totR)+'</td></tr>';
+            });
+            tR += '</tbody></table></div>';
+            wrap.insertAdjacentHTML('beforeend', tR);
+        }
+    }
+
     // ── GRÁFICO EVOLUCIÓN DE SALDOS ─────────────────────────
     if (resultados.length >= 2) {
         wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Evolución de Saldos · Banco y Balance</h3>');
@@ -2494,6 +2607,37 @@ function exportarExcel() {
             datRubros.push(row);
         });
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datRubros), 'Rubros Acumulado');
+
+        // ── Hoja 7: Rubros USD acumulado ──
+        const datRubrosUSD = [['Rubro']];
+        const rubSetUSD = new Set();
+        mesesArr2.forEach(m => (m.datos.listaCorrientesUSD||[]).filter(c=>!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>rubSetUSD.add(c.rubro||'Sin rubro')));
+        const rubArrUSD2 = [...rubSetUSD].sort();
+        mesesArr2.forEach(m => datRubrosUSD[0].push(m.nombre));
+        datRubrosUSD[0].push('TOTAL');
+        rubArrUSD2.forEach(rub => {
+            const row = [rub];
+            let tot = 0;
+            mesesArr2.forEach(m => {
+                const s = (m.datos.listaCorrientesUSD||[]).filter(c=>c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                row.push(s||0); tot+=s;
+            });
+            row.push(tot);
+            datRubrosUSD.push(row);
+        });
+        if(rubArrUSD2.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datRubrosUSD), 'Rubros USD');
+
+        // ── Hoja 8: Resumen Anual USD ──
+        const datAnualUSD = [['Período','Cuentas USD','Ingresos USD','Egresado USD','Balance USD']];
+        mesesArr2.forEach(m => {
+            const db = m.datos;
+            let cuentas=0, egresado=0, ingresos=0;
+            (db.listaCuentasUSD||[]).forEach(b=>cuentas+=b.saldo);
+            (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s=>egresado+=s.pagado);
+            (db.listaCorrientesUSD||[]).filter(c=>!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ if(c.esIngreso) ingresos+=c.monto; else egresado+=c.monto; });
+            datAnualUSD.push([m.nombre, cuentas, ingresos, egresado, ingresos-egresado]);
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datAnualUSD), 'Resumen Anual USD');
 
         // Descargar
         const d = new Date(), ts = d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
