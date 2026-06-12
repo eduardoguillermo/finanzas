@@ -2023,11 +2023,13 @@ function dibujarLineaInv(canvasId, hist, acc, modo, dolarOficial) {
 // ─────────────────────────────────────────────────────────────────
 function renderPresupRubrosUSD() {
     const wrap = document.getElementById('rubros-presup-usd-wrap'); if(!wrap) return;
-    if(!listaRubrosUSD.length){ wrap.innerHTML=''; return; }
     const gastado = {};
     listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
+    // Union de rubros configurados + rubros con gasto real (aunque no estén en listaRubrosUSD)
+    const todosRubros = [...new Set([...listaRubrosUSD, ...Object.keys(gastado)])].sort();
+    if(!todosRubros.length){ wrap.innerHTML=''; return; }
     let html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
-    listaRubrosUSD.forEach(r=>{
+    todosRubros.forEach(r=>{
         const pres = listaPresupRubrosUSD[r]||0;
         const gast = gastado[r]||0;
         const pct = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
@@ -2035,9 +2037,12 @@ function renderPresupRubrosUSD() {
         const alerta = pres>0 && gast>=pres;
         const bg = alerta ? '#fef2f2' : '#f8fafc';
         const barColor = alerta ? '#ef4444' : col;
-        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+';">';
+        const enLista = listaRubrosUSD.includes(r);
+        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+'">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
-        html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span>';
+        html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r;
+        if(!enLista) html += ' <span style="font-size:9px;color:#f59e0b;font-weight:normal;">(sin categoría)</span>';
+        html += '</span>';
         html += '<div style="display:flex;align-items:center;gap:6px;">';
         html += '<span style="font-size:11px;color:#64748b;">'+fmtUSD(gast)+(pres>0?' / '+fmtUSD(pres):'')+'</span>';
         if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
@@ -2050,23 +2055,6 @@ function renderPresupRubrosUSD() {
         html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
         html += '</div></div>';
     });
-    // Si no hay rubros con gasto ni presupuesto, mostrar todos
-    const hayDatos = listaRubrosUSD.some(r=>listaPresupRubrosUSD[r]||(gastado[r]||0)>0);
-    if(!hayDatos){
-        html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
-        listaRubrosUSD.forEach(r=>{
-            const col=colorRubro(r);
-            html += '<div style="background:#f8fafc;border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;">';
-            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
-            html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span></div>';
-            html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
-            html += '<span style="font-size:10px;color:#94a3b8;">Ppto. USD</span>';
-            html += '<input type="number" min="0" step="0.01" value="" placeholder="Sin límite" ';
-            html += 'style="width:110px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;" ';
-            html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
-            html += '</div></div>';
-        });
-    }
     wrap.innerHTML = html;
 }
 function actualizarPresupRubroUSD(inp) {
