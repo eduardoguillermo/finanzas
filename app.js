@@ -329,7 +329,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.5.5</p>
+          <p class="version-tag">v3.5.4</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -1185,7 +1185,7 @@ function calcDashUSD() {
     if(pspEl){ pspEl.innerText=totalSrvPresupUSD>0?pctSrvUSD+'% pagado'+(superadoSrvUSD?' · ¡PAGADO!':pctSrvUSD>=80?' · casi completo':''):'Sin servicios USD'; pspEl.style.color=superadoSrvUSD?'#10b981':pctSrvUSD>=80?'#f59e0b':'#94a3b8'; }
     // Presupuesto USD — corrientes por rubro
     const totalPresupUSD = Object.values(listaPresupRubrosUSD).reduce((a,b)=>a+b,0);
-    const totalGastadoUSD = listaCorrientesUSD.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const totalGastadoUSD = listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
     const pctUSD = totalPresupUSD>0 ? Math.min(100,Math.round(totalGastadoUSD/totalPresupUSD*100)) : 0;
     const superadoUSD = totalPresupUSD>0 && totalGastadoUSD>=totalPresupUSD;
     const barColorUSD = superadoUSD ? '#ef4444' : pctUSD>=80 ? '#f59e0b' : '#10b981';
@@ -1528,7 +1528,7 @@ function buildReportes() {
         // Card doble USD: servicios fijos + corrientes
         const srvUSDConPres = listaServiciosUSD.filter(function(s){ return s.presupuesto>0; });
         const porRubroUSD = {};
-        listaCorrientesUSD.filter(function(c){ return !c.esIngreso; }).forEach(function(c){ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
+        listaCorrientesUSD.filter(function(c){ return c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')); }).forEach(function(c){ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
         const itemsCorrUSD = Object.entries(porRubroUSD).map(function(e){ return {label:e[0],valor:e[1]}; });
         if(srvUSDConPres.length>0 || itemsCorrUSD.length>0){
             const divDobleUSD = mkTortaDoble(
@@ -2025,9 +2025,8 @@ function renderPresupRubrosUSD() {
     const wrap = document.getElementById('rubros-presup-usd-wrap'); if(!wrap) return;
     if(!listaRubrosUSD.length){ wrap.innerHTML=''; return; }
     const gastado = {};
-    listaCorrientesUSD.filter(c=>!c.esIngreso).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
+    listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
     let html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
-    // Siempre mostrar todos los rubros, tengan o no gasto/presupuesto
     listaRubrosUSD.forEach(r=>{
         const pres = listaPresupRubrosUSD[r]||0;
         const gast = gastado[r]||0;
@@ -2036,11 +2035,11 @@ function renderPresupRubrosUSD() {
         const alerta = pres>0 && gast>=pres;
         const bg = alerta ? '#fef2f2' : '#f8fafc';
         const barColor = alerta ? '#ef4444' : col;
-        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+'">';
+        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+';">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
         html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span>';
         html += '<div style="display:flex;align-items:center;gap:6px;">';
-        html += '<span style="font-size:11px;color:#64748b;">'+(gast>0?fmtUSD(gast):'$ 0')+(pres>0?' / '+fmtUSD(pres):'')+'</span>';
+        html += '<span style="font-size:11px;color:#64748b;">'+fmtUSD(gast)+(pres>0?' / '+fmtUSD(pres):'')+'</span>';
         if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
         html += '</div></div>';
         if(pres>0){ html += '<div style="background:#e2e8f0;border-radius:3px;height:6px;"><div style="background:'+barColor+';height:6px;border-radius:3px;width:'+pct+'%;transition:width 0.3s;"></div></div>'; }
@@ -2051,6 +2050,23 @@ function renderPresupRubrosUSD() {
         html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
         html += '</div></div>';
     });
+    // Si no hay rubros con gasto ni presupuesto, mostrar todos
+    const hayDatos = listaRubrosUSD.some(r=>listaPresupRubrosUSD[r]||(gastado[r]||0)>0);
+    if(!hayDatos){
+        html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
+        listaRubrosUSD.forEach(r=>{
+            const col=colorRubro(r);
+            html += '<div style="background:#f8fafc;border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+            html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span></div>';
+            html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
+            html += '<span style="font-size:10px;color:#94a3b8;">Ppto. USD</span>';
+            html += '<input type="number" min="0" step="0.01" value="" placeholder="Sin límite" ';
+            html += 'style="width:110px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;" ';
+            html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
+            html += '</div></div>';
+        });
+    }
     wrap.innerHTML = html;
 }
 function actualizarPresupRubroUSD(inp) {
@@ -2227,7 +2243,7 @@ function buildAnual() {
         let bancoUSD = 0;
         (db.listaCuentasUSD||[]).forEach(b => bancoUSD += b.saldo);
         (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado * tc);
-        (db.listaCorrientesUSD||[]).filter(c=>!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
             if(c.esIngreso) ingresos += c.monto * tc; else egresado += c.monto * tc;
         });
         const balance = ingresos - egresado;
@@ -2362,7 +2378,7 @@ function buildAnual() {
         let cuentas = 0, egresado = 0, ingresos = 0;
         (db.listaCuentasUSD||[]).forEach(b => cuentas += b.saldo);
         (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado);
-        (db.listaCorrientesUSD||[]).filter(c=>!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
             if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
         });
         return { cuentas, egresado, ingresos, balance: ingresos - egresado };
@@ -2548,8 +2564,8 @@ function exportarExcel() {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datCorr), 'Corrientes');
 
         // ── Hoja 4: Dólares Corrientes ──
-        const datCorrUSD = [['Rubro','Detalle','Monto USD','Tipo']];
-        listaCorrientesUSD.forEach(c => datCorrUSD.push([c.rubro||'', c.detalle||'', c.monto, c.esIngreso?'Ingreso':'Egreso']));
+        const datCorrUSD = [['Fecha Pago','Rubro','Detalle','Monto USD','Tipo']];
+        listaCorrientesUSD.filter(c=>c.fechaPago).forEach(c => datCorrUSD.push([c.fechaPago||'', c.rubro||'', c.detalle||'', c.monto, c.esIngreso?'Ingreso':'Egreso']));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datCorrUSD), 'Corrientes USD');
 
         // ── Hoja 5: Resumen Anual ──
