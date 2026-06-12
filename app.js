@@ -26,7 +26,8 @@ let listaCorrientesUSD = leer(K.corrientesUSD) || [];
 let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
-let listaPresupRubros  = leer('f_presup_rubros_v1') || {};
+let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
+let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let tabActivo = null;
 let filtroCorrientes = '';
 let _syncTimer = null;
@@ -50,7 +51,8 @@ function guardar() {
         localStorage.setItem(K.tipoCambio,     JSON.stringify(tipoCambio));
         localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
         localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
-        localStorage.setItem('f_presup_rubros_v1', JSON.stringify(listaPresupRubros));
+        localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
+        localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -104,7 +106,7 @@ async function syncSilencioso() {
     try {
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
@@ -270,7 +272,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.4.2</p>
+          <p class="version-tag">v3.4.1</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -290,7 +292,6 @@ function buildMesActual() {
         <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado / Pagado</h4><p id="d-pagado" style="color:#10b981;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
-        <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Presupuesto Mes</h4><p id="d-presup-vals" style="color:#10b981;font-size:16px;">$ 0 <span style="font-size:13px;color:#94a3b8;">/ $ 0</span></p><div id="d-presup-bar" style="background:#e2e8f0;border-radius:4px;height:6px;margin:6px 0 4px;"><div id="d-presup-barf" style="height:6px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div><small id="d-presup-pct" style="font-size:10px;color:#94a3b8;">0% usado · sin rubros configurados</small></div>
       </div>
       <div class="grid-principal">
         <div>
@@ -655,18 +656,6 @@ function calcDash() {
     setTxt('d-pagado',   fmt(Math.round(totalPag)));
     setTxt('d-pendiente',fmt(Math.round(fijosPend)));
     const cp=document.getElementById('card-pend'); if(cp) cp.style.borderLeftColor=fijosPend>0?'#ef4444':'#10b981';
-    // Presupuesto total por rubros
-    const totalPresup = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
-    const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
-    const pct = totalPresup>0 ? Math.min(100,Math.round(totalGastado/totalPresup*100)) : 0;
-    const superado = totalPresup>0 && totalGastado>=totalPresup;
-    const barColor = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : '#10b981';
-    const pEl=document.getElementById('d-presup-vals');
-    const bEl=document.getElementById('d-presup-barf');
-    const pPct=document.getElementById('d-presup-pct');
-    if(pEl){ pEl.innerHTML=fmt(totalGastado)+' <span style="font-size:13px;color:#94a3b8;">/ '+fmt(totalPresup)+'</span>'; pEl.style.color=barColor; }
-    if(bEl){ bEl.style.width=pct+'%'; bEl.style.background=barColor; }
-    if(pPct){ pPct.innerText = totalPresup>0 ? pct+'% usado'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':'') : '0% · configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
     // Saldo proyectado: bancos disponibles - fijos pendientes - corrientes sin fecha (gastos)
     const corrSinFecha = listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
     const saldoProyectado = sumaBancos - fijosPend - corrSinFecha;
@@ -805,7 +794,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -825,7 +814,8 @@ function cargarDatos(res) {
     tipoCambio          = res.tipoCambio          || 1200;
     listaInstrumentos   = res.listaInstrumentos   || [];
     listaAcciones       = res.listaAcciones       || [];
-    if(res.listaPresupRubros) listaPresupRubros = res.listaPresupRubros;
+    if(res.listaPresupRubros)    listaPresupRubros    = res.listaPresupRubros;
+    if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
@@ -892,6 +882,7 @@ function buildDolares() {
         <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>USD a Pagar (tarjetas)</h4><p id="usd-pagar" style="color:#a855f7;">USD 0</p><small id="usd-pagar-ars" style="color:#64748b;font-size:12px;"></small></div>
         <div class="card-bal" id="card-usd-bal" style="border-left:5px solid #f59e0b;"><h4>Balance USD</h4><p id="usd-bal" style="color:#f59e0b;">USD 0</p><small id="usd-bal-ars" style="color:#64748b;font-size:12px;"></small></div>
         <div class="card-bal" id="card-usd-comp" style="border-left:5px solid #94a3b8;"><h4>USD a Comprar</h4><p id="usd-comp" style="color:#94a3b8;">—</p><small id="usd-comp-ars" style="color:#64748b;font-size:12px;"></small></div>
+        <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Presupuesto Mes USD</h4><p id="d-presup-usd-vals" style="color:#10b981;font-size:16px;">USD 0 <span style="font-size:13px;color:#94a3b8;">/ USD 0</span></p><div style="background:#e2e8f0;border-radius:4px;height:6px;margin:6px 0 4px;"><div id="d-presup-usd-barf" style="height:6px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div><small id="d-presup-usd-pct" style="font-size:10px;color:#94a3b8;">0% · configurá límites en Rubros USD</small></div>
       </div>
       <div class="grid-principal">
         <div>
@@ -951,6 +942,7 @@ function buildDolares() {
               </form>
             </div>
             <div id="wrap-ccusd"></div>
+            <div id="rubros-presup-usd-wrap" style="margin-top:14px;"></div>
           </div>
         </div>
       </div>
@@ -1012,6 +1004,18 @@ function calcDashUSD() {
     if(cBal) cBal.style.borderLeftColor=balance>=0?'#16a34a':'#ef4444';
     if(balance<0){ const f=Math.abs(balance); if(dComp){dComp.innerText=fmtUSD(f);dComp.style.color='#ef4444';} if(dCA) dCA.innerText=fmtARS(f*tc); if(cComp) cComp.style.borderLeftColor='#ef4444'; }
     else { if(dComp){dComp.innerText='—';dComp.style.color='#94a3b8';} if(dCA) dCA.innerText=''; if(cComp) cComp.style.borderLeftColor='#94a3b8'; }
+    // Presupuesto USD por rubros
+    const totalPresupUSD = Object.values(listaPresupRubrosUSD).reduce((a,b)=>a+b,0);
+    const totalGastadoUSD = listaCorrientesUSD.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const pctUSD = totalPresupUSD>0 ? Math.min(100,Math.round(totalGastadoUSD/totalPresupUSD*100)) : 0;
+    const superadoUSD = totalPresupUSD>0 && totalGastadoUSD>=totalPresupUSD;
+    const barColorUSD = superadoUSD ? '#ef4444' : pctUSD>=80 ? '#f59e0b' : '#10b981';
+    const pvEl=document.getElementById('d-presup-usd-vals');
+    const pbEl=document.getElementById('d-presup-usd-barf');
+    const ppEl=document.getElementById('d-presup-usd-pct');
+    if(pvEl){ pvEl.innerHTML=fmtUSD(totalGastadoUSD)+' <span style="font-size:13px;color:#94a3b8;">/ '+fmtUSD(totalPresupUSD)+'</span>'; pvEl.style.color=barColorUSD; }
+    if(pbEl){ pbEl.style.width=pctUSD+'%'; pbEl.style.background=barColorUSD; }
+    if(ppEl){ ppEl.innerText=totalPresupUSD>0?pctUSD+'% usado'+(superadoUSD?' · ¡SUPERADO!':pctUSD>=80?' · cerca del límite':''):'0% · configurá límites en Rubros USD'; ppEl.style.color=superadoUSD?'#ef4444':pctUSD>=80?'#f59e0b':'#94a3b8'; }
     // Actualizar consumo en tabla tarjetas sin reconstruir
     const rowsTU=document.querySelectorAll('#t-tusd tr');
     listaTarjetasUSD.forEach((t,i)=>{ if(rowsTU[i]){ const tds=rowsTU[i].querySelectorAll('td'); const consumo=mDU[t.id]||0; if(tds[2]) tds[2].innerText=consumo>0?fmtUSD(consumo):'—'; if(tds[3]) tds[3].innerText=fmtARS((t.saldo+consumo)*tc); } });
@@ -1113,6 +1117,7 @@ function renderDolares() {
         tbl.appendChild(thead); tbl.appendChild(tbody); wCU.appendChild(tbl);
     }
     calcDashUSD();
+    renderPresupRubrosUSD();
 }
 
 // ALTAS USD
@@ -1817,6 +1822,65 @@ function dibujarLineaInv(canvasId, hist, acc, modo, dolarOficial) {
     ctx.fillText(lastLabel, bx + tw2/2, by + 16);
 }
 
+// ─────────────────────────────────────────────────────────────────
+//  PRESUPUESTO POR RUBRO USD
+// ─────────────────────────────────────────────────────────────────
+function renderPresupRubrosUSD() {
+    const wrap = document.getElementById('rubros-presup-usd-wrap'); if(!wrap) return;
+    if(!listaRubros.length){ wrap.innerHTML=''; return; }
+    const gastado = {};
+    listaCorrientesUSD.filter(c=>!c.esIngreso).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
+    let html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
+    listaRubros.forEach(r=>{
+        const pres = listaPresupRubrosUSD[r]||0;
+        const gast = gastado[r]||0;
+        if(pres===0 && gast===0) return;
+        const pct = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
+        const col = colorRubro(r);
+        const alerta = pres>0 && gast>=pres;
+        const bg = alerta ? '#fef2f2' : '#f8fafc';
+        const barColor = alerta ? '#ef4444' : col;
+        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+';">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+        html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span>';
+        html += '<div style="display:flex;align-items:center;gap:6px;">';
+        html += '<span style="font-size:11px;color:#64748b;">'+fmtUSD(gast)+(pres>0?' / '+fmtUSD(pres):'')+'</span>';
+        if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
+        html += '</div></div>';
+        if(pres>0){ html += '<div style="background:#e2e8f0;border-radius:3px;height:6px;"><div style="background:'+barColor+';height:6px;border-radius:3px;width:'+pct+'%;transition:width 0.3s;"></div></div>'; }
+        html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
+        html += '<span style="font-size:10px;color:#94a3b8;">Ppto. USD</span>';
+        html += '<input type="number" min="0" step="0.01" value="'+(pres||'')+'" placeholder="Sin límite" ';
+        html += 'style="width:110px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;" ';
+        html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
+        html += '</div></div>';
+    });
+    // Si no hay rubros con gasto ni presupuesto, mostrar todos
+    const hayDatos = listaRubros.some(r=>listaPresupRubrosUSD[r]||(gastado[r]||0)>0);
+    if(!hayDatos){
+        html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
+        listaRubros.forEach(r=>{
+            const col=colorRubro(r);
+            html += '<div style="background:#f8fafc;border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+            html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span></div>';
+            html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
+            html += '<span style="font-size:10px;color:#94a3b8;">Ppto. USD</span>';
+            html += '<input type="number" min="0" step="0.01" value="" placeholder="Sin límite" ';
+            html += 'style="width:110px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;" ';
+            html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
+            html += '</div></div>';
+        });
+    }
+    wrap.innerHTML = html;
+}
+function actualizarPresupRubroUSD(inp) {
+    const r = inp.getAttribute('data-rubro');
+    const v = parseFloat(inp.value)||0;
+    if(v>0) listaPresupRubrosUSD[r]=v; else delete listaPresupRubrosUSD[r];
+    guardar(); renderPresupRubrosUSD(); calcDashUSD();
+}
+
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
@@ -1853,7 +1917,7 @@ function driveSubir() {
     driveGetToken(token=>{
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
