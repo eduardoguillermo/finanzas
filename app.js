@@ -666,6 +666,30 @@ function render() {
             const tr=el('tr'); [tdCl,tdR,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
         }); }
         tbl.appendChild(thead); tbl.appendChild(tbody); wC.appendChild(tbl);
+
+        // Subtotal filtrado
+        const corrFiltradas = listaCorrientes.filter(c=>!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes));
+        const subEgr = corrFiltradas.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+        const subIng = corrFiltradas.filter(c=>c.esIngreso).reduce((a,c)=>a+c.monto,0);
+        const subPag = corrFiltradas.filter(c=>!c.esIngreso&&c.fechaPago).reduce((a,c)=>a+c.monto,0);
+        const subDiv = el('div'); subDiv.style.cssText='margin-top:8px;padding:8px 12px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;';
+        if(filtroCorrientes) {
+            subDiv.innerHTML = '<span style="color:#64748b;font-weight:bold;">🔍 Filtro: <em>'+filtroCorrientes+'</em></span>'
+                + '<span style="color:#ef4444;">Egresos: <b>'+fmt(subEgr)+'</b></span>'
+                + (subIng>0?'<span style="color:#0284c7;">Ingresos: <b>'+fmt(subIng)+'</b></span>':'')
+                + '<span style="color:#10b981;">Pagado: <b>'+fmt(subPag)+'</b></span>'
+                + '<span style="color:#94a3b8;">('+corrFiltradas.length+' registro'+(corrFiltradas.length!==1?'s':'')+')</span>';
+        } else {
+            const totEgr = listaCorrientes.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+            const totIng = listaCorrientes.filter(c=>c.esIngreso).reduce((a,c)=>a+c.monto,0);
+            const totPag = listaCorrientes.filter(c=>!c.esIngreso&&c.fechaPago).reduce((a,c)=>a+c.monto,0);
+            subDiv.innerHTML = '<span style="color:#64748b;font-weight:bold;">Total</span>'
+                + '<span style="color:#ef4444;">Egresos: <b>'+fmt(totEgr)+'</b></span>'
+                + (totIng>0?'<span style="color:#0284c7;">Ingresos: <b>'+fmt(totIng)+'</b></span>':'')
+                + '<span style="color:#10b981;">Pagado: <b>'+fmt(totPag)+'</b></span>'
+                + '<span style="color:#94a3b8;">('+listaCorrientes.length+' registros)</span>';
+        }
+        wC.appendChild(subDiv);
     }
     calcDash();
     renderPresupRubros();
