@@ -705,7 +705,7 @@ function calcDash() {
     if(pSrvB){ pSrvB.style.width=pctSrv+'%'; pSrvB.style.background=barSrv; }
     // Presupuesto pesos — Corrientes por rubro
     const totalPresup  = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
-    const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
     const pct = totalPresup>0 ? Math.min(100,Math.round(totalGastado/totalPresup*100)) : 0;
     const superado = totalPresup>0 && totalGastado>=totalPresup;
     const barColor = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : '#10b981';
