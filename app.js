@@ -164,6 +164,18 @@ function renderTabs() {
     mkTab('<span>💵 Dólares</span>',     tabActivo==='dolares',  ()=>{ tabActivo='dolares';  renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#15803d;border-color:#86efac;');
     mkTab('<span>📈 Reportes</span>',    tabActivo==='reportes',    ()=>{ tabActivo='reportes';    renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#166534;border-color:#86efac;');
     mkTab('<span>📊 Inversiones</span>', tabActivo==='inversiones', ()=>{ tabActivo='inversiones'; renderTabs(); renderContenido(); }, 'background:#fef9c3;color:#854d0e;border-color:#fde047;');
+    // Badge sync + botón Salir — siempre visible en la tab bar
+    const spacer = document.createElement('div'); spacer.style.cssText='flex:1;';
+    bar.appendChild(spacer);
+    const badgeEl = document.createElement('span'); badgeEl.id='sync-badge';
+    badgeEl.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;align-self:center;white-space:nowrap;';
+    badgeEl.innerText='☁️ Drive'; badgeEl.onclick=syncAlSalir;
+    bar.appendChild(badgeEl);
+    const salirEl = document.createElement('button'); salirEl.id='btn-salir';
+    salirEl.style.cssText='background:#334155;color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
+    salirEl.innerText='🚪 Salir'; salirEl.onclick=syncAlSalir;
+    bar.appendChild(salirEl);
+
     [...historicoMeses].reverse().forEach(mes => {
         const t = document.createElement('div');
         t.className = 'tab historico' + (tabActivo===mes.id ? ' activo' : '');
@@ -282,8 +294,7 @@ function buildMesActual() {
           <button class="btn no-print"  id="btn-drive-up"   style="background:#4285f4;color:white;">☁️ Drive</button>
           <button class="btn no-print"  id="btn-drive-down" style="background:#4285f4;color:white;">📂 Drive</button>
           <button class="btn btn-dark"  onclick="window.print()">🖨️ PDF</button>
-          <span id="sync-badge" style="font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;" onclick="syncAlSalir()">☁️ Drive</span>
-          <button class="btn" id="btn-salir" style="background:#1e293b;color:white;" onclick="syncAlSalir()">🚪 Salir</button>
+
         </div>
       </header>
       <div class="grid-dashboard">
