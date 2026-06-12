@@ -166,6 +166,7 @@ function renderTabs() {
     mkTab('<span>💵 Dólares</span>',     tabActivo==='dolares',  ()=>{ tabActivo='dolares';  renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#15803d;border-color:#86efac;');
     mkTab('<span>📈 Reportes</span>',    tabActivo==='reportes',    ()=>{ tabActivo='reportes';    renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#166534;border-color:#86efac;');
     mkTab('<span>📊 Inversiones</span>', tabActivo==='inversiones', ()=>{ tabActivo='inversiones'; renderTabs(); renderContenido(); }, 'background:#fef9c3;color:#854d0e;border-color:#fde047;');
+    mkTab('<span>📅 Anual</span>',      tabActivo==='anual',       ()=>{ tabActivo='anual';       renderTabs(); renderContenido(); }, 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;');
     // Badge sync + botón Salir — siempre visible en la tab bar
     const spacer = document.createElement('div'); spacer.style.cssText='flex:1;';
     bar.appendChild(spacer);
@@ -204,6 +205,7 @@ function renderContenido() {
     else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); actualizarTCDolares(); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
     else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); }
+    else if (tabActivo==='anual')       { app.appendChild(buildAnual()); }
     else {
         const mes = historicoMeses.find(m=>m.id===tabActivo);
         if (mes) app.appendChild(buildHistorico(mes));
@@ -1315,7 +1317,7 @@ function mkTortaDiv(canvasId, leyId, titulo, color) {
 function buildReportes() {
     const wrap=el('div','container'); wrap.style.paddingTop='20px';
     const hdr=el('div'); hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #4f46e5;';
-    hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📈 Reportes Financieros</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})}</p></div><button onclick="window.print()" class="btn btn-dark no-print" style="font-size:12px;padding:8px 14px;">🖨️ Imprimir</button>`;
+    hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📈 Reportes Financieros</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})}</p></div><button onclick="exportarExcel()" class="btn no-print" style="font-size:12px;padding:8px 14px;background:#10b981;color:white;margin-right:6px;">📥 Exportar Excel</button><button onclick="window.print()" class="btn btn-dark no-print" style="font-size:12px;padding:8px 14px;">🖨️ Imprimir</button>`;
     wrap.appendChild(hdr);
 
     // ── REPORTE 1 ──────────────────────────────
@@ -2099,3 +2101,265 @@ if('serviceWorker' in navigator){
         }).catch(e=>console.log('SW error:',e));
     });
 }
+
+// ═══════════════════════════════════════════
+//  RESUMEN ANUAL
+// ═══════════════════════════════════════════
+function buildAnual() {
+    const wrap = el('div','container'); wrap.style.paddingTop='20px';
+
+    // Header
+    const hdr = el('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #1d4ed8;';
+    hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📅 Resumen Anual</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Últimos 12 períodos cerrados + mes actual</p></div><button onclick="exportarExcel()" class="btn no-print" style="font-size:12px;padding:8px 14px;background:#10b981;color:white;">📥 Exportar Excel</button>`;
+    wrap.appendChild(hdr);
+
+    // Construir array de meses: hasta 12 históricos + mes actual
+    const ultimos = [...historicoMeses].slice(-12);
+    const mesesArr = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos, cerrado: true }));
+    mesesArr.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaCuentasUSD, listaServiciosUSD, listaCorrientesUSD, tipoCambio }, cerrado: false });
+
+    if (mesesArr.length === 1) {
+        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:32px;text-align:center;color:#94a3b8;">Todavía no hay períodos cerrados. Cerrá el primer mes para ver el resumen anual.</div>');
+        return wrap;
+    }
+
+    // ── TABLA 1: MÉTRICAS FINANCIERAS ─────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#1d4ed8;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Métricas por Período</h3>');
+
+    function calcMes(m) {
+        const db = m.datos;
+        let banco = 0, deudaTarj = 0, egresado = 0, ingresos = 0;
+        // Banco
+        (db.listaBancos||[]).forEach(b => banco += b.saldo);
+        // Deuda tarjetas
+        const mDeb = {}; (db.listaTarjetas||[]).forEach(t => { mDeb[t.id]=0; deudaTarj+=t.saldo; });
+        (db.listaServicios||[]).forEach(s => { if(s.pagado>0 && mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
+        (db.listaCorrientes||[]).forEach(c => { if(c.fechaPago && mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+        deudaTarj += Object.values(mDeb).reduce((a,v)=>a+v,0);
+        // Egresado e ingresos corrientes
+        (db.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
+        });
+        // Fijos pagados
+        (db.listaServicios||[]).forEach(s => { if(s.pagado>0) egresado += s.pagado; });
+        // USD en ARS
+        const tc = db.tipoCambio || tipoCambio || 1;
+        let bancoUSD = 0;
+        (db.listaCuentasUSD||[]).forEach(b => bancoUSD += b.saldo);
+        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado * tc);
+        (db.listaCorrientesUSD||[]).filter(c=>!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto * tc; else egresado += c.monto * tc;
+        });
+        const balance = ingresos - egresado;
+        return { banco, bancoUSD, deudaTarj, egresado, ingresos, balance, tc };
+    }
+
+    const resultados = mesesArr.map(m => ({ nombre: m.nombre, cerrado: m.cerrado, ...calcMes(m) }));
+
+    // Tabla horizontal
+    const cols = ['banco','deudaTarj','ingresos','egresado','balance'];
+    const labels = { banco:'🏦 Banco ($)', deudaTarj:'💳 Deuda Tarj.', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
+    let tbl = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #1d4ed8;padding:16px;margin-bottom:20px;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
+<thead><tr style="background:#1e293b;">
+<th style="padding:8px;text-align:left;color:white;white-space:nowrap;">Métrica</th>`;
+    resultados.forEach(r => { tbl += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
+    tbl += `</tr></thead><tbody>`;
+
+    cols.forEach((col,ci) => {
+        const vals = resultados.map(r => r[col]);
+        const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
+        tbl += `<tr style="background:${ci%2===0?'white':'#f8fafc'};">
+<td style="padding:7px 8px;font-weight:bold;color:#334155;white-space:nowrap;">${labels[col]}</td>`;
+        resultados.forEach(r => {
+            const v = r[col];
+            let color = '#334155';
+            if(col==='balance') color = v>=0?'#10b981':'#ef4444';
+            else if(col==='deudaTarj') color = '#a855f7';
+            else if(col==='ingresos') color = '#0284c7';
+            else if(col==='egresado') color = '#f59e0b';
+            // mini barra inline
+            const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
+            const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):(col==='deudaTarj'?'#a855f7':col==='ingresos'?'#0284c7':col==='egresado'?'#f59e0b':'#1d4ed8');
+            tbl += `<td style="padding:7px 8px;text-align:right;">
+<div style="font-weight:bold;color:${color};font-size:10px;">${fmt(v)}</div>
+<div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:${barColor};height:3px;border-radius:2px;width:${pct}%;"></div></div>
+</td>`;
+        });
+        tbl += `</tr>`;
+    });
+    tbl += `</tbody></table></div>`;
+    wrap.insertAdjacentHTML('beforeend', tbl);
+
+    // ── TABLA 2: GASTOS POR RUBRO ─────────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Gastos por Rubro · Todos los Períodos</h3>');
+
+    const todosRubs = new Set();
+    mesesArr.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')) && !c.esIngreso).forEach(c=>todosRubs.add(c.rubro||'Sin rubro')));
+    const rubArr = [...todosRubs].sort();
+
+    if (rubArr.length) {
+        let t2 = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:20px;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
+<thead><tr style="background:#1e293b;">
+<th style="padding:8px;text-align:left;color:white;">Rubro</th>`;
+        resultados.forEach(r => { t2 += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
+        t2 += `<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th><th style="padding:8px;text-align:right;color:#f59e0b;">PROM</th></tr></thead><tbody>`;
+
+        const totMes = new Array(resultados.length).fill(0);
+        let totGen = 0;
+        rubArr.forEach((rub, ri) => {
+            let totR = 0;
+            t2 += `<tr style="background:${ri%2===0?'white':'#f8fafc'};">
+<td style="padding:6px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
+            resultados.forEach((r, mi) => {
+                const mesData = mesesArr[mi].datos;
+                const s = (mesData.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                totMes[mi] += s; totR += s;
+                t2 += `<td style="padding:6px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`;
+            });
+            totGen += totR;
+            const promR = totR / resultados.filter((_,i) => {
+                const mesData = mesesArr[i].datos;
+                return (mesData.listaCorrientes||[]).some(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso);
+            }).length || 1;
+            t2 += `<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td>`;
+            t2 += `<td style="padding:6px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totR/resultados.length)}</td></tr>`;
+        });
+
+        t2 += `<tr style="background:#f1f5f9;font-weight:bold;">
+<td style="padding:7px 8px;color:#1e293b;">TOTAL PERÍODO</td>`;
+        totMes.forEach(t => { t2 += `<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
+        t2 += `<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td>`;
+        t2 += `<td style="padding:7px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totGen/resultados.length)}</td></tr>`;
+        t2 += `</tbody></table></div>`;
+        wrap.insertAdjacentHTML('beforeend', t2);
+    }
+
+    // ── TARJETAS RESUMEN (KPIs) ───────────────────────────────
+    const promedioBalance = resultados.slice(0,-1).reduce((a,r)=>a+r.balance,0) / Math.max(resultados.length-1,1);
+    const mejorMes = [...resultados].sort((a,b)=>b.balance-a.balance)[0];
+    const peorMes  = [...resultados].sort((a,b)=>a.balance-b.balance)[0];
+    const totalEgr = resultados.slice(0,-1).reduce((a,r)=>a+r.egresado,0);
+    const totalIng = resultados.slice(0,-1).reduce((a,r)=>a+r.ingresos,0);
+
+    wrap.insertAdjacentHTML('beforeend',`
+<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#7c3aed;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">KPIs del Período</h3>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;">
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #10b981;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Balance promedio mensual</div>
+    <div style="font-size:18px;font-weight:bold;color:${promedioBalance>=0?'#10b981':'#ef4444'};">${fmt(promedioBalance)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #0284c7;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total egresado (períodos cerrados)</div>
+    <div style="font-size:18px;font-weight:bold;color:#f59e0b;">${fmt(totalEgr)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #a855f7;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total ingresos (períodos cerrados)</div>
+    <div style="font-size:18px;font-weight:bold;color:#0284c7;">${fmt(totalIng)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #f59e0b;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Mejor período</div>
+    <div style="font-size:14px;font-weight:bold;color:#10b981;">${mejorMes.nombre.replace(' de ',' ')}</div>
+    <div style="font-size:11px;color:#64748b;">${fmt(mejorMes.balance)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #ef4444;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Peor período</div>
+    <div style="font-size:14px;font-weight:bold;color:#ef4444;">${peorMes.nombre.replace(' de ',' ')}</div>
+    <div style="font-size:11px;color:#64748b;">${fmt(peorMes.balance)}</div>
+  </div>
+</div>`);
+
+    return wrap;
+}
+
+// ═══════════════════════════════════════════
+//  EXPORTAR EXCEL
+// ═══════════════════════════════════════════
+function exportarExcel() {
+    // Usamos SheetJS via CDN (se carga dinámicamente si no está)
+    function generarXLSX() {
+        const XLSX = window.XLSX;
+        const wb = XLSX.utils.book_new();
+
+        // ── Hoja 1: Mes Actual - Bancos ──
+        const datBancos = [['Cuenta','Saldo']];
+        listaBancos.forEach(b => datBancos.push([b.nombre, b.saldo]));
+        datBancos.push(['TOTAL', listaBancos.reduce((a,b)=>a+b.saldo,0)]);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datBancos), 'Bancos');
+
+        // ── Hoja 2: Servicios Fijos ──
+        const datServ = [['Nombre','Presupuesto','Pagado','Pendiente','Clase']];
+        listaServicios.forEach(s => datServ.push([s.nombre, s.presupuesto||0, s.pagado||0, Math.max(0,(s.presupuesto||0)-(s.pagado||0)), s.clase||'']));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datServ), 'Fijos');
+
+        // ── Hoja 3: Gastos Corrientes ──
+        const datCorr = [['Fecha','Rubro','Detalle','Monto','Tipo','Medio de Pago']];
+        listaCorrientes.filter(c=>c.fechaPago).forEach(c => {
+            const mp = [...listaBancos,...listaTarjetas].find(x=>x.id===c.medioPagoId);
+            datCorr.push([c.fechaPago||'', c.rubro||'', c.detalle||'', c.monto, c.esIngreso?'Ingreso':'Egreso', mp?mp.nombre:'—']);
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datCorr), 'Corrientes');
+
+        // ── Hoja 4: Dólares Corrientes ──
+        const datCorrUSD = [['Rubro','Detalle','Monto USD','Tipo']];
+        listaCorrientesUSD.forEach(c => datCorrUSD.push([c.rubro||'', c.detalle||'', c.monto, c.esIngreso?'Ingreso':'Egreso']));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datCorrUSD), 'Corrientes USD');
+
+        // ── Hoja 5: Resumen Anual ──
+        const ultimos = [...historicoMeses].slice(-12);
+        const mesesArr2 = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos }));
+        mesesArr2.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes } });
+
+        const datAnual = [['Período','Banco ($)','Deuda Tarj.','Ingresos','Egresado','Balance']];
+        mesesArr2.forEach(m => {
+            const db = m.datos;
+            let banco=0, deudaTarj=0, egresado=0, ingresos=0;
+            (db.listaBancos||[]).forEach(b=>banco+=b.saldo);
+            const mDeb2={}; (db.listaTarjetas||[]).forEach(t=>{mDeb2[t.id]=0; deudaTarj+=t.saldo;});
+            (db.listaServicios||[]).forEach(s=>{ if(s.pagado>0&&mDeb2[s.medioPagoId]!==undefined) mDeb2[s.medioPagoId]+=s.pagado; });
+            (db.listaCorrientes||[]).forEach(c=>{ if(c.fechaPago&&mDeb2[c.medioPagoId]!==undefined) mDeb2[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+            deudaTarj += Object.values(mDeb2).reduce((a,v)=>a+v,0);
+            (db.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ if(c.esIngreso) ingresos+=c.monto; else egresado+=c.monto; });
+            (db.listaServicios||[]).forEach(s=>{ if(s.pagado>0) egresado+=s.pagado; });
+            datAnual.push([m.nombre, banco, deudaTarj, ingresos, egresado, ingresos-egresado]);
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datAnual), 'Resumen Anual');
+
+        // ── Hoja 6: Rubros acumulado ──
+        const datRubros = [['Rubro']];
+        const rubSet = new Set();
+        mesesArr2.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))&&!c.esIngreso).forEach(c=>rubSet.add(c.rubro||'Sin rubro')));
+        const rubArr2 = [...rubSet].sort();
+        mesesArr2.forEach(m => datRubros[0].push(m.nombre));
+        datRubros[0].push('TOTAL');
+        rubArr2.forEach(rub => {
+            const row = [rub];
+            let tot = 0;
+            mesesArr2.forEach(m => {
+                const s = (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                row.push(s||0); tot+=s;
+            });
+            row.push(tot);
+            datRubros.push(row);
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(datRubros), 'Rubros Acumulado');
+
+        // Descargar
+        const d = new Date(), ts = d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+        XLSX.writeFile(wb, `control_financiero_${ts}.xlsx`);
+    }
+
+    if (window.XLSX) {
+        generarXLSX();
+    } else {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        sc.onload = generarXLSX;
+        sc.onerror = () => alert('No se pudo cargar la librería Excel. Verificá tu conexión.');
+        document.head.appendChild(sc);
+    }
+}
+
+
