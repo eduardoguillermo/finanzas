@@ -29,6 +29,9 @@ let listaAcciones      = leer(K.acciones)      || [];
 let listaPresupRubros  = leer('f_presup_rubros_v1') || {};
 let tabActivo = null;
 let filtroCorrientes = '';
+let _syncTimer = null;
+let _syncPendiente = false;
+let _syncActivo = false;
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
 function guardar() {
     try {
@@ -48,6 +51,7 @@ function guardar() {
         localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
         localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
         localStorage.setItem('f_presup_rubros_v1', JSON.stringify(listaPresupRubros));
+        syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
             alert('⚠️ Almacenamiento local lleno. Exportá un backup ahora y considerá eliminar meses históricos antiguos.');
@@ -72,6 +76,63 @@ function parseNum(str) {
     if(s.includes(',')){ const p=s.split(','); return p[p.length-1].length<=2?parseFloat(s.replace(',','.'))||0:parseFloat(s.replace(/,/g,''))||0; }
     if(s.includes('.')){ const p=s.split('.'); return p[p.length-1].length<=2?parseFloat(s)||0:parseFloat(s.replace(/\./g,''))||0; }
     return parseFloat(s)||0;
+}
+
+// ═══════════════════════════════════════════
+//  SYNC AUTOMÁTICO DRIVE
+// ═══════════════════════════════════════════
+function syncSetBadge(estado) {
+    const b = document.getElementById('sync-badge');
+    if(!b) return;
+    if(estado === 'ok')       { b.innerText='✅ Drive sync'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#dcfce7;color:#15803d;cursor:default;'; }
+    else if(estado === 'pend'){ b.innerText='⏳ Sin sincronizar'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#fef9c3;color:#854d0e;cursor:default;'; }
+    else if(estado === 'sync'){ b.innerText='☁️ Sincronizando...'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#dbeafe;color:#1d4ed8;cursor:default;'; }
+    else if(estado === 'err') { b.innerText='⚠️ Error sync'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#fee2e2;color:#b91c1c;cursor:default;'; }
+    else if(estado === 'noauth'){ b.innerText='☁️ Drive'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;'; }
+}
+function syncDebounce() {
+    if(!gToken) { syncSetBadge('noauth'); return; }
+    _syncPendiente = true;
+    syncSetBadge('pend');
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(syncSilencioso, 30000);
+}
+async function syncSilencioso() {
+    if(!gToken || _syncActivo) return;
+    _syncActivo = true;
+    syncSetBadge('sync');
+    try {
+        const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
+        const nombre='backup_finanzas_'+ts+'.json';
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros});
+        const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
+        const form=new FormData();
+        form.append('metadata',new Blob([meta],{type:'application/json'}));
+        form.append('file',new Blob([data],{type:'application/json'}));
+        const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+gToken},body:form});
+        const f=await r.json();
+        if(f.id){ _syncPendiente=false; syncSetBadge('ok'); }
+        else { if(f.error&&f.error.code===401) gToken=null; syncSetBadge('err'); }
+    } catch(e) { syncSetBadge('err'); }
+    _syncActivo = false;
+}
+async function syncAlSalir() {
+    const b = document.getElementById('sync-badge');
+    if(!gToken) { alert('Para sincronizar antes de salir, primero autenticá Drive con el botón ☁️ Drive.'); return; }
+    if(!_syncPendiente) { if(confirm('✅ Todo sincronizado. ¿Cerrar la app?')) window.close(); return; }
+    clearTimeout(_syncTimer);
+    syncSetBadge('sync');
+    if(b) { b.innerText='☁️ Sincronizando...'; }
+    await syncSilencioso();
+    if(!_syncPendiente) {
+        alert('✅ Sincronizado con Drive. Ya podés cerrar la pestaña.');
+    } else {
+        alert('⚠️ No se pudo sincronizar. Usá el botón ☁️ Drive manualmente antes de cerrar.');
+    }
+}
+async function syncAlAbrir() {
+    if(!gToken) return;
+    await syncSilencioso();
 }
 
 // ═══════════════════════════════════════════
@@ -209,7 +270,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.4.0</p>
+          <p class="version-tag">v3.4.1</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -219,6 +280,8 @@ function buildMesActual() {
           <button class="btn no-print"  id="btn-drive-up"   style="background:#4285f4;color:white;">☁️ Drive</button>
           <button class="btn no-print"  id="btn-drive-down" style="background:#4285f4;color:white;">📂 Drive</button>
           <button class="btn btn-dark"  onclick="window.print()">🖨️ PDF</button>
+          <span id="sync-badge" style="font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;" onclick="syncAlSalir()">☁️ Drive</span>
+          <button class="btn" id="btn-salir" style="background:#1e293b;color:white;" onclick="syncAlSalir()">🚪 Salir</button>
         </div>
       </header>
       <div class="grid-dashboard">
@@ -1760,12 +1823,14 @@ function driveGetToken(cb) {
             client_id:GDRIVE_CLIENT_ID, scope:GDRIVE_SCOPE,
             hint:'factory.viking.systems@gmail.com', prompt:'',
             callback:resp=>{
-                if(resp.error==='interaction_required'){
+                if(resp.error==='interaction_required' || resp.error==='user_logged_out'){
                     const c2=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:GDRIVE_SCOPE,hint:'factory.viking.systems@gmail.com',callback:r2=>{ if(r2.error){alert('Error: '+r2.error);return;} gToken=r2.access_token; cb(gToken); }});
                     c2.requestAccessToken(); return;
                 }
                 if(resp.error){alert('Error Google: '+resp.error);return;}
-                gToken=resp.access_token; cb(gToken);
+                gToken=resp.access_token;
+                syncSetBadge(_syncPendiente?'pend':'noauth');
+                cb(gToken);
             }
         });
         client.requestAccessToken({prompt:''});
@@ -1781,7 +1846,7 @@ function driveSubir() {
         form.append('metadata',new Blob([meta],{type:'application/json'}));
         form.append('file',new Blob([data],{type:'application/json'}));
         fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token},body:form})
-        .then(r=>r.json()).then(f=>{ if(f.id) alert('Backup guardado en Drive: '+nombre); else{alert('Error al subir: '+JSON.stringify(f));gToken=null;} })
+        .then(r=>r.json()).then(f=>{ if(f.id){ _syncPendiente=false; syncSetBadge('ok'); alert('Backup guardado en Drive: '+nombre); } else{alert('Error al subir: '+JSON.stringify(f));gToken=null;} })
         .catch(e=>{alert('Error: '+e.message);gToken=null;});
     });
 }
