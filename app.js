@@ -215,6 +215,16 @@ function renderTabs() {
     badgeEl.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;align-self:center;white-space:nowrap;';
     badgeEl.innerText='☁️ Drive'; badgeEl.onclick=syncAlSalir;
     bar.appendChild(badgeEl);
+    const backupEl = document.createElement('button'); backupEl.id='btn-backup-global';
+    backupEl.style.cssText='background:#4285f4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
+    backupEl.innerText='☁️ BK'; backupEl.title='Subir backup ahora';
+    backupEl.onclick=driveSubir;
+    bar.appendChild(backupEl);
+    const restoreEl = document.createElement('button'); restoreEl.id='btn-restore-global';
+    restoreEl.style.cssText='background:#4285f4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
+    restoreEl.onclick=driveRestaurar;
+    bar.appendChild(restoreEl);
     const salirEl = document.createElement('button'); salirEl.id='btn-salir';
     salirEl.style.cssText='background:#334155;color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
     salirEl.innerText='🚪 Salir'; salirEl.onclick=syncAlSalir;
@@ -2112,9 +2122,10 @@ function driveSubir() {
 }
 function driveRestaurar() {
     driveGetToken(token=>{
-        fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=20',{headers:{Authorization:'Bearer '+token}})
+        fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=50',{headers:{Authorization:'Bearer '+token}})
         .then(r=>r.json()).then(data=>{
-            const arch=(data.files||[]).filter(f=>f.name.startsWith('backup_finanzas_'));
+            // Listar todos los backups: manuales + autosync
+            const arch=(data.files||[]).filter(f=>f.name.startsWith('backup_'));
             mostrarModalDrive(arch,token);
         }).catch(e=>{alert('Error al listar Drive: '+e.message);gToken=null;});
     });
@@ -2134,7 +2145,9 @@ function mostrarModalDrive(arch,token) {
         const item=el('div'); item.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:8px;cursor:pointer;';
         item.onmouseover=()=>item.style.background='#f1f5f9'; item.onmouseout=()=>item.style.background='';
         const fecha=new Date(f.modifiedTime).toLocaleString('es-AR');
-        const lft=el('div'); lft.innerHTML=`<div style="font-size:13px;font-weight:bold;color:#1e293b;">${f.name}</div><div style="font-size:11px;color:#64748b;">${fecha}</div>`;
+        const esAutoSync = f.name === 'backup_autosync.json';
+        const label = esAutoSync ? '🔄 Autosync — ' + fecha : f.name;
+        const lft=el('div'); lft.innerHTML=`<div style="font-size:13px;font-weight:bold;color:#1e293b;">${label}</div><div style="font-size:11px;color:#64748b;">${fecha}${esAutoSync?' · sync automático':''}</div>`;
         const btn=el('span'); btn.innerText='Restaurar →'; btn.style.cssText='font-size:11px;color:#4285f4;font-weight:bold;';
         item.appendChild(lft); item.appendChild(btn); item.onclick=()=>driveCargar(f.id,f.name,token,ov); body.appendChild(item);
     }); }
