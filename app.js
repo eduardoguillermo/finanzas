@@ -26,24 +26,33 @@ let listaCorrientesUSD = leer(K.corrientesUSD) || [];
 let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
+let listaPresupRubros  = leer('f_presup_rubros_v1') || {};
 let tabActivo = null;
+let filtroCorrientes = '';
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
 function guardar() {
-    localStorage.setItem(K.rubros,         JSON.stringify(listaRubros));
-    localStorage.setItem(K.bancos,         JSON.stringify(listaBancos));
-    localStorage.setItem(K.tarjetas,       JSON.stringify(listaTarjetas));
-    localStorage.setItem(K.servicios,      JSON.stringify(listaServicios));
-    localStorage.setItem(K.corrientes,     JSON.stringify(listaCorrientes));
-    localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
-    localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
-    localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
-    localStorage.setItem(K.cuentasUSD,     JSON.stringify(listaCuentasUSD));
-    localStorage.setItem(K.tarjetasUSD,    JSON.stringify(listaTarjetasUSD));
-    localStorage.setItem(K.serviciosUSD,   JSON.stringify(listaServiciosUSD));
-    localStorage.setItem(K.corrientesUSD,  JSON.stringify(listaCorrientesUSD));
-    localStorage.setItem(K.tipoCambio,     JSON.stringify(tipoCambio));
-    localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
-    localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
+    try {
+        localStorage.setItem(K.rubros,         JSON.stringify(listaRubros));
+        localStorage.setItem(K.bancos,         JSON.stringify(listaBancos));
+        localStorage.setItem(K.tarjetas,       JSON.stringify(listaTarjetas));
+        localStorage.setItem(K.servicios,      JSON.stringify(listaServicios));
+        localStorage.setItem(K.corrientes,     JSON.stringify(listaCorrientes));
+        localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
+        localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
+        localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
+        localStorage.setItem(K.cuentasUSD,     JSON.stringify(listaCuentasUSD));
+        localStorage.setItem(K.tarjetasUSD,    JSON.stringify(listaTarjetasUSD));
+        localStorage.setItem(K.serviciosUSD,   JSON.stringify(listaServiciosUSD));
+        localStorage.setItem(K.corrientesUSD,  JSON.stringify(listaCorrientesUSD));
+        localStorage.setItem(K.tipoCambio,     JSON.stringify(tipoCambio));
+        localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
+        localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
+        localStorage.setItem('f_presup_rubros_v1', JSON.stringify(listaPresupRubros));
+    } catch(e) {
+        if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
+            alert('⚠️ Almacenamiento local lleno. Exportá un backup ahora y considerá eliminar meses históricos antiguos.');
+        } else { console.error('Error al guardar:', e); }
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -200,7 +209,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.3.0</p>
+          <p class="version-tag">v3.4.0</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -217,6 +226,7 @@ function buildMesActual() {
         <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Total Deuda Tarjetas</h4><p id="d-tarjetas" style="color:#a855f7;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado / Pagado</h4><p id="d-pagado" style="color:#10b981;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
+        <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
       </div>
       <div class="grid-principal">
         <div>
@@ -280,6 +290,7 @@ function buildMesActual() {
               </form>
             </div>
             <div id="rubros-lista" class="rubros-wrap"></div>
+            <div id="rubros-presup-wrap" style="margin-top:14px;"></div>
           </div>
         </div>
         <div>
@@ -294,6 +305,7 @@ function buildMesActual() {
                 </div>
                 <div class="form-row" style="margin-bottom:12px;">
                   <div><label>Clase</label><select id="srv-clase" required><option value="M">M — Mío</option><option value="O">O — Oma</option><option value="X">X — Otros</option></select></div>
+                  <div style="flex:3"><label>Nota (opcional)</label><input type="text" id="srv-nota" placeholder="Ej. Contrato N° 1234, renovación anual"></div>
                 </div>
                 <button type="submit" class="btn btn-add btn-indigo">Configurar Servicio Fijo</button>
               </form>
@@ -328,6 +340,10 @@ function buildMesActual() {
                 </div>
                 <button type="submit" class="btn btn-add btn-green">Asentar Gasto Corriente</button>
               </form>
+            </div>
+            <div class="no-print" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
+              <input type="text" id="filtro-corrientes" placeholder="🔍 Buscar por rubro o detalle..." style="flex:1;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;" oninput="filtroCorrientes=this.value.toLowerCase();render();">
+              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;" onclick="filtroCorrientes='';document.getElementById('filtro-corrientes').value='';render();">✕</button>
             </div>
             <div id="wrap-corrientes"></div>
           </div>
@@ -425,11 +441,25 @@ function render() {
         });
         tdPag.appendChild(inpPag);
         const tr=el('tr');
-        [tdHTML(`<b>${s.nombre}</b>`), tdCl, tdInpDate(s.fVto,v=>{ s.fVto=v; guardar(); }),
+        const tdNom=el('td'); tdNom.style.maxWidth='0'; tdNom.style.overflow='hidden'; tdNom.style.textOverflow='ellipsis'; tdNom.style.whiteSpace='nowrap';
+        const nomSpan2=el('span'); nomSpan2.style.fontWeight='bold'; nomSpan2.innerText=s.nombre;
+        const notaEdit=el('input'); notaEdit.type='text'; notaEdit.className='inp'; notaEdit.style.cssText='margin-top:3px;font-size:11px;color:#854d0e;background:#fefce8;border-color:#fde68a;display:'+(s.nota||document.activeElement===notaEdit?'block':'none')+';';
+        notaEdit.placeholder='Nota...'; notaEdit.value=s.nota||'';
+        notaEdit.onchange=e=>{ s.nota=e.target.value.trim(); guardar(); };
+        notaEdit.onfocus=()=>{ notaEdit.style.display='block'; };
+        const noteBtn=el('span'); noteBtn.innerText=s.nota?'📝':'＋'; noteBtn.style.cssText='font-size:10px;cursor:pointer;color:#94a3b8;margin-left:5px;';
+        noteBtn.title='Agregar/editar nota'; noteBtn.onclick=()=>{ notaEdit.style.display=notaEdit.style.display==='none'?'block':'none'; if(notaEdit.style.display==='block') notaEdit.focus(); };
+        tdNom.appendChild(nomSpan2); tdNom.appendChild(noteBtn); tdNom.appendChild(notaEdit);
+        [tdNom, tdCl, tdInpDate(s.fVto,v=>{ s.fVto=v; guardar(); }),
          tdInpNum(s.presupuesto,v=>{ s.presupuesto=v; guardar(); calcDash(); },'tr'),
          tdPag, tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
          (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{ s.medioPagoId=v; guardar(); calcDash(); })); return td; })(),
-         tdEst, tdBtn('✕',()=>elimServicio(s.id))
+         tdEst,
+         (()=>{ const td=el('td','tc no-print'); td.style.whiteSpace='nowrap';
+                const bDup=el('button','btn'); bDup.style.cssText='background:#f1f5f9;color:#334155;padding:3px 7px;font-size:11px;margin-right:3px;'; bDup.innerText='\u29c9'; bDup.title='Duplicar servicio';
+                bDup.onclick=()=>{ const copia=Object.assign({},clon(s),{id:'s_'+Date.now(),nombre:s.nombre+' (copia)',pagado:0,fPago:''}); listaServicios.push(copia); guardar(); render(); };
+                const bDel=el('button','btn-del'); bDel.innerText='\u2715'; bDel.onclick=()=>elimServicio(s.id);
+                td.appendChild(bDup); td.appendChild(bDel); return td; })()
         ].forEach(td=>tr.appendChild(td));
         tS.appendChild(tr);
     });
@@ -443,7 +473,7 @@ function render() {
         const thead=el('thead'); thead.innerHTML='<tr><th style="width:6%" class="tc">Clase</th><th style="width:18%">Rubro</th><th style="width:23%">Detalle</th><th style="width:15%">Medio</th><th style="width:12%;text-align:center;">F. Pago</th><th style="width:14%;text-align:right;">Monto ($)</th><th style="width:6%" class="no-print"></th></tr>';
         const tbody=el('tbody');
         if(!listaCorrientes.length) { tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin egresos corrientes.</td></tr>'; }
-        else { listaCorrientes.forEach(c=>{
+        else { listaCorrientes.filter(c=>!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes)).forEach(c=>{
             const selR=el('select'); selR.className='inp'; listaRubros.forEach(r=>addOpt(selR,r,r,r===c.rubro)); selR.onchange=e=>{ c.rubro=e.target.value; guardar(); };
             const inpD=el('input'); inpD.type='text'; inpD.className='inp'; inpD.value=c.detalle; inpD.onchange=e=>{ c.detalle=e.target.value.trim(); guardar(); };
             const inpFP=el('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
@@ -476,6 +506,49 @@ function render() {
         tbl.appendChild(thead); tbl.appendChild(tbody); wC.appendChild(tbl);
     }
     calcDash();
+    renderPresupRubros();
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  PRESUPUESTO POR RUBRO
+// ─────────────────────────────────────────────────────────────────
+function renderPresupRubros() {
+    const wrap = document.getElementById('rubros-presup-wrap'); if(!wrap) return;
+    if(!listaRubros.length){ wrap.innerHTML=''; return; }
+    // Calcular gastado este mes por rubro (corrientes sin filtro)
+    const gastado = {};
+    listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
+    let html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro</div>';
+    listaRubros.forEach(r=>{
+        const pres = listaPresupRubros[r]||0;
+        const gast = gastado[r]||0;
+        const pct = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
+        const col = colorRubro(r);
+        const alerta = pres>0 && gast>=pres;
+        const bg = alerta ? '#fef2f2' : '#f8fafc';
+        const barColor = alerta ? '#ef4444' : col;
+        html += '<div style="background:'+bg+';border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid '+(alerta?'#fca5a5':'#e2e8f0')+';">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
+        html += '<span style="font-size:12px;font-weight:bold;color:'+col+';">'+r+'</span>';
+        html += '<div style="display:flex;align-items:center;gap:6px;">';
+        html += '<span style="font-size:11px;color:#64748b;">'+fmt(gast)+(pres>0?' / '+fmt(pres):'')+'</span>';
+        if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
+        html += '</div></div>';
+        if(pres>0){ html += '<div style="background:#e2e8f0;border-radius:3px;height:6px;"><div style="background:'+barColor+';height:6px;border-radius:3px;width:'+pct+'%;transition:width 0.3s;"></div></div>'; }
+        html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
+        html += '<span style="font-size:10px;color:#94a3b8;">Ppto. $</span>';
+        html += '<input type="number" min="0" step="1" value="'+(pres||'')+'" placeholder="Sin límite" ';
+        html += 'style="width:110px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;" ';
+        html += 'data-rubro="'+r.replace(/"/g,'&quot;')+'" onchange="actualizarPresupRubro(this)" onblur="actualizarPresupRubro(this)">';
+        html += '</div></div>';
+    });
+    wrap.innerHTML = html;
+}
+function actualizarPresupRubro(inp) {
+    const r = inp.getAttribute('data-rubro');
+    const v = parseFloat(inp.value)||0;
+    if(v>0) listaPresupRubros[r]=v; else delete listaPresupRubros[r];
+    guardar(); renderPresupRubros();
 }
 
 // ═══════════════════════════════════════════
@@ -518,6 +591,14 @@ function calcDash() {
     setTxt('d-pagado',   fmt(Math.round(totalPag)));
     setTxt('d-pendiente',fmt(Math.round(fijosPend)));
     const cp=document.getElementById('card-pend'); if(cp) cp.style.borderLeftColor=fijosPend>0?'#ef4444':'#10b981';
+    // Saldo proyectado: bancos disponibles - fijos pendientes - corrientes sin fecha (gastos)
+    const corrSinFecha = listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const saldoProyectado = sumaBancos - fijosPend - corrSinFecha;
+    setTxt('d-proyectado', fmt(saldoProyectado));
+    const dp = document.getElementById('d-proyectado');
+    if(dp) dp.style.color = saldoProyectado >= 0 ? '#f59e0b' : '#ef4444';
+    const dps = document.getElementById('d-proyectado-sub');
+    if(dps) dps.innerText = 'Banco ' + fmt(sumaBancos) + ' − Pend. ' + fmt(fijosPend + corrSinFecha);
 }
 
 // ═══════════════════════════════════════════
@@ -528,7 +609,7 @@ function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.n
 function altaServicio(e) {
     e.preventDefault();
     const medioId=(listaTarjetas[0]?.id)||(listaBancos.find(b=>!b.autoDescontar)?.id)||(listaBancos[0]?.id)||'';
-    listaServicios.push({id:'s_'+Date.now(),nombre:vGet('srv-nombre'),presupuesto:nGet('srv-presupuesto'),pagado:0,fVto:vGet('srv-vto'),fPago:'',medioPagoId:medioId,clase:vGet('srv-clase')||'M'});
+    listaServicios.push({id:'s_'+Date.now(),nombre:vGet('srv-nombre'),presupuesto:nGet('srv-presupuesto'),pagado:0,fVto:vGet('srv-vto'),fPago:'',medioPagoId:medioId,clase:vGet('srv-clase')||'M',nota:vGet('srv-nota')||''});
     guardar(); e.target.reset(); render();
 }
 function altaCorriente(e) {
@@ -648,7 +729,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -668,6 +749,7 @@ function cargarDatos(res) {
     tipoCambio          = res.tipoCambio          || 1200;
     listaInstrumentos   = res.listaInstrumentos   || [];
     listaAcciones       = res.listaAcciones       || [];
+    if(res.listaPresupRubros) listaPresupRubros = res.listaPresupRubros;
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
@@ -695,12 +777,23 @@ function modalVencimientos() {
     const hoy=new Date(); hoy.setHours(0,0,0,0);
     const habiles=proximosHabiles(hoy,5), limite=habiles[habiles.length-1];
     const proximos=listaServicios.filter(s=>{ if(!s.fVto) return false; if(s.pagado>=s.presupuesto&&s.presupuesto>0) return false; const v=new Date(s.fVto+'T00:00:00'); return v>=hoy&&v<=limite; });
-    if(!proximos.length) return;
-    const conDias=proximos.map(s=>{ const v=new Date(s.fVto+'T00:00:00'); let dh=0; const cur=new Date(hoy); while(cur<v){cur.setDate(cur.getDate()+1);if(esHabil(cur))dh++;} return {...s,vtoDate:v,diasH:dh}; }).sort((a,b)=>a.vtoDate-b.vtoDate);
+    // Cuotas por terminar: 1 o 2 cuotas restantes
+    const cuotasTerminando = listaCuotas.filter(c=>(c.totalCuotas-c.cuotaActual)<=2);
+    if(!proximos.length && !cuotasTerminando.length) return;
     const fmtF=d=>d.toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'});
-    const items=conDias.map(s=>{ const urg=s.diasH<=2, lbl=s.diasH===0?'¡Hoy!':s.diasH===1?'1 día hábil':s.diasH+' días hábiles'; const pend=s.presupuesto>0?fmt(s.presupuesto-s.pagado):'—'; const sub=s.pagado>0?`Pago parcial · Resta ${pend}`:`Pendiente · ${pend}`; return `<div class="vto-item ${urg?'urgente':'proximo'}"><div><div class="vto-nombre">${s.nombre}</div><div class="vto-sub">${sub}</div></div><div class="vto-fecha"><div class="vto-dias">${lbl}</div><div class="vto-txt">${fmtF(s.vtoDate)}</div></div></div>`; }).join('');
+    const conDias2=proximos.map(s=>{ const v=new Date(s.fVto+'T00:00:00'); let dh=0; const cur=new Date(hoy); while(cur<v){cur.setDate(cur.getDate()+1);if(esHabil(cur))dh++;} return {...s,vtoDate:v,diasH:dh}; }).sort((a,b)=>a.vtoDate-b.vtoDate);
+    let itemsHtml='';
+    if(proximos.length){
+        itemsHtml += '<div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Vencimientos próximos</div>';
+        itemsHtml += conDias2.map(s=>{ const urg=s.diasH<=2, lbl=s.diasH===0?'¡Hoy!':s.diasH===1?'1 día hábil':s.diasH+' días hábiles'; const pend=s.presupuesto>0?fmt(s.presupuesto-s.pagado):'—'; const sub=s.pagado>0?'Pago parcial · Resta '+pend:'Pendiente · '+pend; return '<div class="vto-item '+(urg?'urgente':'proximo')+'"><div><div class="vto-nombre">'+s.nombre+'</div><div class="vto-sub">'+sub+'</div></div><div class="vto-fecha"><div class="vto-dias">'+lbl+'</div><div class="vto-txt">'+fmtF(s.vtoDate)+'</div></div></div>'; }).join('');
+    }
+    if(cuotasTerminando.length){
+        itemsHtml += '<div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin:'+(proximos.length?'16px':'0')+'px 0 8px;">⚡ Cuotas por terminar</div>';
+        itemsHtml += cuotasTerminando.map(c=>{ const rest=c.totalCuotas-c.cuotaActual; const lbl=rest===0?'Última cuota':rest===1?'Quedan 2 cuotas':'Quedan '+rest+' cuotas'; return '<div class="vto-item proximo"><div><div class="vto-nombre">'+c.descripcion+'</div><div class="vto-sub">'+fmt(c.montoCuota)+'/mes · Cuota '+c.cuotaActual+' de '+c.totalCuotas+'</div></div><div class="vto-fecha"><div class="vto-dias" style="background:#f3e8ff;color:#7c3aed;">'+lbl+'</div></div></div>'; }).join('');
+    }
     const ov=el('div','modal-overlay no-print'); ov.id='modal-vto';
-    ov.innerHTML=`<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">⚠️</span><h3>Vencimientos en los próximos 5 días hábiles</h3></div><div class="modal-body">${items}</div><div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById('modal-vto').remove()">Entendido</button></div></div>`;
+    const titulo = proximos.length && cuotasTerminando.length ? 'Vencimientos y cuotas próximas' : proximos.length ? 'Vencimientos en los próximos 5 días hábiles' : 'Cuotas por terminar';
+    ov.innerHTML='<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">⚠️</span><h3>'+titulo+'</h3></div><div class="modal-body">'+itemsHtml+'</div><div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById(\'modal-vto\').remove()">Entendido</button></div></div>';
     document.body.appendChild(ov);
 }
 
@@ -1682,7 +1775,7 @@ function driveSubir() {
     driveGetToken(token=>{
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
@@ -1740,8 +1833,19 @@ function driveCargar(id,nombre,token,modal) {
 // ═══════════════════════════════════════════
 if('serviceWorker' in navigator){
     window.addEventListener('load',()=>{
-        navigator.serviceWorker.register('./sw.js')
-            .then(r=>console.log('SW:',r.scope))
-            .catch(e=>console.log('SW error:',e));
+        navigator.serviceWorker.register('./sw.js').then(reg=>{
+            console.log('SW:', reg.scope);
+            reg.addEventListener('updatefound', ()=>{
+                const newWorker = reg.installing;
+                newWorker.addEventListener('statechange', ()=>{
+                    if(newWorker.state==='installed' && navigator.serviceWorker.controller){
+                        const banner = document.createElement('div');
+                        banner.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:12px 20px;border-radius:8px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:13px;';
+                        banner.innerHTML='🆕 Nueva versión disponible. <button onclick="window.location.reload()" style="background:#4f46e5;color:white;border:none;border-radius:4px;padding:5px 12px;cursor:pointer;font-weight:bold;font-size:12px;">Actualizar</button>';
+                        document.body.appendChild(banner);
+                    }
+                });
+            });
+        }).catch(e=>console.log('SW error:',e));
     });
 }
