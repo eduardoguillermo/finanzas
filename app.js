@@ -312,7 +312,8 @@ function buildMesActual() {
               <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Fijos</span>
               <span id="d-presup-srv-vals" style="font-size:12px;font-weight:bold;color:#6366f1;">$ 0 / $ 0</span>
             </div>
-            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:3px;"><div id="d-presup-srv-barf" style="height:5px;border-radius:3px;width:0%;background:#6366f1;transition:width 0.3s;"></div></div>
+            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:2px;"><div id="d-presup-srv-barf" style="height:5px;border-radius:3px;width:0%;background:#6366f1;transition:width 0.3s;"></div></div>
+            <small id="d-presup-srv-pct" style="font-size:10px;color:#94a3b8;"></small>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;margin-bottom:2px;">
               <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Corrientes</span>
               <span id="d-presup-corr-vals" style="font-size:12px;font-weight:bold;color:#10b981;">$ 0 / $ 0</span>
@@ -701,8 +702,10 @@ function calcDash() {
     const barSrv = superadoSrv ? '#10b981' : pctSrv>=80 ? '#f59e0b' : '#6366f1';
     const pSrvV=document.getElementById('d-presup-srv-vals');
     const pSrvB=document.getElementById('d-presup-srv-barf');
+    const pSrvP=document.getElementById('d-presup-srv-pct');
     if(pSrvV){ pSrvV.innerText=fmt(totalSrvPag)+' / '+fmt(totalSrvPresup); pSrvV.style.color=barSrv; }
     if(pSrvB){ pSrvB.style.width=pctSrv+'%'; pSrvB.style.background=barSrv; }
+    if(pSrvP){ pSrvP.innerText=totalSrvPresup>0?pctSrv+'%'+(superadoSrv?' ✓':''):''; pSrvP.style.color=superadoSrv?'#10b981':pctSrv>=80?'#f59e0b':'#94a3b8'; }
     // Presupuesto pesos — Corrientes por rubro
     const totalPresup  = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
     const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
@@ -714,7 +717,7 @@ function calcDash() {
     const pPct=document.getElementById('d-presup-pct');
     if(pCorrV){ pCorrV.innerText=fmt(totalGastado)+' / '+fmt(totalPresup); pCorrV.style.color=barColor; }
     if(pCorrB){ pCorrB.style.width=pct+'%'; pCorrB.style.background=barColor; }
-    if(pPct){ pPct.innerText=totalPresup>0?pct+'% corrientes'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':''):'configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
+    if(pPct){ pPct.innerText=totalPresup>0?pct+'%'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':''):'configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
 }
 
 // ═══════════════════════════════════════════
