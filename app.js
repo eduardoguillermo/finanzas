@@ -305,6 +305,22 @@ function buildMesActual() {
         <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado / Pagado</h4><p id="d-pagado" style="color:#10b981;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
+        <div class="card-bal" style="border-left:5px solid #6366f1;padding-bottom:12px;">
+          <h4>Presupuesto Mes</h4>
+          <div style="margin-top:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+              <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Fijos</span>
+              <span id="d-presup-srv-vals" style="font-size:12px;font-weight:bold;color:#6366f1;">$ 0 / $ 0</span>
+            </div>
+            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:3px;"><div id="d-presup-srv-barf" style="height:5px;border-radius:3px;width:0%;background:#6366f1;transition:width 0.3s;"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;margin-bottom:2px;">
+              <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Corrientes</span>
+              <span id="d-presup-corr-vals" style="font-size:12px;font-weight:bold;color:#10b981;">$ 0 / $ 0</span>
+            </div>
+            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:3px;"><div id="d-presup-corr-barf" style="height:5px;border-radius:3px;width:0%;background:#10b981;transition:width 0.3s;"></div></div>
+            <small id="d-presup-pct" style="font-size:10px;color:#94a3b8;">configurá límites en Rubros</small>
+          </div>
+        </div>
       </div>
       <div class="grid-principal">
         <div>
