@@ -28,6 +28,7 @@ let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
+let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
 let filtroCorrientes = '';
 let _syncTimer = null;
@@ -53,6 +54,7 @@ function guardar() {
         localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
         localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
+        localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -106,7 +108,7 @@ async function syncSilencioso() {
     try {
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
@@ -805,7 +807,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -827,6 +829,7 @@ function cargarDatos(res) {
     listaAcciones       = res.listaAcciones       || [];
     if(res.listaPresupRubros)    listaPresupRubros    = res.listaPresupRubros;
     if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
+    if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
@@ -967,6 +970,14 @@ function buildDolares() {
               </form>
             </div>
             <div id="wrap-ccusd"></div>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;">
+              <div style="font-size:12px;font-weight:bold;color:#334155;text-transform:uppercase;margin-bottom:8px;">⚙️ Rubros USD</div>
+              <div id="rubros-usd-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+              <form id="form-rubro-usd" style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:12px;">
+                <input type="text" id="rubro-usd-nombre" placeholder="Ej. Electrónica" style="padding:7px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;">
+                <button type="submit" class="btn" style="background:#16a34a;color:white;font-size:12px;">+ Agregar</button>
+              </form>
+            </div>
             <div id="rubros-presup-usd-wrap" style="margin-top:14px;"></div>
           </div>
         </div>
@@ -982,7 +993,14 @@ function bindDolares() {
     g('form-susd')?.addEventListener('submit', altaServicioUSD);
     g('form-ccusd')?.addEventListener('submit', altaCorrienteUSD);
     g('btn-dol-actualizar')?.addEventListener('click', actualizarTCDolares);
-
+    g('form-rubro-usd')?.addEventListener('submit', e=>{
+        e.preventDefault();
+        const nombre = document.getElementById('rubro-usd-nombre')?.value?.trim();
+        if(!nombre||listaRubrosUSD.includes(nombre)) return;
+        listaRubrosUSD.push(nombre); guardar();
+        document.getElementById('rubro-usd-nombre').value='';
+        renderDolares();
+    });
 }
 
 function calcMDU() {
@@ -1065,9 +1083,26 @@ function renderDolares() {
     if(!tCU) return;
     tCU.innerHTML=''; tTU.innerHTML=''; tSU.innerHTML='';
     const selR=document.getElementById('ccusd-rubro'), selM=document.getElementById('ccusd-medio');
-    if(selR){ selR.innerHTML=''; listaRubros.forEach(r=>addOpt(selR,r,r)); }
+    if(selR){ selR.innerHTML=''; listaRubrosUSD.forEach(r=>addOpt(selR,r,r)); }
     if(selM){ selM.innerHTML=''; listaTarjetasUSD.forEach(t=>addOpt(selM,t.id,'💳 '+t.nombre)); listaCuentasUSD.forEach(c=>addOpt(selM,c.id,'🏦 '+c.nombre)); }
     const mDU=calcMDU();
+    // Rubros USD badges
+    const rUSDLista = document.getElementById('rubros-usd-lista');
+    if(rUSDLista){
+        rUSDLista.innerHTML='';
+        listaRubrosUSD.forEach(r=>{
+            const b=el('div'); b.style.cssText='background:#dcfce7;border-left:4px solid #16a34a;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;display:flex;align-items:center;gap:6px;';
+            const s=el('span'); s.style.color='#15803d'; s.innerText=r;
+            const x=el('button'); x.type='button'; x.innerText='✕'; x.style.cssText='border:none;background:transparent;color:#ef4444;cursor:pointer;font-weight:bold;font-size:12px;padding:0;';
+            x.onclick=()=>{
+                if(listaCorrientesUSD.some(c=>c.rubro===r)){alert('Rubro en uso.');return;}
+                listaRubrosUSD=listaRubrosUSD.filter(x=>x!==r);
+                delete listaPresupRubrosUSD[r];
+                guardar(); renderDolares();
+            };
+            b.appendChild(s); b.appendChild(x); rUSDLista.appendChild(b);
+        });
+    }
     // Cuentas USD
     let totCU=0;
     listaCuentasUSD.forEach(c=>{ totCU+=c.saldo;
@@ -1137,7 +1172,7 @@ function renderDolares() {
         else { listaCorrientesUSD.forEach(c=>{
             const medio=listaTarjetasUSD.find(t=>t.id===c.medioPagoId)||listaCuentasUSD.find(x=>x.id===c.medioPagoId);
             const mNom=(c.esIngreso?'⬆ ':'')+((medio?(listaTarjetasUSD.find(t=>t.id===c.medioPagoId)?'💳 ':'🏦 ')+medio.nombre:'Desconocido'));
-            const selR2=el('select'); selR2.className='inp'; listaRubros.forEach(r=>addOpt(selR2,r,r,r===c.rubro)); selR2.onchange=e=>{ c.rubro=e.target.value; guardar(); };
+            const selR2=el('select'); selR2.className='inp'; listaRubrosUSD.forEach(r=>addOpt(selR2,r,r,r===c.rubro)); selR2.onchange=e=>{ c.rubro=e.target.value; guardar(); };
             const inpD=el('input'); inpD.type='text'; inpD.className='inp'; inpD.value=c.detalle; inpD.onchange=e=>{ c.detalle=e.target.value.trim(); guardar(); };
             const inpFP=el('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
             inpFP.onchange=e=>{ c.fechaPago=e.target.value; guardar(); calcDashUSD(); };
@@ -1864,11 +1899,11 @@ function dibujarLineaInv(canvasId, hist, acc, modo, dolarOficial) {
 // ─────────────────────────────────────────────────────────────────
 function renderPresupRubrosUSD() {
     const wrap = document.getElementById('rubros-presup-usd-wrap'); if(!wrap) return;
-    if(!listaRubros.length){ wrap.innerHTML=''; return; }
+    if(!listaRubrosUSD.length){ wrap.innerHTML=''; return; }
     const gastado = {};
     listaCorrientesUSD.filter(c=>!c.esIngreso).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
     let html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
-    listaRubros.forEach(r=>{
+    listaRubrosUSD.forEach(r=>{
         const pres = listaPresupRubrosUSD[r]||0;
         const gast = gastado[r]||0;
         if(pres===0 && gast===0) return;
@@ -1893,10 +1928,10 @@ function renderPresupRubrosUSD() {
         html += '</div></div>';
     });
     // Si no hay rubros con gasto ni presupuesto, mostrar todos
-    const hayDatos = listaRubros.some(r=>listaPresupRubrosUSD[r]||(gastado[r]||0)>0);
+    const hayDatos = listaRubrosUSD.some(r=>listaPresupRubrosUSD[r]||(gastado[r]||0)>0);
     if(!hayDatos){
         html = '<div style="font-size:10px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Presupuesto mensual por rubro (USD)</div>';
-        listaRubros.forEach(r=>{
+        listaRubrosUSD.forEach(r=>{
             const col=colorRubro(r);
             html += '<div style="background:#f8fafc;border-radius:6px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;">';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">';
@@ -1954,7 +1989,7 @@ function driveSubir() {
     driveGetToken(token=>{
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
