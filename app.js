@@ -893,7 +893,21 @@ function buildDolares() {
         <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>USD a Pagar (tarjetas)</h4><p id="usd-pagar" style="color:#a855f7;">USD 0</p><small id="usd-pagar-ars" style="color:#64748b;font-size:12px;"></small></div>
         <div class="card-bal" id="card-usd-bal" style="border-left:5px solid #f59e0b;"><h4>Balance USD</h4><p id="usd-bal" style="color:#f59e0b;">USD 0</p><small id="usd-bal-ars" style="color:#64748b;font-size:12px;"></small></div>
         <div class="card-bal" id="card-usd-comp" style="border-left:5px solid #94a3b8;"><h4>USD a Comprar</h4><p id="usd-comp" style="color:#94a3b8;">—</p><small id="usd-comp-ars" style="color:#64748b;font-size:12px;"></small></div>
-        <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Presupuesto Mes USD</h4><p id="d-presup-usd-vals" style="color:#10b981;font-size:16px;">USD 0 <span style="font-size:13px;color:#94a3b8;">/ USD 0</span></p><div style="background:#e2e8f0;border-radius:4px;height:6px;margin:6px 0 4px;"><div id="d-presup-usd-barf" style="height:6px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div><small id="d-presup-usd-pct" style="font-size:10px;color:#94a3b8;">0% · configurá límites en Rubros USD</small></div>
+        <div class="card-bal" style="border-left:5px solid #10b981;">
+          <h4>Presupuesto Mes USD</h4>
+          <div style="margin-top:6px;">
+            <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:3px;">Servicios Fijos</div>
+            <div id="d-presup-usd-srv-vals" style="font-size:15px;font-weight:bold;color:#10b981;">USD 0 <span style="font-size:12px;color:#94a3b8;">/ USD 0</span></div>
+            <div style="background:#e2e8f0;border-radius:4px;height:5px;margin:4px 0 2px;"><div id="d-presup-usd-srv-barf" style="height:5px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div>
+            <small id="d-presup-usd-srv-pct" style="font-size:10px;color:#94a3b8;">0%</small>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;">
+            <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:3px;">Corrientes por Rubro</div>
+            <div id="d-presup-usd-vals" style="font-size:15px;font-weight:bold;color:#10b981;">USD 0 <span style="font-size:12px;color:#94a3b8;">/ USD 0</span></div>
+            <div style="background:#e2e8f0;border-radius:4px;height:5px;margin:4px 0 2px;"><div id="d-presup-usd-barf" style="height:5px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div>
+            <small id="d-presup-usd-pct" style="font-size:10px;color:#94a3b8;">0% · configurá límites en Rubros USD</small>
+          </div>
+        </div>
       </div>
       <div class="grid-principal">
         <div>
@@ -1015,7 +1029,19 @@ function calcDashUSD() {
     if(cBal) cBal.style.borderLeftColor=balance>=0?'#16a34a':'#ef4444';
     if(balance<0){ const f=Math.abs(balance); if(dComp){dComp.innerText=fmtUSD(f);dComp.style.color='#ef4444';} if(dCA) dCA.innerText=fmtARS(f*tc); if(cComp) cComp.style.borderLeftColor='#ef4444'; }
     else { if(dComp){dComp.innerText='—';dComp.style.color='#94a3b8';} if(dCA) dCA.innerText=''; if(cComp) cComp.style.borderLeftColor='#94a3b8'; }
-    // Presupuesto USD por rubros
+    // Presupuesto USD — servicios fijos
+    const totalSrvPresupUSD = listaServiciosUSD.reduce((a,s)=>a+s.presupuesto,0);
+    const totalSrvPagadoUSD = listaServiciosUSD.reduce((a,s)=>a+s.pagado,0);
+    const pctSrvUSD = totalSrvPresupUSD>0 ? Math.min(100,Math.round(totalSrvPagadoUSD/totalSrvPresupUSD*100)) : 0;
+    const superadoSrvUSD = totalSrvPresupUSD>0 && totalSrvPagadoUSD>=totalSrvPresupUSD;
+    const barSrvUSD = superadoSrvUSD ? '#ef4444' : pctSrvUSD>=80 ? '#f59e0b' : '#10b981';
+    const psvEl=document.getElementById('d-presup-usd-srv-vals');
+    const psbEl=document.getElementById('d-presup-usd-srv-barf');
+    const pspEl=document.getElementById('d-presup-usd-srv-pct');
+    if(psvEl){ psvEl.innerHTML=fmtUSD(totalSrvPagadoUSD)+' <span style="font-size:12px;color:#94a3b8;">/ '+fmtUSD(totalSrvPresupUSD)+'</span>'; psvEl.style.color=barSrvUSD; }
+    if(psbEl){ psbEl.style.width=pctSrvUSD+'%'; psbEl.style.background=barSrvUSD; }
+    if(pspEl){ pspEl.innerText=totalSrvPresupUSD>0?pctSrvUSD+'% pagado'+(superadoSrvUSD?' · ¡PAGADO!':pctSrvUSD>=80?' · casi completo':''):'Sin servicios USD'; pspEl.style.color=superadoSrvUSD?'#10b981':pctSrvUSD>=80?'#f59e0b':'#94a3b8'; }
+    // Presupuesto USD — corrientes por rubro
     const totalPresupUSD = Object.values(listaPresupRubrosUSD).reduce((a,b)=>a+b,0);
     const totalGastadoUSD = listaCorrientesUSD.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
     const pctUSD = totalPresupUSD>0 ? Math.min(100,Math.round(totalGastadoUSD/totalPresupUSD*100)) : 0;
@@ -1024,7 +1050,7 @@ function calcDashUSD() {
     const pvEl=document.getElementById('d-presup-usd-vals');
     const pbEl=document.getElementById('d-presup-usd-barf');
     const ppEl=document.getElementById('d-presup-usd-pct');
-    if(pvEl){ pvEl.innerHTML=fmtUSD(totalGastadoUSD)+' <span style="font-size:13px;color:#94a3b8;">/ '+fmtUSD(totalPresupUSD)+'</span>'; pvEl.style.color=barColorUSD; }
+    if(pvEl){ pvEl.innerHTML=fmtUSD(totalGastadoUSD)+' <span style="font-size:12px;color:#94a3b8;">/ '+fmtUSD(totalPresupUSD)+'</span>'; pvEl.style.color=barColorUSD; }
     if(pbEl){ pbEl.style.width=pctUSD+'%'; pbEl.style.background=barColorUSD; }
     if(ppEl){ ppEl.innerText=totalPresupUSD>0?pctUSD+'% usado'+(superadoUSD?' · ¡SUPERADO!':pctUSD>=80?' · cerca del límite':''):'0% · configurá límites en Rubros USD'; ppEl.style.color=superadoUSD?'#ef4444':pctUSD>=80?'#f59e0b':'#94a3b8'; }
     // Actualizar consumo en tabla tarjetas sin reconstruir
