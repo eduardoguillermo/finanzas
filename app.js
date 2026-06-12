@@ -270,7 +270,7 @@ function buildMesActual() {
       <header class="no-print">
         <div>
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.4.1</p>
+          <p class="version-tag">v3.4.2</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
@@ -290,6 +290,7 @@ function buildMesActual() {
         <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado / Pagado</h4><p id="d-pagado" style="color:#10b981;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
+        <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Presupuesto Mes</h4><p id="d-presup-vals" style="color:#10b981;font-size:16px;">$ 0 <span style="font-size:13px;color:#94a3b8;">/ $ 0</span></p><div id="d-presup-bar" style="background:#e2e8f0;border-radius:4px;height:6px;margin:6px 0 4px;"><div id="d-presup-barf" style="height:6px;border-radius:4px;width:0%;background:#10b981;transition:width 0.3s;"></div></div><small id="d-presup-pct" style="font-size:10px;color:#94a3b8;">0% usado · sin rubros configurados</small></div>
       </div>
       <div class="grid-principal">
         <div>
@@ -654,6 +655,18 @@ function calcDash() {
     setTxt('d-pagado',   fmt(Math.round(totalPag)));
     setTxt('d-pendiente',fmt(Math.round(fijosPend)));
     const cp=document.getElementById('card-pend'); if(cp) cp.style.borderLeftColor=fijosPend>0?'#ef4444':'#10b981';
+    // Presupuesto total por rubros
+    const totalPresup = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
+    const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const pct = totalPresup>0 ? Math.min(100,Math.round(totalGastado/totalPresup*100)) : 0;
+    const superado = totalPresup>0 && totalGastado>=totalPresup;
+    const barColor = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : '#10b981';
+    const pEl=document.getElementById('d-presup-vals');
+    const bEl=document.getElementById('d-presup-barf');
+    const pPct=document.getElementById('d-presup-pct');
+    if(pEl){ pEl.innerHTML=fmt(totalGastado)+' <span style="font-size:13px;color:#94a3b8;">/ '+fmt(totalPresup)+'</span>'; pEl.style.color=barColor; }
+    if(bEl){ bEl.style.width=pct+'%'; bEl.style.background=barColor; }
+    if(pPct){ pPct.innerText = totalPresup>0 ? pct+'% usado'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':'') : '0% · configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
     // Saldo proyectado: bancos disponibles - fijos pendientes - corrientes sin fecha (gastos)
     const corrSinFecha = listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
     const saldoProyectado = sumaBancos - fijosPend - corrSinFecha;
