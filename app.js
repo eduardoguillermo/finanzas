@@ -302,7 +302,6 @@ function buildMesActual() {
       <div class="grid-dashboard">
         <div class="card-bal" style="border-left:5px solid #0284c7;"><h4>Efectivo / Banco Disponible</h4><p id="d-bancos" style="color:#0284c7;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Total Deuda Tarjetas</h4><p id="d-tarjetas" style="color:#a855f7;">$ 0</p></div>
-        <div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado / Pagado</h4><p id="d-pagado" style="color:#10b981;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #f59e0b;"><h4>Saldo Proyectado</h4><p id="d-proyectado" style="color:#f59e0b;">$ 0</p><small id="d-proyectado-sub" style="font-size:10px;color:#94a3b8;"></small></div>
         <div class="card-bal" style="border-left:5px solid #6366f1;padding-bottom:12px;">
@@ -312,8 +311,7 @@ function buildMesActual() {
               <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Fijos</span>
               <span id="d-presup-srv-vals" style="font-size:12px;font-weight:bold;color:#6366f1;">$ 0 / $ 0</span>
             </div>
-            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:2px;"><div id="d-presup-srv-barf" style="height:5px;border-radius:3px;width:0%;background:#6366f1;transition:width 0.3s;"></div></div>
-            <small id="d-presup-srv-pct" style="font-size:10px;color:#94a3b8;"></small>
+            <div style="background:#e2e8f0;border-radius:3px;height:5px;margin-bottom:3px;"><div id="d-presup-srv-barf" style="height:5px;border-radius:3px;width:0%;background:#6366f1;transition:width 0.3s;"></div></div>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;margin-bottom:2px;">
               <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Corrientes</span>
               <span id="d-presup-corr-vals" style="font-size:12px;font-weight:bold;color:#10b981;">$ 0 / $ 0</span>
@@ -683,7 +681,6 @@ function calcDash() {
     });
     setTxt('d-bancos',   fmt(sumaBancos));
     setTxt('d-tarjetas', fmt(sumaTarjetas));
-    setTxt('d-pagado',   fmt(Math.round(totalPag)));
     setTxt('d-pendiente',fmt(Math.round(fijosPend)));
     const cp=document.getElementById('card-pend'); if(cp) cp.style.borderLeftColor=fijosPend>0?'#ef4444':'#10b981';
     // Saldo proyectado: bancos disponibles - fijos pendientes - corrientes sin fecha (gastos)
@@ -702,10 +699,8 @@ function calcDash() {
     const barSrv = superadoSrv ? '#10b981' : pctSrv>=80 ? '#f59e0b' : '#6366f1';
     const pSrvV=document.getElementById('d-presup-srv-vals');
     const pSrvB=document.getElementById('d-presup-srv-barf');
-    const pSrvP=document.getElementById('d-presup-srv-pct');
     if(pSrvV){ pSrvV.innerText=fmt(totalSrvPag)+' / '+fmt(totalSrvPresup); pSrvV.style.color=barSrv; }
     if(pSrvB){ pSrvB.style.width=pctSrv+'%'; pSrvB.style.background=barSrv; }
-    if(pSrvP){ pSrvP.innerText=totalSrvPresup>0?pctSrv+'%'+(superadoSrv?' ✓':''):''; pSrvP.style.color=superadoSrv?'#10b981':pctSrv>=80?'#f59e0b':'#94a3b8'; }
     // Presupuesto pesos — Corrientes por rubro
     const totalPresup  = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
     const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
@@ -717,7 +712,7 @@ function calcDash() {
     const pPct=document.getElementById('d-presup-pct');
     if(pCorrV){ pCorrV.innerText=fmt(totalGastado)+' / '+fmt(totalPresup); pCorrV.style.color=barColor; }
     if(pCorrB){ pCorrB.style.width=pct+'%'; pCorrB.style.background=barColor; }
-    if(pPct){ pPct.innerText=totalPresup>0?pct+'%'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':''):'configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
+    if(pPct){ pPct.innerText=totalPresup>0?pct+'% corrientes'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':''):'configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
 }
 
 // ═══════════════════════════════════════════
