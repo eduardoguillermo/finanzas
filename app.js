@@ -693,6 +693,28 @@ function calcDash() {
     if(dp) dp.style.color = saldoProyectado >= 0 ? '#f59e0b' : '#ef4444';
     const dps = document.getElementById('d-proyectado-sub');
     if(dps) dps.innerText = 'Banco ' + fmt(sumaBancos) + ' − Pend. ' + fmt(fijosPend + corrSinFecha);
+    // Presupuesto pesos — Fijos
+    const totalSrvPresup = listaServicios.reduce((a,s)=>a+s.presupuesto,0);
+    const totalSrvPag    = listaServicios.reduce((a,s)=>a+s.pagado,0);
+    const pctSrv = totalSrvPresup>0 ? Math.min(100,Math.round(totalSrvPag/totalSrvPresup*100)) : 0;
+    const superadoSrv = totalSrvPresup>0 && totalSrvPag>=totalSrvPresup;
+    const barSrv = superadoSrv ? '#10b981' : pctSrv>=80 ? '#f59e0b' : '#6366f1';
+    const pSrvV=document.getElementById('d-presup-srv-vals');
+    const pSrvB=document.getElementById('d-presup-srv-barf');
+    if(pSrvV){ pSrvV.innerText=fmt(totalSrvPag)+' / '+fmt(totalSrvPresup); pSrvV.style.color=barSrv; }
+    if(pSrvB){ pSrvB.style.width=pctSrv+'%'; pSrvB.style.background=barSrv; }
+    // Presupuesto pesos — Corrientes por rubro
+    const totalPresup  = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
+    const totalGastado = listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).reduce((a,c)=>a+c.monto,0);
+    const pct = totalPresup>0 ? Math.min(100,Math.round(totalGastado/totalPresup*100)) : 0;
+    const superado = totalPresup>0 && totalGastado>=totalPresup;
+    const barColor = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : '#10b981';
+    const pCorrV=document.getElementById('d-presup-corr-vals');
+    const pCorrB=document.getElementById('d-presup-corr-barf');
+    const pPct=document.getElementById('d-presup-pct');
+    if(pCorrV){ pCorrV.innerText=fmt(totalGastado)+' / '+fmt(totalPresup); pCorrV.style.color=barColor; }
+    if(pCorrB){ pCorrB.style.width=pct+'%'; pCorrB.style.background=barColor; }
+    if(pPct){ pPct.innerText=totalPresup>0?pct+'% corrientes'+(superado?' · ¡SUPERADO!':pct>=80?' · cerca del límite':''):'configurá límites en Rubros'; pPct.style.color=superado?'#ef4444':pct>=80?'#f59e0b':'#94a3b8'; }
 }
 
 // ═══════════════════════════════════════════
