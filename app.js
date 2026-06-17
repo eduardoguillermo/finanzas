@@ -252,10 +252,10 @@ function renderTabs() {
 function renderContenido() {
     const app = document.getElementById('app-content');
     app.innerHTML = '';
-    if      (tabActivo===null)       { app.appendChild(buildMesActual()); bindMesActual(); render(); }
+    if      (tabActivo===null)       { app.appendChild(buildMesActual()); bindMesActual(); render(); iniciarTimerYPF(); }
     else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); actualizarTCDolares(); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
-    else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); }
+    else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); iniciarTimerYPF(); }
     else if (tabActivo==='anual')       { app.appendChild(buildAnual()); }
     else {
         const mes = historicoMeses.find(m=>m.id===tabActivo);
@@ -372,6 +372,12 @@ function buildMesActual() {
               <span id="d-proy-total" style="color:#f59e0b;">$ 0</span>
             </div>
           </div>
+        </div>
+        <div class="card-bal" style="border-left:5px solid #10b981;cursor:pointer;" onclick="actualizarYPF()" title="Click para actualizar">
+          <h4 style="display:flex;justify-content:space-between;align-items:center;">YPF.BA <span id="ypf-badge-hora" style="font-size:9px;color:#94a3b8;font-weight:normal;"></span></h4>
+          <p id="ypf-usd" style="color:#10b981;margin:2px 0;">USD —</p>
+          <small id="ypf-ars" style="font-size:11px;color:#64748b;"></small>
+          <small id="ypf-det" style="font-size:10px;color:#94a3b8;display:block;margin-top:2px;"></small>
         </div>
         <div class="card-bal" style="border-left:5px solid #6366f1;padding-bottom:12px;">
           <h4>Presupuesto Mes</h4>
@@ -1669,6 +1675,7 @@ function buildInversiones() {
         '</div>' +
       '</header>' +
       '<div class="grid-dashboard" style="margin-top:20px;">' +
+        '<div class="card-bal" style="border-left:5px solid #10b981;cursor:pointer;" onclick="actualizarYPF()" title="Click para actualizar"><h4 style="display:flex;justify-content:space-between;align-items:center;">YPF.BA <span id="ypf-badge-hora-inv" style="font-size:9px;color:#94a3b8;font-weight:normal;"></span></h4><p id="ypf-usd-inv" style="color:#10b981;margin:2px 0;">USD —</p><small id="ypf-ars-inv" style="font-size:11px;color:#64748b;"></small><small id="ypf-det-inv" style="font-size:10px;color:#94a3b8;display:block;margin-top:2px;"></small></div>' +
         '<div class="card-bal" style="border-left:5px solid #d97706;"><h4>Total Portfolio (ARS)</h4><p id="inv-total-ars" style="color:#d97706;">$ 0</p></div>' +
         '<div class="card-bal" style="border-left:5px solid #16a34a;"><h4>Total Portfolio (USD)</h4><p id="inv-total-usd" style="color:#16a34a;">USD 0</p></div>' +
         '<div class="card-bal" style="border-left:5px solid #0284c7;"><h4>Instrumentos Manuales</h4><p id="inv-total-manual" style="color:#0284c7;">$ 0</p></div>' +
@@ -2223,6 +2230,79 @@ function toggleProyectado() {
     const visible = det.style.display !== 'none';
     det.style.display = visible ? 'none' : 'block';
     if(tog) tog.innerText = visible ? '▼ detalle' : '▲ cerrar';
+}
+
+
+// ═══════════════════════════════════════════
+//  INDICADOR YPF.BA
+// ═══════════════════════════════════════════
+let _ypfTimer = null;
+
+function _ypfSetUI(precioARS, dolar, horaStr, fuera) {
+    const cant = 442;
+    const totalARS = precioARS * cant;
+    const totalUSD = dolar > 0 ? totalARS / dolar : 0;
+    const txtUSD = 'USD ' + totalUSD.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const txtARS = fmt(totalARS) + ' ARS';
+    const det = cant + ' acc × ' + fmt(Math.round(precioARS)) + ' ÷ ' + fmt(dolar);
+    [['ypf-usd','ypf-ars','ypf-det','ypf-badge-hora'],
+     ['ypf-usd-inv','ypf-ars-inv','ypf-det-inv','ypf-badge-hora-inv']].forEach(function(ids){
+        const u=document.getElementById(ids[0]);
+        const a=document.getElementById(ids[1]);
+        const d=document.getElementById(ids[2]);
+        const h=document.getElementById(ids[3]);
+        if(u) u.innerText = txtUSD;
+        if(a) a.innerText = txtARS;
+        if(d) d.innerText = det;
+        if(h) h.innerText = fuera ? 'Fuera de horario' : (horaStr ? 'Act. '+horaStr : '');
+    });
+}
+
+async function actualizarYPF() {
+    const ahora = new Date();
+    const dia = ahora.getDay();
+    const hora = ahora.getHours();
+    const esHorario = dia>=1 && dia<=5 && hora>=10 && hora<19;
+
+    [['ypf-usd'],['ypf-usd-inv']].forEach(function(ids){
+        const u=document.getElementById(ids[0]); if(u) u.innerText='⏳ ...';
+    });
+
+    try {
+        const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
+        const ticker = ypfAcc ? ypfAcc.ticker : 'YPFD.BA';
+        const proxy = 'https://corsproxy.io/?https://query2.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=5d';
+        const res = await fetch(proxy);
+        const data = await res.json();
+        const precioARS = data.chart.result[0].meta.regularMarketPrice || 0;
+
+        let dolar = _dolarOficial || tipoCambio || 0;
+        if(!dolar) {
+            const rd = await fetch('https://api.bluelytics.com.ar/v2/latest');
+            const dd = await rd.json();
+            dolar = dd.oficial.value_sell;
+            _dolarOficial = dolar;
+        }
+
+        const horaStr = ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+        _ypfSetUI(precioARS, dolar, horaStr, !esHorario);
+    } catch(e) {
+        [['ypf-usd'],['ypf-usd-inv']].forEach(function(ids){
+            const u=document.getElementById(ids[0]); if(u) u.innerText='Error ↺';
+        });
+        console.warn('YPF error:', e);
+    }
+}
+
+function iniciarTimerYPF() {
+    clearInterval(_ypfTimer);
+    actualizarYPF();
+    _ypfTimer = setInterval(function() {
+        const ahora = new Date();
+        const dia = ahora.getDay();
+        const hora = ahora.getHours();
+        if(dia>=1 && dia<=5 && hora>=10 && hora<19) actualizarYPF();
+    }, 3600000);
 }
 
 function buildAnual() {
