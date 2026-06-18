@@ -225,6 +225,11 @@ function renderTabs() {
     restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
     restoreEl.onclick=driveRestaurar;
     bar.appendChild(restoreEl);
+    const cacheEl = document.createElement('button'); cacheEl.id='btn-clear-cache';
+    cacheEl.style.cssText='background:#475569;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    cacheEl.innerText='🗑️ Cache'; cacheEl.title='Limpiar caché y recargar';
+    cacheEl.onclick=limpiarCache;
+    bar.appendChild(cacheEl);
     const salirEl = document.createElement('button'); salirEl.id='btn-salir';
     salirEl.style.cssText='background:#334155;color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
     salirEl.innerText='🚪 Salir'; salirEl.onclick=syncAlSalir;
@@ -2292,6 +2297,14 @@ async function actualizarYPF() {
         });
         console.warn('YPF error:', e);
     }
+}
+
+
+function limpiarCache() {
+    if(!confirm('¿Limpiar caché del Service Worker y recargar la app?')) return;
+    caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
+    .then(function(){ location.reload(true); })
+    .catch(function(){ location.reload(true); });
 }
 
 function iniciarTimerYPF() {
