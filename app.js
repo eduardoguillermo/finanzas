@@ -225,6 +225,11 @@ function renderTabs() {
     restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
     restoreEl.onclick=driveRestaurar;
     bar.appendChild(restoreEl);
+    const aiEl = document.createElement('button'); aiEl.id='btn-ai-panel';
+    aiEl.style.cssText='background:#4f46e5;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    aiEl.innerText='\uD83E\uDD16 IA'; aiEl.title='Consultar datos con IA';
+    aiEl.onclick=toggleAIPanel;
+    bar.appendChild(aiEl);
     const cacheEl = document.createElement('button'); cacheEl.id='btn-clear-cache';
     cacheEl.style.cssText='background:#475569;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
     cacheEl.innerText='🗑️ Cache'; cacheEl.title='Limpiar caché y recargar';
@@ -2297,6 +2302,170 @@ async function actualizarYPF() {
         });
         console.warn('YPF error:', e);
     }
+}
+
+
+
+// ═══════════════════════════════════════════
+//  PANEL IA — CONSULTA EN LENGUAJE NATURAL
+// ═══════════════════════════════════════════
+let _aiPanelAbierto = false;
+let _aiHistorial = [];
+
+function buildContextoApp() {
+    const tc = _dolarOficial || tipoCambio || 1;
+    const bancoTotal = listaBancos.reduce(function(a,b){ return a+b.saldo; }, 0);
+    const tarjTotal  = listaTarjetas.reduce(function(a,t){ return a+t.saldo; }, 0);
+    const fijosPend  = listaServicios.filter(function(s){ return s.presupuesto>s.pagado; }).reduce(function(a,s){ return a+(s.presupuesto-s.pagado); }, 0);
+    const corrEgr    = listaCorrientes.filter(function(c){ return c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')); });
+    const corrIng    = listaCorrientes.filter(function(c){ return c.fechaPago&&c.esIngreso; });
+    const totalEgr   = corrEgr.reduce(function(a,c){ return a+c.monto; }, 0);
+    const totalIng   = corrIng.reduce(function(a,c){ return a+c.monto; }, 0);
+    const porRubro = {};
+    corrEgr.forEach(function(c){ porRubro[c.rubro]=(porRubro[c.rubro]||0)+c.monto; });
+    const cuentasUSD  = listaCuentasUSD.reduce(function(a,b){ return a+b.saldo; }, 0);
+    const corrUSDEgr  = listaCorrientesUSD.filter(function(c){ return c.fechaPago&&!c.esIngreso; }).reduce(function(a,c){ return a+c.monto; }, 0);
+    const corrUSDIng  = listaCorrientesUSD.filter(function(c){ return c.fechaPago&&c.esIngreso; }).reduce(function(a,c){ return a+c.monto; }, 0);
+    const servUSDPag  = listaServiciosUSD.filter(function(s){ return s.pagado>0; }).reduce(function(a,s){ return a+s.pagado; }, 0);
+    const cuotasActivas = listaCuotas.filter(function(c){ return c.cuotaActual<=c.totalCuotas; });
+    const hist3 = historicoMeses.slice(-3).map(function(m){ return {
+        nombre: m.nombre,
+        banco: (m.datos.listaBancos||[]).reduce(function(a,b){ return a+b.saldo; },0),
+        egresado: (m.datos.listaCorrientes||[]).filter(function(c){ return c.fechaPago&&!c.esIngreso; }).reduce(function(a,c){ return a+c.monto; },0) +
+                  (m.datos.listaServicios||[]).filter(function(s){ return s.pagado>0; }).reduce(function(a,s){ return a+s.pagado; },0)
+    }; });
+
+    var lines = [];
+    lines.push('Sos un asistente financiero personal. Respondé en español, de forma concisa y directa. Usá números con formato local argentino.');
+    lines.push('');
+    lines.push('=== DATOS FINANCIEROS ACTUALES ===');
+    lines.push('');
+    lines.push('BANCOS Y EFECTIVO:');
+    listaBancos.forEach(function(b){ lines.push('- ' + b.nombre + ': $' + b.saldo.toLocaleString('es-AR')); });
+    lines.push('TOTAL BANCO: $' + bancoTotal.toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('TARJETAS (deuda):');
+    listaTarjetas.forEach(function(t){ lines.push('- ' + t.nombre + ': $' + t.saldo.toLocaleString('es-AR')); });
+    lines.push('TOTAL DEUDA: $' + tarjTotal.toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('SERVICIOS FIJOS:');
+    listaServicios.forEach(function(s){ lines.push('- ' + s.nombre + ': ppto $' + (s.presupuesto||0).toLocaleString('es-AR') + ' | pagado $' + (s.pagado||0).toLocaleString('es-AR') + ' | pendiente $' + Math.max(0,(s.presupuesto||0)-(s.pagado||0)).toLocaleString('es-AR')); });
+    lines.push('FIJOS PENDIENTES: $' + fijosPend.toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('GASTOS CORRIENTES MES (pagados):');
+    corrEgr.forEach(function(c){ lines.push('- [' + c.rubro + '] ' + c.detalle + ': $' + c.monto.toLocaleString('es-AR')); });
+    lines.push('TOTAL EGRESADO: $' + totalEgr.toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('INGRESOS MES:');
+    corrIng.forEach(function(c){ lines.push('- ' + c.detalle + ': $' + c.monto.toLocaleString('es-AR')); });
+    lines.push('TOTAL INGRESOS: $' + totalIng.toLocaleString('es-AR'));
+    lines.push('');
+    lines.push('GASTOS POR RUBRO:');
+    Object.entries(porRubro).sort(function(a,b){ return b[1]-a[1]; }).forEach(function(e){ lines.push('- ' + e[0] + ': $' + e[1].toLocaleString('es-AR')); });
+    lines.push('');
+    lines.push('CUOTAS ACTIVAS:');
+    cuotasActivas.forEach(function(c){ lines.push('- ' + c.descripcion + ': cuota ' + c.cuotaActual + '/' + c.totalCuotas + ' $' + (c.montoCuota||0).toLocaleString('es-AR')); });
+    lines.push('');
+    lines.push('DOLARES:');
+    lines.push('- TC oficial: $' + tc.toLocaleString('es-AR'));
+    lines.push('- Cuentas USD: ' + cuentasUSD.toFixed(2) + ' (ARS $' + (cuentasUSD*tc).toLocaleString('es-AR') + ')');
+    lines.push('- Gastos USD: ' + corrUSDEgr.toFixed(2));
+    lines.push('- Ingresos USD: ' + corrUSDIng.toFixed(2));
+    lines.push('- Servicios USD pagados: ' + servUSDPag.toFixed(2));
+    lines.push('');
+    lines.push('HISTORICO 3 MESES:');
+    hist3.forEach(function(m){ lines.push('- ' + m.nombre + ': banco $' + m.banco.toLocaleString('es-AR') + ' | egresado $' + m.egresado.toLocaleString('es-AR')); });
+    lines.push('');
+    lines.push('PRESUPUESTOS POR RUBRO:');
+    Object.entries(listaPresupRubros).filter(function(e){ return e[1]>0; }).forEach(function(e){ lines.push('- ' + e[0] + ': $' + e[1].toLocaleString('es-AR')); });
+    return lines.join('\n');
+}
+
+function toggleAIPanel() {
+    var existing = document.getElementById('ai-panel');
+    if(existing) {
+        existing.style.transform = 'translateX(100%)';
+        setTimeout(function(){ existing.remove(); _aiPanelAbierto=false; }, 300);
+        return;
+    }
+    _aiPanelAbierto = true;
+    _aiHistorial = [];
+    var panel = document.createElement('div');
+    panel.id = 'ai-panel';
+    panel.style.cssText = 'position:fixed;top:0;right:0;width:380px;max-width:95vw;height:100vh;background:#1e293b;border-left:2px solid #4f46e5;z-index:200;display:flex;flex-direction:column;transition:transform 0.3s ease;transform:translateX(100%);box-shadow:-4px 0 24px rgba(0,0,0,0.4);';
+    var header = '<div style="background:#0f172a;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;flex-shrink:0;">';
+    header += '<div><div style="font-size:14px;font-weight:bold;color:#e2e8f0;">\uD83E\uDD16 Consulta IA</div>';
+    header += '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">Pregunt\u00e1 sobre tus datos financieros</div></div>';
+    header += '<button onclick="toggleAIPanel()" style="background:#334155;color:#e2e8f0;border:none;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:13px;">\u2715</button></div>';
+    var mensajes = '<div id="ai-mensajes" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;">';
+    mensajes += '<div style="background:#0f172a;border-radius:8px;padding:12px;border:1px solid #334155;font-size:12px;color:#94a3b8;">';
+    mensajes += 'Hola! Podés preguntarme:<br><br>';
+    mensajes += '\u2022 <em>\u00BFCuánto gasté en supermercado?</em><br>';
+    mensajes += '\u2022 <em>\u00BFCuál es mi rubro más caro?</em><br>';
+    mensajes += '\u2022 <em>\u00BFCuánto me queda después de pagar todo?</em><br>';
+    mensajes += '\u2022 <em>Comparar gastos vs presupuesto</em><br>';
+    mensajes += '\u2022 <em>\u00BFCuánto debo en cuotas?</em>';
+    mensajes += '</div></div>';
+    var footer = '<div style="padding:12px;border-top:1px solid #334155;flex-shrink:0;">';
+    footer += '<div style="display:flex;gap:8px;">';
+    footer += '<input id="ai-input" type="text" placeholder="Escrib\u00ed tu pregunta..." ';
+    footer += 'style="flex:1;padding:10px;border:1px solid #475569;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:13px;" ';
+    footer += 'onkeydown=\"if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();enviarConsultaAI();}\">';
+    footer += '<button onclick="enviarConsultaAI()" id="ai-send-btn" style="background:#4f46e5;color:white;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;font-size:16px;">\u27A4</button>';
+    footer += '</div><div style="font-size:10px;color:#475569;margin-top:6px;text-align:center;">Enter para enviar · Powered by Claude</div></div>';
+    panel.innerHTML = header + mensajes + footer;
+    document.body.appendChild(panel);
+    requestAnimationFrame(function(){ panel.style.transform='translateX(0)'; });
+    setTimeout(function(){ var i=document.getElementById('ai-input'); if(i) i.focus(); }, 350);
+}
+
+function aiAgregarMensaje(texto, esUsuario) {
+    var wrap = document.getElementById('ai-mensajes'); if(!wrap) return null;
+    var div = document.createElement('div');
+    div.style.cssText = 'padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.5;max-width:92%;white-space:pre-wrap;' +
+        (esUsuario ? 'background:#4f46e5;color:white;align-self:flex-end;margin-left:auto;' : 'background:#0f172a;color:#e2e8f0;border:1px solid #334155;align-self:flex-start;');
+    div.innerText = texto;
+    wrap.appendChild(div);
+    wrap.scrollTop = wrap.scrollHeight;
+    return div;
+}
+
+async function enviarConsultaAI() {
+    var inp = document.getElementById('ai-input'); if(!inp) return;
+    var pregunta = inp.value.trim(); if(!pregunta) return;
+    var btn = document.getElementById('ai-send-btn');
+    inp.value = '';
+    inp.disabled = true;
+    if(btn) btn.disabled = true;
+    aiAgregarMensaje(pregunta, true);
+    var typing = aiAgregarMensaje('\u23F3 Analizando...', false);
+    _aiHistorial.push({ role: 'user', content: pregunta });
+    var mensajes;
+    if(_aiHistorial.length === 1) {
+        mensajes = [{ role: 'user', content: buildContextoApp() + '\n\n=== PREGUNTA ===\n' + pregunta }];
+    } else {
+        mensajes = _aiHistorial.map(function(m, i) {
+            if(i === 0) return { role: 'user', content: buildContextoApp() + '\n\n=== PREGUNTA ===\n' + m.content };
+            return m;
+        });
+    }
+    try {
+        var res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: mensajes })
+        });
+        var data = await res.json();
+        var respuesta = (data.content && data.content[0] && data.content[0].text) || 'Sin respuesta.';
+        if(typing) typing.innerText = respuesta;
+        _aiHistorial.push({ role: 'assistant', content: respuesta });
+    } catch(e) {
+        if(typing) typing.innerText = '\u26A0\uFE0F Error al conectar con la IA.';
+        _aiHistorial.pop();
+    }
+    inp.disabled = false;
+    if(btn) btn.disabled = false;
+    inp.focus();
 }
 
 
