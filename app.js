@@ -112,8 +112,8 @@ async function syncSilencioso() {
     _syncActivo = true;
     syncSetBadge('sync');
     try {
-        const geminiKey = localStorage.getItem('gemini_api_key')||'';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,geminiKey});
+        const groqKey = localStorage.getItem('groq_api_key')||'';
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,groqKey});
 
         // Si no tenemos el ID del archivo, buscarlo en Drive
         if(!_driveFileId) {
@@ -1005,7 +1005,7 @@ function cargarDatos(res) {
     if(res.listaPresupRubros)    listaPresupRubros    = res.listaPresupRubros;
     if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
-    if(res.geminiKey)            localStorage.setItem('gemini_api_key', res.geminiKey);
+    if(res.groqKey)            localStorage.setItem('groq_api_key', res.groqKey);
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
@@ -2444,45 +2444,51 @@ async function enviarConsultaAI() {
     _aiHistorial.push({ role: 'user', content: pregunta });
 
     // Verificar API key de Gemini
-    var apiKey = localStorage.getItem('gemini_api_key') || '';
+    var apiKey = localStorage.getItem('groq_api_key') || '';
     if(!apiKey) {
-        var k = prompt('Ingres\u00e1 tu API key de Gemini (se guarda solo en este dispositivo):');
+        var k = prompt('Ingres\u00e1 tu API key de Groq (se guarda solo en este dispositivo):');
         if(!k || !k.trim()) { inp.disabled=false; if(btn) btn.disabled=false; return; }
         apiKey = k.trim();
-        localStorage.setItem('gemini_api_key', apiKey);
+        localStorage.setItem('groq_api_key', apiKey);
     }
 
-    // Convertir historial al formato de Gemini
-    var contents = _aiHistorial.map(function(m, i) {
+    // Armar historial para Groq (formato OpenAI compatible)
+    var messages = _aiHistorial.map(function(m, i) {
         return {
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: i === 0 ? buildContextoApp() + '\n\n=== PREGUNTA ===\n' + m.content : m.content }]
+            role: m.role,
+            content: i === 0 ? buildContextoApp() + '\n\n=== PREGUNTA ===\n' + m.content : m.content
         };
     });
 
     try {
-        var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
-        var res = await fetch(url, {
+        var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: contents })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: messages,
+                max_tokens: 1024
+            })
         });
         var data = await res.json();
         if(data.error) {
-            if(data.error.code === 400 || data.error.code === 401 || data.error.code === 403) {
-                localStorage.removeItem('gemini_api_key');
+            if(res.status === 401 || res.status === 403) {
+                localStorage.removeItem('groq_api_key');
                 if(typing) typing.innerText = '\u26A0\uFE0F API key inv\u00e1lida. Recargá y volvé a ingresarla.';
             } else {
                 if(typing) typing.innerText = '\u26A0\uFE0F Error: ' + (data.error.message || 'desconocido');
             }
             _aiHistorial.pop();
         } else {
-            var respuesta = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : 'Sin respuesta.';
+            var respuesta = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : 'Sin respuesta.';
             if(typing) typing.innerText = respuesta;
             _aiHistorial.push({ role: 'assistant', content: respuesta });
         }
     } catch(e) {
-        if(typing) typing.innerText = '\u26A0\uFE0F Error al conectar con Gemini.';
+        if(typing) typing.innerText = '\u26A0\uFE0F Error al conectar con Groq.';
         _aiHistorial.pop();
     }
     inp.disabled = false;
