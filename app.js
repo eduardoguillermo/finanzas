@@ -349,10 +349,11 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos</h2>
-          <p class="version-tag">v3.5.4</p>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.6.8</span></h2>
+          <p class="version-tag">v3.6.8</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
           <button class="btn btn-blue"  id="btn-exportar">💾 Exportar</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar</button>
@@ -973,42 +974,6 @@ function nuevoMes() {
     // Limpiar USD
     listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; });
     listaCorrientesUSD=[];
-    // Exportar presupuesto al próximo mes
-    // PESOS: si tiene presupuesto configurado → se mantiene; si no → usar gasto real del mes cerrado
-    const gastadoMesARS = {};
-    listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesARS[c.rubro]=(gastadoMesARS[c.rubro]||0)+c.monto; });
-    // También incluir corrientes ya pagados del historial recién archivado
-    const mesArchivado = historicoMeses[historicoMeses.length-1];
-    if(mesArchivado) {
-        (mesArchivado.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesARS[c.rubro]=(gastadoMesARS[c.rubro]||0)+c.monto; });
-    }
-    const todosRubrosARS = [...new Set([...listaRubros.map(r=>r.nombre||r), ...Object.keys(gastadoMesARS)])];
-    const nuevosPresupARS = {};
-    todosRubrosARS.forEach(function(r) {
-        if(listaPresupRubros[r] && listaPresupRubros[r]>0) {
-            nuevosPresupARS[r] = listaPresupRubros[r]; // mantener presupuesto configurado
-        } else if(gastadoMesARS[r] && gastadoMesARS[r]>0) {
-            nuevosPresupARS[r] = Math.round(gastadoMesARS[r]); // usar gasto real como presupuesto
-        }
-    });
-    listaPresupRubros = nuevosPresupARS;
-
-    // USD: igual lógica
-    const gastadoMesUSD = {};
-    if(mesArchivado) {
-        (mesArchivado.datos.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesUSD[c.rubro]=(gastadoMesUSD[c.rubro]||0)+c.monto; });
-    }
-    const todosRubrosUSD = [...new Set([...listaRubrosUSD, ...Object.keys(gastadoMesUSD)])];
-    const nuevosPresupUSD = {};
-    todosRubrosUSD.forEach(function(r) {
-        if(listaPresupRubrosUSD[r] && listaPresupRubrosUSD[r]>0) {
-            nuevosPresupUSD[r] = listaPresupRubrosUSD[r];
-        } else if(gastadoMesUSD[r] && gastadoMesUSD[r]>0) {
-            nuevosPresupUSD[r] = Math.round(gastadoMesUSD[r]*100)/100;
-        }
-    });
-    listaPresupRubrosUSD = nuevosPresupUSD;
-
     guardar(); renderTabs(); renderContenido();
     alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
 }
@@ -2532,6 +2497,152 @@ async function enviarConsultaAI() {
     inp.focus();
 }
 
+
+
+// ═══════════════════════════════════════════
+//  INFORME SEMANAL DE PRESUPUESTO
+// ═══════════════════════════════════════════
+function mostrarInformeSemanal() {
+    // Calcular semanas del mes actual (lunes a domingo)
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes  = hoy.getMonth();
+
+    // Primer día del mes
+    const primerDia = new Date(anio, mes, 1);
+    // Último día del mes
+    const ultimoDia = new Date(anio, mes + 1, 0);
+
+    // Generar semanas: cada semana empieza el lunes
+    function lunesAnterior(fecha) {
+        const d = new Date(fecha);
+        const dia = d.getDay(); // 0=dom
+        const diff = dia === 0 ? -6 : 1 - dia;
+        d.setDate(d.getDate() + diff);
+        return d;
+    }
+
+    const semanas = [];
+    let inicioSem = lunesAnterior(primerDia);
+    while (inicioSem <= ultimoDia) {
+        const finSem = new Date(inicioSem);
+        finSem.setDate(finSem.getDate() + 6);
+        // Solo incluir semanas que tengan días en el mes
+        const desde = new Date(Math.max(inicioSem, primerDia));
+        const hasta = new Date(Math.min(finSem, ultimoDia));
+        semanas.push({ desde, hasta, ini: new Date(inicioSem), fin: new Date(finSem) });
+        inicioSem = new Date(finSem);
+        inicioSem.setDate(inicioSem.getDate() + 1);
+    }
+
+    const totalDias = ultimoDia.getDate();
+    const totalPresup = Object.values(listaPresupRubros).reduce(function(a,b){ return a+b; }, 0);
+
+    // Gastos por rubro (todos los pagados del mes)
+    const gastadoPorRubro = {};
+    listaCorrientes.filter(function(c){ return c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta')); }).forEach(function(c){
+        gastadoPorRubro[c.rubro] = (gastadoPorRubro[c.rubro]||0) + c.monto;
+    });
+    listaServicios.filter(function(s){ return s.pagado > 0; }).forEach(function(s){
+        gastadoPorRubro[s.nombre] = (gastadoPorRubro[s.nombre]||0) + s.pagado;
+    });
+
+    // Calcular acumulado por semana
+    function gastadoHasta(fecha) {
+        const fStr = fecha.toISOString().slice(0,10);
+        let total = 0;
+        listaCorrientes.filter(function(c){ return c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta')) && c.fechaPago <= fStr; }).forEach(function(c){ total += c.monto; });
+        listaServicios.filter(function(s){ return s.pagado > 0 && (!s.fPago || s.fPago <= fStr); }).forEach(function(s){ total += s.pagado; });
+        return total;
+    }
+
+    function fmtFecha(d) {
+        return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+    }
+
+    // Construir modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+
+    let html = '<div class="modal" style="max-width:560px;width:95%;">';
+    html += '<div class="modal-header" style="background:#7c3aed;border-radius:8px 8px 0 0;padding:14px 16px;margin:-24px -24px 20px;">';
+    html += '<h3 style="margin:0;color:white;font-size:15px;">📊 Informe Semanal — ' + primerDia.toLocaleString('es-AR',{month:'long',year:'numeric'}) + '</h3>';
+    html += '<button onclick="document.querySelector(\'.modal-bg\').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:4px;padding:4px 10px;cursor:pointer;">✕</button></div>';
+
+    // Resumen general
+    const gastadoTotal = Object.values(gastadoPorRubro).reduce(function(a,b){ return a+b; }, 0);
+    const desvioTotal  = gastadoTotal - totalPresup;
+    const diasTranscurridos = Math.min(hoy.getDate(), totalDias);
+    const presupAcumHoy = totalDias > 0 ? Math.round(totalPresup / totalDias * diasTranscurridos) : 0;
+
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
+    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid #7c3aed;"><div style="font-size:10px;color:#94a3b8;">Presupuesto mes</div><div style="font-size:14px;font-weight:bold;color:#e2e8f0;">' + fmt(totalPresup) + '</div></div>';
+    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid #f59e0b;"><div style="font-size:10px;color:#94a3b8;">Gastado total</div><div style="font-size:14px;font-weight:bold;color:#f59e0b;">' + fmt(gastadoTotal) + '</div></div>';
+    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid ' + (desvioTotal > 0 ? '#ef4444' : '#10b981') + ';"><div style="font-size:10px;color:#94a3b8;">Desvío acumulado</div><div style="font-size:14px;font-weight:bold;color:' + (desvioTotal > 0 ? '#ef4444' : '#10b981') + ';">' + (desvioTotal > 0 ? '+' : '') + fmt(desvioTotal) + '</div></div>';
+    html += '</div>';
+
+    // Tabla por semana
+    html += '<div style="overflow-x:auto;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr style="background:#0f172a;">';
+    html += '<th style="padding:8px;text-align:left;color:#94a3b8;">Semana</th>';
+    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Ppto. acum.</th>';
+    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Gastado acum.</th>';
+    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Desvío</th>';
+    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Remanente</th>';
+    html += '</tr></thead><tbody>';
+
+    semanas.forEach(function(s, i) {
+        const esFutura = s.desde > hoy;
+        const diasSem  = Math.round((s.hasta - primerDia) / 86400000) + 1;
+        const presupAcum = totalDias > 0 ? Math.round(totalPresup / totalDias * Math.min(diasSem, totalDias)) : 0;
+        const gastAcum   = esFutura ? null : gastadoHasta(s.hasta);
+        const desvio     = gastAcum !== null ? gastAcum - presupAcum : null;
+        const remanente  = totalPresup - (gastAcum !== null ? gastAcum : 0);
+        const esActual   = hoy >= s.desde && hoy <= s.fin;
+
+        const bg = esActual ? 'background:#1e3a5f;' : (i%2===0?'':'background:#0f172a;');
+        html += '<tr style="' + bg + (esFutura ? 'opacity:0.5;' : '') + '">';
+        html += '<td style="padding:7px 8px;color:#e2e8f0;">';
+        if(esActual) html += '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 4px;margin-right:4px;">HOY</span>';
+        html += 'Sem ' + (i+1) + ' <span style="color:#64748b;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
+        html += '<td style="padding:7px 8px;text-align:right;color:#94a3b8;">' + fmt(presupAcum) + '</td>';
+        html += '<td style="padding:7px 8px;text-align:right;color:' + (esFutura ? '#475569' : '#f59e0b') + ';font-weight:bold;">' + (gastAcum !== null ? fmt(gastAcum) : '—') + '</td>';
+        html += '<td style="padding:7px 8px;text-align:right;font-weight:bold;color:' + (desvio === null ? '#475569' : desvio > 0 ? '#ef4444' : '#10b981') + ';">' + (desvio !== null ? (desvio > 0 ? '+' : '') + fmt(desvio) : '—') + '</td>';
+        html += '<td style="padding:7px 8px;text-align:right;color:' + (remanente >= 0 ? '#10b981' : '#ef4444') + ';">' + fmt(remanente) + '</td>';
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    // Desvío por rubro
+    const rubrosConDesv = Object.keys(listaPresupRubros).filter(function(r){ return listaPresupRubros[r] > 0; });
+    if(rubrosConDesv.length) {
+        html += '<h4 style="margin:16px 0 8px;font-size:12px;color:#94a3b8;text-transform:uppercase;">Desvío por rubro</h4>';
+        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+        rubrosConDesv.forEach(function(r) {
+            const pres = listaPresupRubros[r];
+            const gast = gastadoPorRubro[r] || 0;
+            const desv = gast - pres;
+            const pct  = pres > 0 ? Math.min(100, Math.round(gast/pres*100)) : 0;
+            const col  = desv > 0 ? '#ef4444' : '#10b981';
+            html += '<div style="background:#0f172a;border-radius:6px;padding:8px 10px;">';
+            html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">';
+            html += '<span style="color:#e2e8f0;font-size:12px;">' + r + '</span>';
+            html += '<span style="font-size:11px;color:' + col + ';font-weight:bold;">' + (desv > 0 ? '+' : '') + fmt(desv) + ' (' + pct + '%)</span>';
+            html += '</div>';
+            html += '<div style="background:#334155;border-radius:3px;height:5px;"><div style="background:' + col + ';height:5px;border-radius:3px;width:' + pct + '%;"></div></div>';
+            html += '<div style="display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:#64748b;"><span>Gastado: ' + fmt(gast) + '</span><span>Ppto: ' + fmt(pres) + '</span></div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    html += '</div>';
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+}
 
 function limpiarCache() {
     if(!confirm('¿Limpiar caché del Service Worker y recargar la app?')) return;
