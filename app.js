@@ -973,6 +973,42 @@ function nuevoMes() {
     // Limpiar USD
     listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; });
     listaCorrientesUSD=[];
+    // Exportar presupuesto al próximo mes
+    // PESOS: si tiene presupuesto configurado → se mantiene; si no → usar gasto real del mes cerrado
+    const gastadoMesARS = {};
+    listaCorrientes.filter(c=>!c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesARS[c.rubro]=(gastadoMesARS[c.rubro]||0)+c.monto; });
+    // También incluir corrientes ya pagados del historial recién archivado
+    const mesArchivado = historicoMeses[historicoMeses.length-1];
+    if(mesArchivado) {
+        (mesArchivado.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesARS[c.rubro]=(gastadoMesARS[c.rubro]||0)+c.monto; });
+    }
+    const todosRubrosARS = [...new Set([...listaRubros.map(r=>r.nombre||r), ...Object.keys(gastadoMesARS)])];
+    const nuevosPresupARS = {};
+    todosRubrosARS.forEach(function(r) {
+        if(listaPresupRubros[r] && listaPresupRubros[r]>0) {
+            nuevosPresupARS[r] = listaPresupRubros[r]; // mantener presupuesto configurado
+        } else if(gastadoMesARS[r] && gastadoMesARS[r]>0) {
+            nuevosPresupARS[r] = Math.round(gastadoMesARS[r]); // usar gasto real como presupuesto
+        }
+    });
+    listaPresupRubros = nuevosPresupARS;
+
+    // USD: igual lógica
+    const gastadoMesUSD = {};
+    if(mesArchivado) {
+        (mesArchivado.datos.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ gastadoMesUSD[c.rubro]=(gastadoMesUSD[c.rubro]||0)+c.monto; });
+    }
+    const todosRubrosUSD = [...new Set([...listaRubrosUSD, ...Object.keys(gastadoMesUSD)])];
+    const nuevosPresupUSD = {};
+    todosRubrosUSD.forEach(function(r) {
+        if(listaPresupRubrosUSD[r] && listaPresupRubrosUSD[r]>0) {
+            nuevosPresupUSD[r] = listaPresupRubrosUSD[r];
+        } else if(gastadoMesUSD[r] && gastadoMesUSD[r]>0) {
+            nuevosPresupUSD[r] = Math.round(gastadoMesUSD[r]*100)/100;
+        }
+    });
+    listaPresupRubrosUSD = nuevosPresupUSD;
+
     guardar(); renderTabs(); renderContenido();
     alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
 }
