@@ -31,6 +31,7 @@ let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
 let filtroCorrientes = '';
+let filtroClase = '';
 let _syncTimer = null;
 let _syncPendiente = false;
 let _syncActivo = false;
@@ -344,7 +345,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.8</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.9</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -517,7 +518,8 @@ function buildMesActual() {
             </div>
             <div class="no-print" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
               <input type="text" id="filtro-corrientes" placeholder="🔍 Buscar por rubro o detalle..." style="flex:1;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;" oninput="filtroCorrientes=this.value.toLowerCase();render();">
-              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;" onclick="filtroCorrientes='';document.getElementById('filtro-corrientes').value='';render();">✕</button>
+              <select id="filtro-clase" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;background:white;" onchange="filtroClase=this.value;render();"><option value="">Clase</option><option value="M">M — Mío</option><option value="O">O — Oma</option><option value="X">X — Otros</option></select>
+              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;" onclick="filtroCorrientes='';filtroClase='';document.getElementById('filtro-corrientes').value='';document.getElementById('filtro-clase').value='';render();">✕</button>
             </div>
             <div id="wrap-corrientes"></div>
           </div>
@@ -647,7 +649,7 @@ function render() {
         const thead=el('thead'); thead.innerHTML='<tr><th style="width:6%" class="tc">Clase</th><th style="width:18%">Rubro</th><th style="width:23%">Detalle</th><th style="width:15%">Medio</th><th style="width:12%;text-align:center;">F. Pago</th><th style="width:14%;text-align:right;">Monto ($)</th><th style="width:6%" class="no-print"></th></tr>';
         const tbody=el('tbody');
         if(!listaCorrientes.length) { tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin egresos corrientes.</td></tr>'; }
-        else { listaCorrientes.filter(c=>!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes)).forEach(c=>{
+        else { listaCorrientes.filter(c=>(!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes))&&(!filtroClase||(c.clase||'M')===filtroClase)).forEach(c=>{
             const selR=el('select'); selR.className='inp'; listaRubros.forEach(r=>addOpt(selR,r,r,r===c.rubro)); selR.onchange=e=>{ c.rubro=e.target.value; guardar(); };
             const inpD=el('input'); inpD.type='text'; inpD.className='inp'; inpD.value=c.detalle; inpD.onchange=e=>{ c.detalle=e.target.value.trim(); guardar(); };
             const inpFP=el('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
@@ -680,13 +682,14 @@ function render() {
         tbl.appendChild(thead); tbl.appendChild(tbody); wC.appendChild(tbl);
 
         // Subtotal filtrado
-        const corrFiltradas = listaCorrientes.filter(c=>!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes));
+        const corrFiltradas = listaCorrientes.filter(c=>(!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes))&&(!filtroClase||(c.clase||'M')===filtroClase));
         const subEgr = corrFiltradas.filter(c=>!c.esIngreso).reduce((a,c)=>a+c.monto,0);
         const subIng = corrFiltradas.filter(c=>c.esIngreso).reduce((a,c)=>a+c.monto,0);
         const subPag = corrFiltradas.filter(c=>!c.esIngreso&&c.fechaPago).reduce((a,c)=>a+c.monto,0);
         const subDiv = el('div'); subDiv.style.cssText='margin-top:8px;padding:8px 12px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;';
-        if(filtroCorrientes) {
-            subDiv.innerHTML = '<span style="color:#64748b;font-weight:bold;">🔍 Filtro: <em>'+filtroCorrientes+'</em></span>'
+        if(filtroCorrientes||filtroClase) {
+            const badgeTxt = [filtroCorrientes?'"'+filtroCorrientes+'"':'', filtroClase?'Clase '+filtroClase:''].filter(Boolean).join(' · ');
+            subDiv.innerHTML = '<span style="color:#64748b;font-weight:bold;">🔍 '+badgeTxt+'</span>'
                 + '<span style="color:#ef4444;">Egresos: <b>'+fmt(subEgr)+'</b></span>'
                 + (subIng>0?'<span style="color:#0284c7;">Ingresos: <b>'+fmt(subIng)+'</b></span>':'')
                 + '<span style="color:#10b981;">Pagado: <b>'+fmt(subPag)+'</b></span>'
