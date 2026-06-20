@@ -345,7 +345,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.12</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.13</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -1618,6 +1618,66 @@ function buildReportes() {
         res+=`<div style="font-size:12px;color:#64748b;text-align:right;margin-top:8px;font-weight:bold;">Total acumulado: ${fmt(totAc)}</div></div>`;
         wrap.insertAdjacentHTML('beforeend',res);
     }
+
+    // ── REPORTE 3: CLASE O ─────────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#a855f7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 3 · Detalle Clase O — Mes Actual</h3>');
+
+    // Fijos clase O
+    const srvO = listaServicios.filter(s=>(s.clase||'M')==='O');
+    const srvOPagados = srvO.filter(s=>s.pagado>0);
+    const srvOPendientes = srvO.filter(s=>s.presupuesto>s.pagado);
+    const totOFijPag = srvOPagados.reduce((a,s)=>a+s.pagado,0);
+    const totOFijPend = srvOPendientes.reduce((a,s)=>a+(s.presupuesto-s.pagado),0);
+
+    // Corrientes clase O (solo egresos)
+    const corrO = listaCorrientes.filter(c=>(c.clase||'M')==='O'&&!c.esIngreso);
+    const totOCorr = corrO.reduce((a,c)=>a+c.monto,0);
+    const totOTotal = totOFijPag + totOCorr;
+
+    // Cards resumen
+    let rO = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">';
+    const mkCard = (label,val,color) => `<div style="background:#f8fafc;border-radius:8px;padding:14px;text-align:center;border:1px solid #e2e8f0;"><div style="font-size:11px;color:#64748b;margin-bottom:6px;text-transform:uppercase;">${label}</div><div style="font-size:20px;font-weight:bold;color:${color};">${fmt(val)}</div></div>`;
+    rO += mkCard('Fijos pagados', totOFijPag, '#10b981');
+    rO += mkCard('Fijos pendientes', totOFijPend, '#ef4444');
+    rO += mkCard('Corrientes', totOCorr, '#a855f7');
+    rO += mkCard('Total erogado', totOTotal, '#1e293b');
+    rO += '</div>';
+
+    // Tabla fijos
+    if(srvO.length){
+        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:16px;">';
+        rO += '<h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Servicios Fijos — Clase O</h4>';
+        rO += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:center;">F. Pago</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:center;">Estado</th></tr>';
+        srvO.forEach((s,ri)=>{
+            const pag = s.pagado, pend = s.presupuesto - s.pagado;
+            let ec='#c5221f',eb='#fce8e6',et='PENDIENTE';
+            if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';eb='#e6f4ea';et='PAGADO';}
+            else if(s.pagado>0){ec='#b06000';eb='#fef7e0';et='PARCIAL';}
+            const fp = s.fPago ? new Date(s.fPago+'T00:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
+            rO += `<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td><td style="padding:5px 6px;text-align:center;color:#64748b;">${fp}</td><td style="padding:5px 6px;text-align:right;">${fmt(s.presupuesto)}</td><td style="padding:5px 6px;text-align:right;color:#10b981;font-weight:bold;">${fmt(pag)}</td><td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${eb};color:${ec};">${et}</span></td></tr>`;
+        });
+        rO += `<tr style="background:#f8fafc;font-weight:bold;"><td colspan="3" style="padding:6px;">Pagado / Pendiente</td><td style="padding:6px;text-align:right;color:#10b981;">${fmt(totOFijPag)}</td><td style="padding:6px;text-align:center;color:#ef4444;">${fmt(totOFijPend)} pend.</td></tr>`;
+        rO += '</table></div>';
+    }
+
+    // Tabla corrientes
+    if(corrO.length){
+        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:24px;">';
+        rO += '<h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Gastos Corrientes — Clase O</h4>';
+        rO += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:left;">Detalle</th><th style="padding:6px;text-align:center;">F. Pago</th><th style="padding:6px;text-align:right;">Monto</th></tr>';
+        corrO.forEach((c,ri)=>{
+            const fp = c.fechaPago ? new Date(c.fechaPago+'T00:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) : '—';
+            rO += `<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${c.rubro||'—'}</td><td style="padding:5px 6px;color:#64748b;">${c.detalle||'—'}</td><td style="padding:5px 6px;text-align:center;color:#64748b;">${fp}</td><td style="padding:5px 6px;text-align:right;color:#a855f7;font-weight:bold;">${fmt(c.monto)}</td></tr>`;
+        });
+        rO += `<tr style="background:#f8fafc;font-weight:bold;"><td colspan="3" style="padding:6px;">TOTAL CORRIENTES</td><td style="padding:6px;text-align:right;color:#a855f7;">${fmt(totOCorr)}</td></tr>`;
+        rO += '</table></div>';
+    }
+
+    if(!srvO.length && !corrO.length){
+        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos de Clase O para este mes.</div>';
+    }
+
+    wrap.insertAdjacentHTML('beforeend', rO);
     return wrap;
 }
 
