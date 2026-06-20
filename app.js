@@ -344,7 +344,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.7</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.8</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -360,7 +360,6 @@ function buildMesActual() {
       </header>
       <div class="grid-dashboard">
         <div class="card-bal" style="border-left:5px solid #0284c7;"><h4>Efectivo / Banco Disponible</h4><p id="d-bancos" style="color:#0284c7;">$ 0</p></div>
-        <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Total Deuda Tarjetas</h4><p id="d-tarjetas" style="color:#a855f7;">$ 0</p></div>
         <div class="card-bal" id="card-pend" style="border-left:5px solid #ef4444;"><h4>Fijos Pendientes</h4><p id="d-pendiente" style="color:#ef4444;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #f59e0b;cursor:pointer;" onclick="toggleProyectado()">
           <h4 style="display:flex;justify-content:space-between;align-items:center;">Saldo Proyectado <span id="d-proy-toggle" style="font-size:10px;color:#94a3b8;">▼ detalle</span></h4>
@@ -379,6 +378,7 @@ function buildMesActual() {
             </div>
           </div>
         </div>
+        <div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Total Deuda Tarjetas</h4><p id="d-tarjetas" style="color:#a855f7;">$ 0</p></div>
         <div class="card-bal" style="border-left:5px solid #10b981;cursor:pointer;" onclick="actualizarYPF()" title="Click para actualizar">
           <h4 style="display:flex;justify-content:space-between;align-items:center;">YPF.BA <span id="ypf-badge-hora" style="font-size:9px;color:#94a3b8;font-weight:normal;"></span></h4>
           <p id="ypf-usd" style="color:#10b981;margin:2px 0;">USD —</p>
