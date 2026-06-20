@@ -2745,3 +2745,10 @@ function exportarExcel() {
 }
 
 
+
+function limpiarCache() {
+    if(!confirm('¿Limpiar caché y recargar la app?')) return;
+    caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
+    .then(function(){ location.reload(true); })
+    .catch(function(){ location.reload(true); });
+}
