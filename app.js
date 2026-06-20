@@ -737,7 +737,6 @@ function renderPresupRubros() {
         html += '<span style="font-size:11px;color:#64748b;">'+fmt(gast)+(pres>0?' / '+fmt(pres):'')+'</span>';
         if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
         html += '</div></div>';
-        if(pres>0){ html += '<div style="background:#e2e8f0;border-radius:3px;height:6px;"><div style="background:'+barColor+';height:6px;border-radius:3px;width:'+pct+'%;transition:width 0.3s;"></div></div>'; }
         html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
         html += '<span style="font-size:10px;color:#94a3b8;">Ppto. $</span>';
         html += '<input type="number" min="0" step="1" value="'+(pres||'')+'" placeholder="Sin límite" ';
@@ -2100,7 +2099,6 @@ function renderPresupRubrosUSD() {
         html += '<span style="font-size:11px;color:#64748b;">'+fmtUSD(gast)+(pres>0?' / '+fmtUSD(pres):'')+'</span>';
         if(alerta) html += '<span style="font-size:10px;font-weight:bold;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
         html += '</div></div>';
-        if(pres>0){ html += '<div style="background:#e2e8f0;border-radius:3px;height:6px;"><div style="background:'+barColor+';height:6px;border-radius:3px;width:'+pct+'%;transition:width 0.3s;"></div></div>'; }
         html += '<div style="display:flex;align-items:center;gap:4px;margin-top:5px;">';
         html += '<span style="font-size:10px;color:#94a3b8;">Ppto. USD</span>';
         html += '<input type="number" min="0" step="0.01" value="'+(pres||'')+'" placeholder="Sin límite" ';
