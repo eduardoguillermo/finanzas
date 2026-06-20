@@ -2502,20 +2502,18 @@ async function enviarConsultaAI() {
 //  INFORME SEMANAL DE PRESUPUESTO
 // ═══════════════════════════════════════════
 function mostrarInformeSemanal() {
-    // Calcular semanas del mes actual (lunes a domingo)
-    const hoy = new Date();
-    const anio = hoy.getFullYear();
-    const mes  = hoy.getMonth();
+    document.querySelectorAll('.modal-bg-informe').forEach(function(m){ m.remove(); });
 
-    // Primer día del mes
+    const hoy    = new Date();
+    const anio   = hoy.getFullYear();
+    const mes    = hoy.getMonth();
     const primerDia = new Date(anio, mes, 1);
-    // Último día del mes
     const ultimoDia = new Date(anio, mes + 1, 0);
+    const totalDias = ultimoDia.getDate();
 
-    // Generar semanas: cada semana empieza el lunes
     function lunesAnterior(fecha) {
         const d = new Date(fecha);
-        const dia = d.getDay(); // 0=dom
+        const dia = d.getDay();
         const diff = dia === 0 ? -6 : 1 - dia;
         d.setDate(d.getDate() + diff);
         return d;
@@ -2526,18 +2524,15 @@ function mostrarInformeSemanal() {
     while (inicioSem <= ultimoDia) {
         const finSem = new Date(inicioSem);
         finSem.setDate(finSem.getDate() + 6);
-        // Solo incluir semanas que tengan días en el mes
         const desde = new Date(Math.max(inicioSem, primerDia));
         const hasta = new Date(Math.min(finSem, ultimoDia));
-        semanas.push({ desde, hasta, ini: new Date(inicioSem), fin: new Date(finSem) });
+        semanas.push({ desde: desde, hasta: hasta, ini: new Date(inicioSem), fin: new Date(finSem) });
         inicioSem = new Date(finSem);
         inicioSem.setDate(inicioSem.getDate() + 1);
     }
 
-    const totalDias = ultimoDia.getDate();
     const totalPresup = Object.values(listaPresupRubros).reduce(function(a,b){ return a+b; }, 0);
 
-    // Gastos por rubro (todos los pagados del mes)
     const gastadoPorRubro = {};
     listaCorrientes.filter(function(c){ return c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta')); }).forEach(function(c){
         gastadoPorRubro[c.rubro] = (gastadoPorRubro[c.rubro]||0) + c.monto;
@@ -2546,7 +2541,6 @@ function mostrarInformeSemanal() {
         gastadoPorRubro[s.nombre] = (gastadoPorRubro[s.nombre]||0) + s.pagado;
     });
 
-    // Calcular acumulado por semana
     function gastadoHasta(fecha) {
         const fStr = fecha.toISOString().slice(0,10);
         let total = 0;
@@ -2555,448 +2549,80 @@ function mostrarInformeSemanal() {
         return total;
     }
 
-    function fmtFecha(d) {
-        return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
-    }
+    function fmtFecha(d) { return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); }
 
-    // Construir modal
-    // Limpiar modales anteriores del informe
-    document.querySelectorAll('.modal-bg-informe').forEach(function(m){ m.remove(); });
-    const modal = document.createElement('div');
-    modal.className = 'modal-bg modal-bg-informe';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:1100;display:flex;align-items:center;justify-content:center;overflow-y:auto;';
-    modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
-
-    let html = '<div class="modal" style="max-width:560px;width:95%;">';
-    html += '<div class="modal-header" style="background:#7c3aed;border-radius:8px 8px 0 0;padding:14px 16px;margin:-24px -24px 20px;">';
-    html += '<h3 style="margin:0;color:white;font-size:15px;">📊 Informe Semanal — ' + primerDia.toLocaleString('es-AR',{month:'long',year:'numeric'}) + '</h3>';
-    html += '<button onclick="document.querySelector(\'.modal-bg-informe\').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:4px;padding:4px 10px;cursor:pointer;">✕</button></div>';
-
-    // Resumen general
     const gastadoTotal = Object.values(gastadoPorRubro).reduce(function(a,b){ return a+b; }, 0);
     const desvioTotal  = gastadoTotal - totalPresup;
-    const diasTranscurridos = Math.min(hoy.getDate(), totalDias);
-    const presupAcumHoy = totalDias > 0 ? Math.round(totalPresup / totalDias * diasTranscurridos) : 0;
 
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">';
-    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid #7c3aed;"><div style="font-size:10px;color:#94a3b8;">Presupuesto mes</div><div style="font-size:14px;font-weight:bold;color:#e2e8f0;">' + fmt(totalPresup) + '</div></div>';
-    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid #f59e0b;"><div style="font-size:10px;color:#94a3b8;">Gastado total</div><div style="font-size:14px;font-weight:bold;color:#f59e0b;">' + fmt(gastadoTotal) + '</div></div>';
-    html += '<div style="background:#0f172a;border-radius:6px;padding:10px;border-left:3px solid ' + (desvioTotal > 0 ? '#ef4444' : '#10b981') + ';"><div style="font-size:10px;color:#94a3b8;">Desvío acumulado</div><div style="font-size:14px;font-weight:bold;color:' + (desvioTotal > 0 ? '#ef4444' : '#10b981') + ';">' + (desvioTotal > 0 ? '+' : '') + fmt(desvioTotal) + '</div></div>';
-    html += '</div>';
-
-    // Tabla por semana
-    html += '<div style="overflow-x:auto;">';
-    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    html += '<thead><tr style="background:#0f172a;">';
-    html += '<th style="padding:8px;text-align:left;color:#94a3b8;">Semana</th>';
-    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Ppto. acum.</th>';
-    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Gastado acum.</th>';
-    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Desvío</th>';
-    html += '<th style="padding:8px;text-align:right;color:#94a3b8;">Remanente</th>';
-    html += '</tr></thead><tbody>';
-
+    // ── Tabla semanas ──
+    var rowsSem = '';
     semanas.forEach(function(s, i) {
-        const esFutura = s.desde > hoy;
-        const diasSem  = Math.round((s.hasta - primerDia) / 86400000) + 1;
-        const presupAcum = totalDias > 0 ? Math.round(totalPresup / totalDias * Math.min(diasSem, totalDias)) : 0;
+        const esFutura  = s.desde > hoy;
+        const diasHasta = Math.round((s.hasta - primerDia) / 86400000) + 1;
+        const presupAcum = totalDias > 0 ? Math.round(totalPresup / totalDias * Math.min(diasHasta, totalDias)) : 0;
         const gastAcum   = esFutura ? null : gastadoHasta(s.hasta);
         const desvio     = gastAcum !== null ? gastAcum - presupAcum : null;
         const remanente  = totalPresup - (gastAcum !== null ? gastAcum : 0);
         const esActual   = hoy >= s.desde && hoy <= s.fin;
-
-        const bg = esActual ? 'background:#1e3a5f;' : (i%2===0?'':'background:#0f172a;');
-        html += '<tr style="' + bg + (esFutura ? 'opacity:0.5;' : '') + '">';
-        html += '<td style="padding:7px 8px;color:#e2e8f0;">';
-        if(esActual) html += '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 4px;margin-right:4px;">HOY</span>';
-        html += 'Sem ' + (i+1) + ' <span style="color:#64748b;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
-        html += '<td style="padding:7px 8px;text-align:right;color:#94a3b8;">' + fmt(presupAcum) + '</td>';
-        html += '<td style="padding:7px 8px;text-align:right;color:' + (esFutura ? '#475569' : '#f59e0b') + ';font-weight:bold;">' + (gastAcum !== null ? fmt(gastAcum) : '—') + '</td>';
-        html += '<td style="padding:7px 8px;text-align:right;font-weight:bold;color:' + (desvio === null ? '#475569' : desvio > 0 ? '#ef4444' : '#10b981') + ';">' + (desvio !== null ? (desvio > 0 ? '+' : '') + fmt(desvio) : '—') + '</td>';
-        html += '<td style="padding:7px 8px;text-align:right;color:' + (remanente >= 0 ? '#10b981' : '#ef4444') + ';">' + fmt(remanente) + '</td>';
-        html += '</tr>';
+        const bg = esActual ? 'background:#1e3a5f;' : (i%2===0 ? '' : 'background:#0f172a;');
+        const colDesv = desvio === null ? '#475569' : (desvio > 0 ? '#ef4444' : '#10b981');
+        const colRem  = remanente >= 0 ? '#10b981' : '#ef4444';
+        rowsSem += '<tr style="' + bg + (esFutura ? 'opacity:0.45;' : '') + '">';
+        rowsSem += '<td style="padding:7px 8px;color:#e2e8f0;">' + (esActual ? '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 5px;margin-right:4px;">HOY</span>' : '') + 'S' + (i+1) + ' <span style="color:#64748b;font-size:10px;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
+        rowsSem += '<td style="padding:7px 8px;text-align:right;color:#94a3b8;">' + fmt(presupAcum) + '</td>';
+        rowsSem += '<td style="padding:7px 8px;text-align:right;color:' + (esFutura ? '#475569' : '#f59e0b') + ';font-weight:bold;">' + (gastAcum !== null ? fmt(gastAcum) : '—') + '</td>';
+        rowsSem += '<td style="padding:7px 8px;text-align:right;font-weight:bold;color:' + colDesv + ';">' + (desvio !== null ? (desvio > 0 ? '+' : '') + fmt(desvio) : '—') + '</td>';
+        rowsSem += '<td style="padding:7px 8px;text-align:right;color:' + colRem + ';font-weight:bold;">' + fmt(remanente) + '</td>';
+        rowsSem += '</tr>';
     });
 
-    html += '</tbody></table></div>';
-
-    // Desvío por rubro
-    const rubrosConDesv = Object.keys(listaPresupRubros).filter(function(r){ return listaPresupRubros[r] > 0; });
-    if(rubrosConDesv.length) {
-        html += '<h4 style="margin:16px 0 8px;font-size:12px;color:#94a3b8;text-transform:uppercase;">Desvío por rubro</h4>';
-        html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-        rubrosConDesv.forEach(function(r) {
-            const pres = listaPresupRubros[r];
-            const gast = gastadoPorRubro[r] || 0;
-            const desv = gast - pres;
-            const pct  = pres > 0 ? Math.min(100, Math.round(gast/pres*100)) : 0;
-            const col  = desv > 0 ? '#ef4444' : '#10b981';
-            html += '<div style="background:#0f172a;border-radius:6px;padding:8px 10px;">';
-            html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">';
-            html += '<span style="color:#e2e8f0;font-size:12px;">' + r + '</span>';
-            html += '<span style="font-size:11px;color:' + col + ';font-weight:bold;">' + (desv > 0 ? '+' : '') + fmt(desv) + ' (' + pct + '%)</span>';
-            html += '</div>';
-            html += '<div style="background:#334155;border-radius:3px;height:5px;"><div style="background:' + col + ';height:5px;border-radius:3px;width:' + pct + '%;"></div></div>';
-            html += '<div style="display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:#64748b;"><span>Gastado: ' + fmt(gast) + '</span><span>Ppto: ' + fmt(pres) + '</span></div>';
-            html += '</div>';
-        });
-        html += '</div>';
-    }
-
-    html += '</div>';
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-}
-
-function limpiarCache() {
-    if(!confirm('¿Limpiar caché del Service Worker y recargar la app?')) return;
-    caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
-    .then(function(){ location.reload(true); })
-    .catch(function(){ location.reload(true); });
-}
-
-function iniciarTimerYPF() {
-    clearInterval(_ypfTimer);
-    actualizarYPF();
-    _ypfTimer = setInterval(function() {
-        const ahora = new Date();
-        const dia = ahora.getDay();
-        const hora = ahora.getHours();
-        if(dia>=1 && dia<=5 && hora>=10 && hora<19) actualizarYPF();
-    }, 3600000);
-}
-
-function buildAnual() {
-    const wrap = el('div','container'); wrap.style.paddingTop='20px';
-
-    // Header
-    const hdr = el('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #1d4ed8;';
-    hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📅 Resumen Anual</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Últimos 12 períodos cerrados + mes actual</p></div><button onclick="exportarExcel()" class="btn no-print" style="font-size:12px;padding:8px 14px;background:#10b981;color:white;">📥 Exportar Excel</button>`;
-    wrap.appendChild(hdr);
-
-    // Construir array de meses: hasta 12 históricos + mes actual
-    const ultimos = [...historicoMeses].slice(-12).filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026')));
-    const mesesArr = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos, cerrado: true }));
-    mesesArr.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaCuentasUSD, listaServiciosUSD, listaCorrientesUSD, tipoCambio }, cerrado: false });
-
-    if (mesesArr.length === 1) {
-        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:32px;text-align:center;color:#94a3b8;">Todavía no hay períodos cerrados. Cerrá el primer mes para ver el resumen anual.</div>');
-        return wrap;
-    }
-
-    // ── TABLA 1: MÉTRICAS FINANCIERAS ─────────────────────────
-    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#1d4ed8;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Métricas por Período</h3>');
-
-    function calcMes(m) {
-        const db = m.datos;
-        let banco = 0, deudaTarj = 0, egresado = 0, ingresos = 0;
-        // Banco
-        (db.listaBancos||[]).forEach(b => banco += b.saldo);
-        // Deuda tarjetas
-        const mDeb = {}; (db.listaTarjetas||[]).forEach(t => { mDeb[t.id]=0; deudaTarj+=t.saldo; });
-        (db.listaServicios||[]).forEach(s => { if(s.pagado>0 && mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
-        (db.listaCorrientes||[]).forEach(c => { if(c.fechaPago && mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
-        deudaTarj += Object.values(mDeb).reduce((a,v)=>a+v,0);
-        // Egresado e ingresos corrientes
-        (db.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
-            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
-        });
-        // Fijos pagados
-        (db.listaServicios||[]).forEach(s => { if(s.pagado>0) egresado += s.pagado; });
-        // USD en ARS
-        const tc = db.tipoCambio || tipoCambio || 1;
-        let bancoUSD = 0;
-        (db.listaCuentasUSD||[]).forEach(b => bancoUSD += b.saldo);
-        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado * tc);
-        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
-            if(c.esIngreso) ingresos += c.monto * tc; else egresado += c.monto * tc;
-        });
-        const balance = ingresos - egresado;
-        return { banco, bancoUSD, deudaTarj, egresado, ingresos, balance, tc };
-    }
-
-    const resultados = mesesArr.map(m => ({ nombre: m.nombre, cerrado: m.cerrado, ...calcMes(m) }));
-
-    // Tabla horizontal
-    const cols = ['banco','deudaTarj','ingresos','egresado','balance'];
-    const labels = { banco:'🏦 Banco ($)', deudaTarj:'💳 Deuda Tarj.', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
-    let tbl = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #1d4ed8;padding:16px;margin-bottom:20px;overflow-x:auto;">
-<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
-<thead><tr style="background:#1e293b;">
-<th style="padding:8px;text-align:left;color:white;white-space:nowrap;">Métrica</th>`;
-    resultados.forEach(r => { tbl += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
-    tbl += `</tr></thead><tbody>`;
-
-    cols.forEach((col,ci) => {
-        const vals = resultados.map(r => r[col]);
-        const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
-        tbl += `<tr style="background:${ci%2===0?'white':'#f8fafc'};">
-<td style="padding:7px 8px;font-weight:bold;color:#334155;white-space:nowrap;">${labels[col]}</td>`;
-        resultados.forEach(r => {
-            const v = r[col];
-            let color = '#334155';
-            if(col==='balance') color = v>=0?'#10b981':'#ef4444';
-            else if(col==='deudaTarj') color = '#a855f7';
-            else if(col==='ingresos') color = '#0284c7';
-            else if(col==='egresado') color = '#f59e0b';
-            // mini barra inline
-            const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
-            const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):(col==='deudaTarj'?'#a855f7':col==='ingresos'?'#0284c7':col==='egresado'?'#f59e0b':'#1d4ed8');
-            tbl += `<td style="padding:7px 8px;text-align:right;">
-<div style="font-weight:bold;color:${color};font-size:10px;">${fmt(v)}</div>
-<div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:${barColor};height:3px;border-radius:2px;width:${pct}%;"></div></div>
-</td>`;
-        });
-        tbl += `</tr>`;
+    // ── Tabla rubros ──
+    const rubrosConPresup = Object.keys(listaPresupRubros).filter(function(r){ return listaPresupRubros[r] > 0; });
+    var rowsRub = '';
+    rubrosConPresup.forEach(function(r, i) {
+        const pres = listaPresupRubros[r];
+        const gast = gastadoPorRubro[r] || 0;
+        const desv = gast - pres;
+        const col  = desv > 0 ? '#ef4444' : '#10b981';
+        rowsRub += '<tr style="' + (i%2===0?'':'background:#0f172a;') + '">';
+        rowsRub += '<td style="padding:6px 8px;color:#e2e8f0;">' + r + '</td>';
+        rowsRub += '<td style="padding:6px 8px;text-align:right;color:#94a3b8;">' + fmt(pres) + '</td>';
+        rowsRub += '<td style="padding:6px 8px;text-align:right;color:#f59e0b;font-weight:bold;">' + fmt(gast) + '</td>';
+        rowsRub += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:' + col + ';">' + (desv > 0 ? '+' : '') + fmt(desv) + '</td>';
+        rowsRub += '</tr>';
     });
-    tbl += `</tbody></table></div>`;
-    wrap.insertAdjacentHTML('beforeend', tbl);
 
-    // ── TABLA 2: GASTOS POR RUBRO ─────────────────────────────
-    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Gastos por Rubro · Todos los Períodos</h3>');
+    var body = '';
+    // Resumen general
+    body += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">';
+    body += '<div class="vto-item"><div><div class="vto-nombre">Presupuesto mes</div><div class="vto-sub">' + fmt(totalPresup) + '</div></div></div>';
+    body += '<div class="vto-item"><div><div class="vto-nombre">Gastado total</div><div class="vto-sub" style="color:#f59e0b;">' + fmt(gastadoTotal) + '</div></div></div>';
+    body += '<div class="vto-item"><div><div class="vto-nombre">Desvío total</div><div class="vto-sub" style="color:' + (desvioTotal > 0 ? '#ef4444' : '#10b981') + ';font-weight:bold;">' + (desvioTotal > 0 ? '+' : '') + fmt(desvioTotal) + '</div></div></div>';
+    body += '</div>';
 
-    const todosRubs = new Set();
-    mesesArr.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')) && !c.esIngreso).forEach(c=>todosRubs.add(c.rubro||'Sin rubro')));
-    const rubArr = [...todosRubs].sort();
+    // Tabla semanas
+    body += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">';
+    body += '<thead><tr style="background:#0f172a;"><th style="padding:7px 8px;text-align:left;color:#94a3b8;font-size:10px;">Semana</th><th style="padding:7px 8px;text-align:right;color:#94a3b8;font-size:10px;">Ppto. acum.</th><th style="padding:7px 8px;text-align:right;color:#94a3b8;font-size:10px;">Gastado acum.</th><th style="padding:7px 8px;text-align:right;color:#94a3b8;font-size:10px;">Desvío</th><th style="padding:7px 8px;text-align:right;color:#94a3b8;font-size:10px;">Remanente</th></tr></thead>';
+    body += '<tbody>' + rowsSem + '</tbody></table>';
 
-    if (rubArr.length) {
-        let t2 = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:20px;overflow-x:auto;">
-<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
-<thead><tr style="background:#1e293b;">
-<th style="padding:8px;text-align:left;color:white;">Rubro</th>`;
-        resultados.forEach(r => { t2 += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
-        t2 += `<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th><th style="padding:8px;text-align:right;color:#f59e0b;">PROM</th></tr></thead><tbody>`;
-
-        const totMes = new Array(resultados.length).fill(0);
-        let totGen = 0;
-        rubArr.forEach((rub, ri) => {
-            let totR = 0;
-            t2 += `<tr style="background:${ri%2===0?'white':'#f8fafc'};">
-<td style="padding:6px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
-            resultados.forEach((r, mi) => {
-                const mesData = mesesArr[mi].datos;
-                const s = (mesData.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
-                totMes[mi] += s; totR += s;
-                t2 += `<td style="padding:6px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`;
-            });
-            totGen += totR;
-            const promR = totR / resultados.filter((_,i) => {
-                const mesData = mesesArr[i].datos;
-                return (mesData.listaCorrientes||[]).some(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso);
-            }).length || 1;
-            t2 += `<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td>`;
-            t2 += `<td style="padding:6px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totR/resultados.length)}</td></tr>`;
-        });
-
-        t2 += `<tr style="background:#f1f5f9;font-weight:bold;">
-<td style="padding:7px 8px;color:#1e293b;">TOTAL PERÍODO</td>`;
-        totMes.forEach(t => { t2 += `<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
-        t2 += `<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td>`;
-        t2 += `<td style="padding:7px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totGen/resultados.length)}</td></tr>`;
-        t2 += `</tbody></table></div>`;
-        wrap.insertAdjacentHTML('beforeend', t2);
+    // Tabla rubros
+    if(rowsRub) {
+        body += '<div style="font-size:10px;font-weight:bold;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">Desvío por rubro</div>';
+        body += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+        body += '<thead><tr style="background:#0f172a;"><th style="padding:6px 8px;text-align:left;color:#94a3b8;font-size:10px;">Rubro</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Presupuesto</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Gastado</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Desvío</th></tr></thead>';
+        body += '<tbody>' + rowsRub + '</tbody></table>';
     }
 
-    // ── TARJETAS RESUMEN (KPIs) ───────────────────────────────
-    const promedioBalance = resultados.slice(0,-1).reduce((a,r)=>a+r.balance,0) / Math.max(resultados.length-1,1);
-    const mejorMes = [...resultados].sort((a,b)=>b.balance-a.balance)[0];
-    const peorMes  = [...resultados].sort((a,b)=>a.balance-b.balance)[0];
-    const totalEgr = resultados.slice(0,-1).reduce((a,r)=>a+r.egresado,0);
-    const totalIng = resultados.slice(0,-1).reduce((a,r)=>a+r.ingresos,0);
-
-    wrap.insertAdjacentHTML('beforeend',`
-<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#7c3aed;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">KPIs del Período</h3>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;">
-  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #10b981;padding:14px;">
-    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Balance promedio mensual</div>
-    <div style="font-size:18px;font-weight:bold;color:${promedioBalance>=0?'#10b981':'#ef4444'};">${fmt(promedioBalance)}</div>
-  </div>
-  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #0284c7;padding:14px;">
-    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total egresado (períodos cerrados)</div>
-    <div style="font-size:18px;font-weight:bold;color:#f59e0b;">${fmt(totalEgr)}</div>
-  </div>
-  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #a855f7;padding:14px;">
-    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total ingresos (períodos cerrados)</div>
-    <div style="font-size:18px;font-weight:bold;color:#0284c7;">${fmt(totalIng)}</div>
-  </div>
-  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #f59e0b;padding:14px;">
-    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Mejor período</div>
-    <div style="font-size:14px;font-weight:bold;color:#10b981;">${mejorMes.nombre.replace(' de ',' ')}</div>
-    <div style="font-size:11px;color:#64748b;">${fmt(mejorMes.balance)}</div>
-  </div>
-  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #ef4444;padding:14px;">
-    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Peor período</div>
-    <div style="font-size:14px;font-weight:bold;color:#ef4444;">${peorMes.nombre.replace(' de ',' ')}</div>
-    <div style="font-size:11px;color:#64748b;">${fmt(peorMes.balance)}</div>
-  </div>
-</div>`);
-
-    // ── RESUMEN USD ───────────────────────────────────────────
-    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#16a34a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Todos los Períodos</h3>');
-
-    // Tabla métricas USD
-    const mesesUSD = ultimos.filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026'))).map(m => ({ nombre: m.nombre, datos: m.datos }));
-    mesesUSD.push({ nombre: 'Mes Actual', datos: { listaCuentasUSD, listaTarjetasUSD, listaServiciosUSD, listaCorrientesUSD } });
-
-    function calcMesUSD(m) {
-        const db = m.datos;
-        let cuentas = 0, egresado = 0, ingresos = 0;
-        (db.listaCuentasUSD||[]).forEach(b => cuentas += b.saldo);
-        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado);
-        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
-            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
-        });
-        return { cuentas, egresado, ingresos, balance: ingresos - egresado };
-    }
-
-    const resUSD = mesesUSD.map(m => ({ nombre: m.nombre, ...calcMesUSD(m) }));
-    const tieneUSD = resUSD.some(r => r.cuentas > 0 || r.egresado > 0 || r.ingresos > 0);
-
-    if(!tieneUSD) {
-        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:20px;text-align:center;color:#94a3b8;margin-bottom:20px;">Sin movimientos en dólares registrados.</div>');
-    } else {
-        const colsUSD = ['cuentas','ingresos','egresado','balance'];
-        const labUSD = { cuentas:'🏦 Cuentas USD', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
-        let tUSD = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #16a34a;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Métrica</th>';
-        resUSD.forEach(r => { tUSD += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
-        tUSD += '</tr></thead><tbody>';
-        colsUSD.forEach((col,ci) => {
-            const vals = resUSD.map(r=>r[col]);
-            const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
-            tUSD += '<tr style="background:'+(ci%2===0?'white':'#f8fafc')+'"><td style="padding:7px 8px;font-weight:bold;color:#334155;">'+labUSD[col]+'</td>';
-            resUSD.forEach(r => {
-                const v = r[col];
-                let color = '#334155';
-                if(col==='balance') color = v>=0?'#10b981':'#ef4444';
-                else if(col==='egresado') color = '#f59e0b';
-                else if(col==='ingresos') color = '#0284c7';
-                else if(col==='cuentas') color = '#16a34a';
-                const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
-                const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):col==='egresado'?'#f59e0b':col==='ingresos'?'#0284c7':'#16a34a';
-                tUSD += '<td style="padding:7px 8px;text-align:right;"><div style="font-weight:bold;color:'+color+';font-size:10px;">'+fmtUSD(v)+'</div><div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:'+barColor+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div></td>';
-            });
-            tUSD += '</tr>';
-        });
-        tUSD += '</tbody></table></div>';
-        wrap.insertAdjacentHTML('beforeend', tUSD);
-
-        // Tabla rubros USD acumulado
-        const rubsUSD = new Set();
-        mesesUSD.forEach(m => (m.datos.listaCorrientesUSD||[]).filter(c=>!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>rubsUSD.add(c.rubro||'Sin rubro')));
-        const rubArrUSD = [...rubsUSD].sort();
-        if(rubArrUSD.length) {
-            let tR = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Gastos por Rubro USD</h4><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Rubro</th>';
-            resUSD.forEach(r => { tR += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
-            tR += '<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>';
-            rubArrUSD.forEach((rub,ri) => {
-                let totR = 0;
-                tR += '<tr style="background:'+(ri%2===0?'white':'#f8fafc')+'"><td style="padding:6px 8px;font-weight:bold;color:#334155;">'+rub+'</td>';
-                mesesUSD.forEach(m => {
-                    const s = (m.datos.listaCorrientesUSD||[]).filter(c=>c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
-                    totR += s;
-                    tR += '<td style="padding:6px 8px;text-align:right;color:'+(s>0?'#10b981':'#94a3b8')+';font-weight:'+(s>0?'bold':'normal')+';font-size:10px;">'+(s>0?fmtUSD(s):'—')+'</td>';
-                });
-                tR += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;font-size:10px;">'+fmtUSD(totR)+'</td></tr>';
-            });
-            tR += '</tbody></table></div>';
-            wrap.insertAdjacentHTML('beforeend', tR);
-        }
-    }
-
-    // ── GRÁFICO EVOLUCIÓN DE SALDOS ─────────────────────────
-    if (resultados.length >= 2) {
-        wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Evolución de Saldos · Banco y Balance</h3>');
-
-        const W = 700, H = 220, PAD = { top: 20, right: 20, bottom: 50, left: 80 };
-        const chartW = W - PAD.left - PAD.right;
-        const chartH = H - PAD.top - PAD.bottom;
-        const n = resultados.length;
-
-        const bancos  = resultados.map(r => r.banco);
-        const balances = resultados.map(r => r.balance);
-        const nombres  = resultados.map(r => r.nombre.replace(' de ',' ').replace('Mes Actual','Actual'));
-
-        const allVals = [...bancos, ...balances];
-        const minV = Math.min(...allVals);
-        const maxV = Math.max(...allVals);
-        const rng  = maxV - minV || 1;
-        const yMin = minV - rng * 0.1;
-        const yMax = maxV + rng * 0.1;
-        const yRng = yMax - yMin;
-
-        function xPos(i) { return PAD.left + (i / (n - 1)) * chartW; }
-        function yPos(v) { return PAD.top + chartH - ((v - yMin) / yRng) * chartH; }
-        function fmtK(v) {
-            const abs = Math.abs(v);
-            const sign = v < 0 ? '-' : '';
-            if(abs >= 1000000) return sign + (abs/1000000).toFixed(1) + 'M';
-            if(abs >= 1000)    return sign + Math.round(abs/1000) + 'K';
-            return sign + Math.round(abs);
-        }
-
-        // Línea banco (azul)
-        const ptsB = bancos.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
-        // Área banco
-        const areaB = 'M'+xPos(0)+','+yPos(bancos[0])+' '+bancos.map((v,i)=>'L'+xPos(i)+','+yPos(v)).join(' ')+' L'+xPos(n-1)+','+yPos(yMin)+' L'+xPos(0)+','+yPos(yMin)+' Z';
-        // Línea balance (verde/rojo según valor)
-        const ptsBal = balances.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
-
-        // Grilla horizontal (4 líneas)
-        let grid = '';
-        for(let i=0;i<=4;i++) {
-            const v = yMin + (yRng/4)*i;
-            const y = yPos(v);
-            grid += '<line x1="'+PAD.left+'" y1="'+y+'" x2="'+(PAD.left+chartW)+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>';
-            grid += '<text x="'+(PAD.left-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+fmtK(v)+'</text>';
-        }
-
-        // Línea de cero si está en rango
-        let zeroLine = '';
-        if(yMin <= 0 && yMax >= 0) {
-            const yz = yPos(0);
-            zeroLine = '<line x1="'+PAD.left+'" y1="'+yz+'" x2="'+(PAD.left+chartW)+'" y2="'+yz+'" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3"/>';
-        }
-
-        // Puntos y etiquetas X
-        let puntosBanco = '', puntosBalance = '', labelsX = '';
-        resultados.forEach((r,i) => {
-            const xb = xPos(i), yb = yPos(bancos[i]);
-            const xbal = xPos(i), ybal = yPos(balances[i]);
-            const balColor = balances[i] >= 0 ? '#10b981' : '#ef4444';
-            puntosBanco   += '<circle cx="'+xb+'" cy="'+yb+'" r="4" fill="#0284c7" stroke="white" stroke-width="2"/>';
-            puntosBalance += '<circle cx="'+xbal+'" cy="'+ybal+'" r="4" fill="'+balColor+'" stroke="white" stroke-width="2"/>';
-            // Label eje X (rotado, cada N si hay muchos)
-            const mostrar = n <= 7 || i % Math.ceil(n/7) === 0 || i === n-1;
-            if(mostrar) {
-                labelsX += '<text x="'+xb+'" y="'+(H-PAD.bottom+14)+'" text-anchor="middle" font-size="8" fill="#64748b" transform="rotate(-30 '+xb+' '+(H-PAD.bottom+14)+')">'+nombres[i]+'</text>';
-            }
-        });
-
-        const svgChart = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:20px;overflow-x:auto;">' +
-            '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:'+W+'px;display:block;">' +
-            // Área banco
-            '<path d="'+areaB+'" fill="#0284c7" opacity="0.08"/>' +
-            // Grilla
-            grid + zeroLine +
-            // Líneas
-            '<polyline points="'+ptsB+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-            '<polyline points="'+ptsBal+'" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,3"/>' +
-            // Puntos
-            puntosBanco + puntosBalance +
-            // Labels X
-            labelsX +
-            // Eje Y label
-            '<text x="12" y="'+(PAD.top+chartH/2)+'" text-anchor="middle" font-size="9" fill="#94a3b8" transform="rotate(-90 12 '+(PAD.top+chartH/2)+')">$ ARS</text>' +
-            // Leyenda
-            '<rect x="'+PAD.left+'" y="'+(H-16)+'" width="10" height="3" fill="#0284c7" rx="1"/>' +
-            '<text x="'+(PAD.left+14)+'" y="'+(H-12)+'" font-size="9" fill="#0284c7">Banco</text>' +
-            '<line x1="'+(PAD.left+60)+'" y1="'+(H-13)+'" x2="'+(PAD.left+70)+'" y2="'+(H-13)+'" stroke="#10b981" stroke-width="2" stroke-dasharray="4,2"/>' +
-            '<text x="'+(PAD.left+74)+'" y="'+(H-12)+'" font-size="9" fill="#10b981">Balance</text>' +
-            '</svg></div>';
-
-        wrap.insertAdjacentHTML('beforeend', svgChart);
-    }
-
-    return wrap;
+    const titulo = '📊 Informe Semanal — ' + primerDia.toLocaleString('es-AR',{month:'long',year:'numeric'});
+    const ov = el('div','modal-overlay no-print modal-bg-informe');
+    ov.style.zIndex = '1100';
+    ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+    ov.innerHTML = '<div class="modal-box" style="max-width:600px;width:95%;max-height:90vh;overflow-y:auto;">' +
+        '<div class="modal-header"><span style="font-size:20px;">📊</span><h3>' + titulo + '</h3></div>' +
+        '<div class="modal-body">' + body + '</div>' +
+        '<div class="modal-footer"><button class="btn btn-dark" onclick="document.querySelector(\'.modal-bg-informe\').remove()">Cerrar</button></div>' +
+        '</div>';
+    document.body.appendChild(ov);
 }
 
 // ═══════════════════════════════════════════
