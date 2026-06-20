@@ -344,7 +344,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.6</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.7</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -3083,24 +3083,16 @@ function exportarExcel() {
 
 function limpiarCache() {
     if(!confirm('¿Limpiar caché y recargar la app?')) return;
-    const doReload = function() {
+    const doNavegar = function() {
         caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
-        .then(function(){ location.reload(true); })
-        .catch(function(){ location.reload(true); });
+        .finally(function(){
+            const base = location.href.split('?')[0];
+            location.href = base + '?v=' + Date.now();
+        });
     };
-    if(navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.getRegistration().then(function(reg) {
-            if(reg) {
-                reg.update().then(function() {
-                    const sw = reg.installing || reg.waiting;
-                    if(sw) {
-                        sw.postMessage({type:'SKIP_WAITING'});
-                        setTimeout(doReload, 400);
-                    } else {
-                        doReload();
-                    }
-                }).catch(doReload);
-            } else { doReload(); }
-        }).catch(doReload);
-    } else { doReload(); }
+    if(navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function(regs){
+            return Promise.all(regs.map(function(r){ return r.unregister(); }));
+        }).then(doNavegar).catch(doNavegar);
+    } else { doNavegar(); }
 }
