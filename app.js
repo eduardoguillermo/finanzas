@@ -347,7 +347,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.16</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.17</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -491,7 +491,7 @@ function buildMesActual() {
               <th style="width:10%" class="tr">Presup.</th><th style="width:10%" class="tr">Pagado</th>
               <th style="width:11%" class="tc">F.Pago</th><th style="width:14%">Medio</th>
               <th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th>
-            </tr></thead><tbody id="t-servicios"></tbody></table>
+            </tr></thead><tbody id="t-servicios"></tbody><tfoot id="t-servicios-foot"></tfoot></table>
           </div>
           <div class="panel panel-corrientes">
             <h3 class="panel-title">🛍️ Gastos Corrientes / Caja Diaria</h3>
@@ -641,6 +641,21 @@ function render() {
         tS.appendChild(tr);
     });
     if(!listaServicios.length) tS.innerHTML='<tr><td colspan="9" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios.</td></tr>';
+    // Totales fila servicios
+    const tSFoot = document.getElementById('t-servicios-foot');
+    if(tSFoot) {
+        const sTotPres = listaServicios.reduce((a,s)=>a+s.presupuesto,0);
+        const sTotPag  = listaServicios.reduce((a,s)=>a+s.pagado,0);
+        const sTotPend = listaServicios.reduce((a,s)=>a+Math.max(0,s.presupuesto-s.pagado),0);
+        tSFoot.innerHTML = '<tr style="background:#f1f5f9;font-weight:bold;font-size:12px;border-top:2px solid #e2e8f0;">'
+            + '<td style="padding:6px 8px;color:#334155;">TOTAL</td>'
+            + '<td></td><td></td>'
+            + '<td style="padding:6px 8px;text-align:right;color:#4f46e5;">'+fmt(sTotPres)+'</td>'
+            + '<td style="padding:6px 8px;text-align:right;color:#10b981;">'+fmt(sTotPag)+'</td>'
+            + '<td></td><td></td>'
+            + '<td style="padding:6px 8px;text-align:center;color:#ef4444;font-size:11px;">'+fmt(sTotPend)+' pend.</td>'
+            + '<td></td></tr>';
+    }
     renderCuotas();
     // Corrientes
     const wC=document.getElementById('wrap-corrientes');
