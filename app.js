@@ -187,7 +187,7 @@ async function syncAlAbrir() {
 document.addEventListener('DOMContentLoaded', () => {
     renderTabs();
     renderContenido();
-    setTimeout(modalVencimientos, 400);
+    setTimeout(modalVencimientos, 1500);
 });
 
 // ═══════════════════════════════════════════
