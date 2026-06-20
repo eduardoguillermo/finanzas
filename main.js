@@ -2562,11 +2562,11 @@ function mostrarInformeSemanal() {
         const desvio     = gastAcum !== null ? gastAcum - presupAcum : null;
         const remanente  = totalPresup - (gastAcum !== null ? gastAcum : 0);
         const esActual   = hoy >= s.desde && hoy <= s.fin;
-        const bg = esActual ? 'background:#1e3a5f;' : (i%2===0 ? '' : 'background:#0f172a;');
+        const bg = esActual ? 'background:#1e3a5f;' : (i%2===0 ? '' : 'background:#1e293b;');
         const colDesv = desvio === null ? '#475569' : (desvio > 0 ? '#ef4444' : '#10b981');
         const colRem  = remanente >= 0 ? '#10b981' : '#ef4444';
         rowsSem += '<tr style="' + bg + (esFutura ? 'opacity:0.65;' : '') + '">';
-        rowsSem += '<td style="padding:7px 8px;color:#e2e8f0;">' + (esActual ? '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 5px;margin-right:4px;">HOY</span>' : '') + 'S' + (i+1) + ' <span style="color:#64748b;font-size:10px;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
+        rowsSem += '<td style="padding:7px 8px;color:#e2e8f0;">' + (esActual ? '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 5px;margin-right:4px;">HOY</span>' : '') + 'S' + (i+1) + ' <span style="color:#94a3b8;font-size:10px;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;color:#cbd5e1;">' + fmt(presupAcum) + '</td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;color:' + (esFutura ? '#475569' : '#f59e0b') + ';font-weight:bold;">' + (gastAcum !== null ? fmt(gastAcum) : '—') + '</td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;font-weight:bold;color:' + colDesv + ';">' + (desvio !== null ? (desvio > 0 ? '+' : '') + fmt(desvio) : '—') + '</td>';
@@ -2582,7 +2582,7 @@ function mostrarInformeSemanal() {
         const gast = gastadoPorRubro[r] || 0;
         const desv = gast - pres;
         const col  = desv > 0 ? '#ef4444' : '#10b981';
-        rowsRub += '<tr style="' + (i%2===0?'':'background:#0f172a;') + '">';
+        rowsRub += '<tr style="' + (i%2===0?'':'background:#1e293b;') + '">';
         rowsRub += '<td style="padding:6px 8px;color:#e2e8f0;">' + r + '</td>';
         rowsRub += '<td style="padding:6px 8px;text-align:right;color:#cbd5e1;">' + fmt(pres) + '</td>';
         rowsRub += '<td style="padding:6px 8px;text-align:right;color:#f59e0b;font-weight:bold;">' + fmt(gast) + '</td>';
@@ -2600,14 +2600,14 @@ function mostrarInformeSemanal() {
 
     // Tabla semanas
     body += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">';
-    body += '<thead><tr style="background:#0f172a;"><th style="padding:7px 8px;text-align:left;color:#cbd5e1;font-size:10px;">Semana</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Ppto. acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Gastado acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Desvío</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Remanente</th></tr></thead>';
+    body += '<thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:#cbd5e1;font-size:10px;">Semana</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Ppto. acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Gastado acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Desvío</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Remanente</th></tr></thead>';
     body += '<tbody>' + rowsSem + '</tbody></table>';
 
     // Tabla rubros
     if(rowsRub) {
-        body += '<div style="font-size:10px;font-weight:bold;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">Desvío por rubro</div>';
+        body += '<div style="font-size:10px;font-weight:bold;color:#cbd5e1;text-transform:uppercase;margin-bottom:6px;">Desvío por rubro</div>';
         body += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-        body += '<thead><tr style="background:#0f172a;"><th style="padding:6px 8px;text-align:left;color:#94a3b8;font-size:10px;">Rubro</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Presupuesto</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Gastado</th><th style="padding:6px 8px;text-align:right;color:#94a3b8;font-size:10px;">Desvío</th></tr></thead>';
+        body += '<thead><tr style="background:#1e293b;"><th style="padding:6px 8px;text-align:left;color:#cbd5e1;font-size:10px;">Rubro</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Presupuesto</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Gastado</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Desvío</th></tr></thead>';
         body += '<tbody>' + rowsRub + '</tbody></table>';
     }
 
