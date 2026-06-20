@@ -2564,7 +2564,7 @@ function mostrarInformeSemanal() {
     document.querySelectorAll('.modal-bg-informe').forEach(function(m){ m.remove(); });
     const modal = document.createElement('div');
     modal.className = 'modal-bg modal-bg-informe';
-    modal.style.zIndex = '500';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:1100;display:flex;align-items:center;justify-content:center;overflow-y:auto;';
     modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
 
     let html = '<div class="modal" style="max-width:560px;width:95%;">';
