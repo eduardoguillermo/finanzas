@@ -201,6 +201,7 @@ function renderTabs() {
         bar.appendChild(t);
     };
     mkTab('<span>📊 Mes Actual</span>',  tabActivo===null,       ()=>{ tabActivo=null;       renderTabs(); renderContenido(); });
+    mkTab('<span>🎯 Presupuesto</span>', tabActivo==='presupuesto', ()=>{ tabActivo='presupuesto'; renderTabs(); renderContenido(); }, 'background:#f5f3ff;color:#6d28d9;border-color:#c4b5fd;');
     mkTab('<span>💵 Dólares</span>',     tabActivo==='dolares',  ()=>{ tabActivo='dolares';  renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#15803d;border-color:#86efac;');
     mkTab('<span>📈 Reportes</span>',    tabActivo==='reportes',    ()=>{ tabActivo='reportes';    renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#166534;border-color:#86efac;');
     mkTab('<span>📊 Inversiones</span>', tabActivo==='inversiones', ()=>{ tabActivo='inversiones'; renderTabs(); renderContenido(); }, 'background:#fef9c3;color:#854d0e;border-color:#fde047;');
@@ -261,6 +262,7 @@ function renderContenido() {
     app.innerHTML = '';
     if      (tabActivo===null)       { app.appendChild(buildMesActual()); bindMesActual(); render(); iniciarTimerYPF(); }
     else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); actualizarTCDolares(); }
+    else if (tabActivo==='presupuesto')  { app.appendChild(buildPresupuesto()); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
     else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); iniciarTimerYPF(); }
     else if (tabActivo==='anual')       { app.appendChild(buildAnual()); }
@@ -345,7 +347,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.13</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.14</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -1444,6 +1446,163 @@ function mkTortaDoble(id1, ley1, tit1, id2, ley2, tit2, color1, color2) {
 // ═══════════════════════════════════════════
 //  REPORTES
 // ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  PESTAÑA PRESUPUESTO
+// ═══════════════════════════════════════════
+function buildPresupuesto() {
+    const wrap = el('div','container'); wrap.style.paddingTop = '24px';
+
+    // ── Header ──
+    const hdr = el('div');
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:14px;border-bottom:3px solid #6d28d9;';
+    const mes = new Date().toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🎯 Presupuesto Mensual</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">'+mes.charAt(0).toUpperCase()+mes.slice(1)+' · Edición directa en cada rubro</p></div>';
+    wrap.appendChild(hdr);
+
+    // ── Calcular gastado por rubro (pesos) ──
+    const gastado = {};
+    listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{
+        gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto;
+    });
+    // Rubros con gasto pero sin presupuesto también se muestran
+    const todosRubros = new Set([...listaRubros, ...Object.keys(gastado)]);
+
+    const totalPresup = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
+    const totalGast   = listaRubros.reduce((a,r)=>a+(gastado[r]||0),0);
+    const totalPct    = totalPresup>0 ? Math.min(100,Math.round(totalGast/totalPresup*100)) : 0;
+    const totalLib    = Math.max(0, totalPresup - totalGast);
+    const totalExc    = totalGast > totalPresup && totalPresup>0 ? totalGast - totalPresup : 0;
+
+    // ── Cards resumen ──
+    const cardStyle = 'border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:4px;';
+    let cards = '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:28px;">';
+    cards += '<div style="background:#f5f3ff;border:1px solid #ddd6fe;'+cardStyle+'"><span style="font-size:11px;font-weight:bold;color:#6d28d9;text-transform:uppercase;">Presupuesto total</span><span style="font-size:22px;font-weight:bold;color:#4c1d95;">'+fmt(totalPresup)+'</span></div>';
+    cards += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;'+cardStyle+'"><span style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Gastado</span><span style="font-size:22px;font-weight:bold;color:#15803d;">'+fmt(totalGast)+'</span><span style="font-size:11px;color:#16a34a;">'+totalPct+'% del presupuesto</span></div>';
+    cards += '<div style="background:'+(totalLib>0?'#eff6ff':'#fff7ed')+';border:1px solid '+(totalLib>0?'#bfdbfe':'#fed7aa')+';'+cardStyle+'"><span style="font-size:11px;font-weight:bold;color:'+(totalLib>0?'#1d4ed8':'#c2410c')+';text-transform:uppercase;">'+( totalLib>0 ? 'Libre' : 'Excedido' )+'</span><span style="font-size:22px;font-weight:bold;color:'+(totalLib>0?'#1e40af':'#ea580c')+';">'+fmt(totalLib>0?totalLib:totalExc)+'</span></div>';
+    const rubrosConPresup = listaRubros.filter(r=>listaPresupRubros[r]>0).length;
+    cards += '<div style="background:#f8fafc;border:1px solid #e2e8f0;'+cardStyle+'"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Rubros con límite</span><span style="font-size:22px;font-weight:bold;color:#334155;">'+rubrosConPresup+' / '+listaRubros.length+'</span></div>';
+    cards += '</div>';
+    wrap.insertAdjacentHTML('beforeend', cards);
+
+    // ── Barra global ──
+    const barGlobColor = totalPct>=100 ? '#ef4444' : totalPct>=80 ? '#f59e0b' : '#6d28d9';
+    let barGlob = '<div style="background:white;border-radius:10px;border:1px solid #e2e8f0;padding:16px 20px;margin-bottom:28px;">';
+    barGlob += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    barGlob += '<span style="font-size:13px;font-weight:bold;color:#334155;">Ejecución global del presupuesto</span>';
+    barGlob += '<span style="font-size:13px;font-weight:bold;color:'+barGlobColor+';">'+totalPct+'%</span></div>';
+    barGlob += '<div style="background:#e2e8f0;border-radius:6px;height:12px;">';
+    barGlob += '<div style="background:'+barGlobColor+';height:12px;border-radius:6px;width:'+Math.min(100,totalPct)+'%;transition:width 0.4s;"></div></div>';
+    barGlob += '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#94a3b8;">';
+    barGlob += '<span>'+fmt(totalGast)+' gastado</span><span>'+fmt(totalPresup)+' presupuestado</span></div>';
+    barGlob += '</div>';
+    wrap.insertAdjacentHTML('beforeend', barGlob);
+
+    // ── Título sección rubros ──
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:13px;font-weight:bold;color:#6d28d9;text-transform:uppercase;letter-spacing:.05em;">Rubros en pesos</h3>');
+
+    // ── Grid de rubros ──
+    let grid = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:32px;" id="presup-rubros-grid">';
+    const rubrosArr = [...todosRubros];
+    rubrosArr.forEach(r => {
+        const pres = listaPresupRubros[r]||0;
+        const gast = gastado[r]||0;
+        const pct  = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
+        const lib  = pres>0 ? pres-gast : 0;
+        const col  = colorRubro(r);
+        const superado = pres>0 && gast>=pres;
+        const sinPresup = pres===0;
+        const barCol = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : col;
+        const bgCard = superado ? '#fff5f5' : sinPresup ? '#f8fafc' : 'white';
+        const borderCard = superado ? '1px solid #fca5a5' : sinPresup ? '1px solid #e2e8f0' : '1px solid #e2e8f0';
+        const borderTop = 'border-top:3px solid '+(superado?'#ef4444':sinPresup?'#cbd5e1':col)+';';
+
+        let card = '<div style="background:'+bgCard+';border-radius:10px;border:'+borderCard+';'+borderTop+'padding:14px 16px;">';
+        // Nombre + badge estado
+        card += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
+        card += '<span style="font-size:13px;font-weight:bold;color:'+col+';">'+r+'</span>';
+        if(superado) card += '<span style="font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
+        else if(sinPresup) card += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#94a3b8;">Sin límite</span>';
+        else if(pct>=80) card += '<span style="font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;background:#fef3c7;color:#92400e;">'+pct+'%</span>';
+        else card += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:#f0fdf4;color:#15803d;">'+pct+'%</span>';
+        card += '</div>';
+
+        // Montos
+        card += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">';
+        card += '<span style="color:#64748b;">Gastado: <b style="color:'+(superado?'#ef4444':'#334155')+';">'+fmt(gast)+'</b></span>';
+        if(pres>0) card += '<span style="color:#64748b;">'+( lib>=0?'Libre':'Exceso')+': <b style="color:'+(lib>=0?'#16a34a':'#ef4444')+';">'+fmt(Math.abs(lib))+'</b></span>';
+        card += '</div>';
+
+        // Barra
+        if(pres>0){
+            card += '<div style="background:#e2e8f0;border-radius:4px;height:7px;margin-bottom:10px;">';
+            card += '<div style="background:'+barCol+';height:7px;border-radius:4px;width:'+Math.min(100,pct)+'%;"></div></div>';
+        }
+
+        // Input presupuesto
+        const safeR = r.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        card += '<div style="display:flex;align-items:center;gap:6px;">';
+        card += '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">Límite $</span>';
+        card += '<input type="number" min="0" step="1" value="'+(pres||'')+'" placeholder="Sin límite" ';
+        card += 'style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:white;color:#1e293b;" ';
+        card += 'data-rubro="'+safeR+'" onchange="actualizarPresupRubro(this)" onblur="actualizarPresupRubro(this)">';
+        card += '</div>';
+        card += '</div>';
+        grid += card;
+    });
+    grid += '</div>';
+    wrap.insertAdjacentHTML('beforeend', grid);
+
+    // ── USD ──────────────────────────────────────────────
+    if(listaRubrosUSD && listaRubrosUSD.length) {
+        wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:13px;font-weight:bold;color:#0284c7;text-transform:uppercase;letter-spacing:.05em;">Rubros en dólares</h3>');
+        const gastadoUSD = {};
+        listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{
+            gastadoUSD[c.rubro]=(gastadoUSD[c.rubro]||0)+c.monto;
+        });
+        const todosRubrosUSD = new Set([...listaRubrosUSD, ...Object.keys(gastadoUSD)]);
+        let gridUSD = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px;">';
+        [...todosRubrosUSD].forEach(r => {
+            const pres = listaPresupRubrosUSD[r]||0;
+            const gast = gastadoUSD[r]||0;
+            const pct  = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
+            const lib  = pres>0 ? pres-gast : 0;
+            const superado = pres>0 && gast>=pres;
+            const sinPresup = pres===0;
+            const barCol = superado ? '#ef4444' : pct>=80 ? '#f59e0b' : '#0284c7';
+            const bgCard = superado ? '#fff5f5' : sinPresup ? '#f8fafc' : 'white';
+            const safeR = r.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+
+            let card = '<div style="background:'+bgCard+';border-radius:10px;border:1px solid #e2e8f0;border-top:3px solid '+(superado?'#ef4444':sinPresup?'#cbd5e1':'#0284c7')+';padding:14px 16px;">';
+            card += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
+            card += '<span style="font-size:13px;font-weight:bold;color:#0284c7;">'+r+'</span>';
+            if(superado) card += '<span style="font-size:10px;font-weight:bold;padding:2px 7px;border-radius:4px;background:#fee2e2;color:#b91c1c;">SUPERADO</span>';
+            else if(sinPresup) card += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#94a3b8;">Sin límite</span>';
+            else card += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:#f0fdf4;color:#15803d;">'+pct+'%</span>';
+            card += '</div>';
+            card += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;">';
+            card += '<span style="color:#64748b;">Gastado: <b style="color:'+(superado?'#ef4444':'#334155')+';">'+fmtUSD(gast)+'</b></span>';
+            if(pres>0) card += '<span style="color:#64748b;">'+(lib>=0?'Libre':'Exceso')+': <b style="color:'+(lib>=0?'#16a34a':'#ef4444')+';">'+fmtUSD(Math.abs(lib))+'</b></span>';
+            card += '</div>';
+            if(pres>0){
+                card += '<div style="background:#e2e8f0;border-radius:4px;height:7px;margin-bottom:10px;">';
+                card += '<div style="background:'+barCol+';height:7px;border-radius:4px;width:'+Math.min(100,pct)+'%;"></div></div>';
+            }
+            card += '<div style="display:flex;align-items:center;gap:6px;">';
+            card += '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">Límite USD</span>';
+            card += '<input type="number" min="0" step="0.01" value="'+(pres||'')+'" placeholder="Sin límite" ';
+            card += 'style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:white;color:#1e293b;" ';
+            card += 'data-rubro="'+safeR+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
+            card += '</div></div>';
+            gridUSD += card;
+        });
+        gridUSD += '</div>';
+        wrap.insertAdjacentHTML('beforeend', gridUSD);
+    }
+
+    return wrap;
+}
+
 function buildReportes() {
     const wrap=el('div','container'); wrap.style.paddingTop='20px';
     const hdr=el('div'); hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #4f46e5;';
