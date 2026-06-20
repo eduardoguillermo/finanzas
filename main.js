@@ -66,10 +66,10 @@ function guardar() {
 // ═══════════════════════════════════════════
 //  FORMATO
 // ═══════════════════════════════════════════
-function fmt(n)    { return '$ '   + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+function fmt(n) { return '$ ' + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtN(n)   { return Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmtARS(n) { return '$ '   + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+function fmt(n) { return '$ '   + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function clon(x)   { return JSON.parse(JSON.stringify(x)); }
 const PALETA_RUBROS = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
 function colorRubro(r) { const i = listaRubros.indexOf(r); return i>=0 ? PALETA_RUBROS[i % PALETA_RUBROS.length] : '#94a3b8'; }
@@ -176,10 +176,6 @@ async function syncAlSalir() {
     }
 }
 
-async function syncAlAbrir() {
-    if(!gToken) return;
-    await syncSilencioso();
-}
 
 // ═══════════════════════════════════════════
 //  INIT
@@ -348,7 +344,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.3</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.4</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -1211,16 +1207,16 @@ function calcDashUSD() {
     const totalTarj=listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU[t.id]||0)),0);
     const balance=totalDisp-totalTarj;
     setTxt('usd-disp',      fmtUSD(totalDisp));
-    setTxt('usd-disp-ars',  fmtARS(totalDisp*tc));
+    setTxt('usd-disp-ars',  fmt(totalDisp*tc));
     setTxt('usd-pagar',     fmtUSD(totalTarj));
-    setTxt('usd-pagar-ars', fmtARS(totalTarj*tc));
+    setTxt('usd-pagar-ars', fmt(totalTarj*tc));
     setTxt('usd-bal',       fmtUSD(balance));
-    setTxt('usd-bal-ars',   fmtARS(Math.abs(balance)*tc));
+    setTxt('usd-bal-ars',   fmt(Math.abs(balance)*tc));
     const dBal=document.getElementById('usd-bal'), cBal=document.getElementById('card-usd-bal');
     const dComp=document.getElementById('usd-comp'), dCA=document.getElementById('usd-comp-ars'), cComp=document.getElementById('card-usd-comp');
     if(dBal) dBal.style.color=balance>=0?'#16a34a':'#ef4444';
     if(cBal) cBal.style.borderLeftColor=balance>=0?'#16a34a':'#ef4444';
-    if(balance<0){ const f=Math.abs(balance); if(dComp){dComp.innerText=fmtUSD(f);dComp.style.color='#ef4444';} if(dCA) dCA.innerText=fmtARS(f*tc); if(cComp) cComp.style.borderLeftColor='#ef4444'; }
+    if(balance<0){ const f=Math.abs(balance); if(dComp){dComp.innerText=fmtUSD(f);dComp.style.color='#ef4444';} if(dCA) dCA.innerText=fmt(f*tc); if(cComp) cComp.style.borderLeftColor='#ef4444'; }
     else { if(dComp){dComp.innerText='—';dComp.style.color='#94a3b8';} if(dCA) dCA.innerText=''; if(cComp) cComp.style.borderLeftColor='#94a3b8'; }
     // Presupuesto USD — servicios fijos
     const totalSrvPresupUSD = listaServiciosUSD.reduce((a,s)=>a+s.presupuesto,0);
@@ -1248,7 +1244,7 @@ function calcDashUSD() {
     if(ppEl){ ppEl.innerText=totalPresupUSD>0?pctUSD+'% usado'+(superadoUSD?' · ¡SUPERADO!':pctUSD>=80?' · cerca del límite':''):'0% · configurá límites en Rubros USD'; ppEl.style.color=superadoUSD?'#ef4444':pctUSD>=80?'#f59e0b':'#94a3b8'; }
     // Actualizar consumo en tabla tarjetas sin reconstruir
     const rowsTU=document.querySelectorAll('#t-tusd tr');
-    listaTarjetasUSD.forEach((t,i)=>{ if(rowsTU[i]){ const tds=rowsTU[i].querySelectorAll('td'); const consumo=mDU[t.id]||0; if(tds[2]) tds[2].innerText=consumo>0?fmtUSD(consumo):'—'; if(tds[3]) tds[3].innerText=fmtARS((t.saldo+consumo)*tc); } });
+    listaTarjetasUSD.forEach((t,i)=>{ if(rowsTU[i]){ const tds=rowsTU[i].querySelectorAll('td'); const consumo=mDU[t.id]||0; if(tds[2]) tds[2].innerText=consumo>0?fmtUSD(consumo):'—'; if(tds[3]) tds[3].innerText=fmt((t.saldo+consumo)*tc); } });
     // Actualizar estado servicios USD
     listaServiciosUSD.forEach(s=>{ const sp=document.getElementById('estu-'+s.id); if(sp){ if(s.pagado>=s.presupuesto&&s.presupuesto>0){sp.innerText='PAGADO';sp.style.background='#e6f4ea';sp.style.color='#137333';} else if(s.pagado>0){sp.innerText='PARCIAL';sp.style.background='#fef7e0';sp.style.color='#b06000';} else{sp.innerText='PENDIENTE';sp.style.background='#fce8e6';sp.style.color='#c5221f';} } });
 }
@@ -1283,10 +1279,10 @@ function renderDolares() {
     listaCuentasUSD.forEach(c=>{ totCU+=c.saldo;
         const inp=inpNumUSD(c.saldo,v=>{ c.saldo=v; guardar(); calcDashUSD(); }); inp.style.color='#16a34a'; inp.style.fontWeight='bold';
         const tdS=el('td','tr'); tdS.appendChild(inp);
-        const tdA=el('td','tr'); tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmtARS(c.saldo*tipoCambio);
+        const tdA=el('td','tr'); tdA.style.cssText='color:#64748b;font-size:12px;'; tdA.innerText=fmt(c.saldo*tipoCambio);
         tCU.appendChild(fila([tdHTML(`<b>${c.nombre}</b>`),tdS,tdA,tdBtn('✕',()=>elimCuentaUSD(c.id))]));
     });
-    if(listaCuentasUSD.length){ const trT=el('tr'); trT.style.background='#f8fafc'; trT.innerHTML=`<td><b>Total</b></td><td class="tr" style="color:#16a34a;font-weight:bold;">${fmtUSD(totCU)}</td><td class="tr" style="font-weight:bold;">${fmtARS(totCU*tipoCambio)}</td><td></td>`; tCU.appendChild(trT); }
+    if(listaCuentasUSD.length){ const trT=el('tr'); trT.style.background='#f8fafc'; trT.innerHTML=`<td><b>Total</b></td><td class="tr" style="color:#16a34a;font-weight:bold;">${fmtUSD(totCU)}</td><td class="tr" style="font-weight:bold;">${fmt(totCU*tipoCambio)}</td><td></td>`; tCU.appendChild(trT); }
     else tCU.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas USD.</td></tr>';
     // Tarjetas USD - cards
     let totTU=0;
@@ -1305,11 +1301,11 @@ function renderDolares() {
             const row2=el('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;';
             row2.appendChild(mkC('Saldo Base',inp,'#a855f7'));
             row2.appendChild(mkC('Consumo Mes',consumo>0?fmtUSD(consumo):'\u2014','#6366f1'));
-            const cP=el('div'); cP.style.cssText='background:#f0f9ff;border-radius:4px;padding:6px 10px;'; const lP=el('div'); lP.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; lP.innerText='En Pesos'; const vP=el('div'); vP.style.cssText='font-size:15px;font-weight:bold;color:#0284c7;'; vP.innerText=fmtARS(total*tipoCambio); cP.appendChild(lP); cP.appendChild(vP);
+            const cP=el('div'); cP.style.cssText='background:#f0f9ff;border-radius:4px;padding:6px 10px;'; const lP=el('div'); lP.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; lP.innerText='En Pesos'; const vP=el('div'); vP.style.cssText='font-size:15px;font-weight:bold;color:#0284c7;'; vP.innerText=fmt(total*tipoCambio); cP.appendChild(lP); cP.appendChild(vP);
             card.appendChild(row1); card.appendChild(row2); card.appendChild(cP); tTU.appendChild(card);
         });
         const tot=el('div'); tot.style.cssText='background:#f8fafc;border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;';
-        tot.innerHTML='<span style="font-weight:bold;color:#1e293b;">Total</span><div style="text-align:right;"><div style="font-weight:bold;color:#a855f7;font-size:15px;">'+fmtUSD(totTU)+'</div><div style="font-size:13px;color:#0284c7;">'+fmtARS(totTU*tipoCambio)+'</div></div>';
+        tot.innerHTML='<span style="font-weight:bold;color:#1e293b;">Total</span><div style="text-align:right;"><div style="font-weight:bold;color:#a855f7;font-size:15px;">'+fmtUSD(totTU)+'</div><div style="font-size:13px;color:#0284c7;">'+fmt(totTU*tipoCambio)+'</div></div>';
         tTU.appendChild(tot);
     }
     // Servicios USD
@@ -1442,12 +1438,6 @@ function mkTortaDoble(id1, ley1, tit1, id2, ley2, tit2, color1, color2) {
     return d;
 }
 
-function mkTortaDiv(canvasId, leyId, titulo, color) {
-    const d = el('div');
-    d.style.cssText = 'background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid '+color+';padding:20px;margin-bottom:16px;';
-    d.innerHTML = '<h4 style="margin:0 0 16px;font-size:12px;color:#64748b;text-transform:uppercase;">🥧 '+titulo+'</h4><div style="display:flex;align-items:flex-start;justify-content:center;gap:32px;flex-wrap:wrap;"><div id="'+canvasId+'"></div><div id="'+leyId+'" style="max-height:320px;overflow-y:auto;"></div></div>';
-    return d;
-}
 // ═══════════════════════════════════════════
 //  REPORTES
 // ═══════════════════════════════════════════
@@ -1566,20 +1556,20 @@ function buildReportes() {
         const mDU2=calcMDU(), tc=tipoCambio;
         const tD=listaCuentasUSD.reduce((a,c)=>a+c.saldo,0), tTU=listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU2[t.id]||0)),0), bal=tD-tTU;
         const gU=el('div'); gU.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;';
-        gU.innerHTML=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(tD)}</p><small style="color:#64748b;">${fmtARS(tD*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(tTU)}</p><small style="color:#64748b;">${fmtARS(tTU*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal>=0?'#16a34a':'#ef4444'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal>=0?'#16a34a':'#ef4444'};">${fmtUSD(bal)}</p><small style="color:#64748b;">${fmtARS(Math.abs(bal)*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal<0?'#ef4444':'#94a3b8'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal<0?'#ef4444':'#94a3b8'};">${bal<0?fmtUSD(Math.abs(bal)):'—'}</p><small style="color:#64748b;">${bal<0?fmtARS(Math.abs(bal)*tc):''}</small></div>`;
+        gU.innerHTML=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(tD)}</p><small style="color:#64748b;">${fmt(tD*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(tTU)}</p><small style="color:#64748b;">${fmt(tTU*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal>=0?'#16a34a':'#ef4444'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal>=0?'#16a34a':'#ef4444'};">${fmtUSD(bal)}</p><small style="color:#64748b;">${fmt(Math.abs(bal)*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal<0?'#ef4444':'#94a3b8'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal<0?'#ef4444':'#94a3b8'};">${bal<0?fmtUSD(Math.abs(bal)):'—'}</p><small style="color:#64748b;">${bal<0?fmt(Math.abs(bal)*tc):''}</small></div>`;
         wrap.appendChild(gU);
         if(listaServiciosUSD.length>0){
-            let tSU=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmtARS(tc)}</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pend. (USD)</th><th style="padding:6px;text-align:right;">Pend. (ARS)</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
+            let tSU=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmt(tc)}</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pend. (USD)</th><th style="padding:6px;text-align:right;">Pend. (ARS)</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
             let tpU=0,pgU=0,peU=0;
             listaServiciosUSD.forEach((s,ri)=>{ const pe=Math.max(0,s.presupuesto-s.pagado); tpU+=s.presupuesto; pgU+=s.pagado; peU+=pe; let ec='#c5221f',eb='#fce8e6',et='PENDIENTE'; if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';eb='#e6f4ea';et='PAGADO';} else if(s.pagado>0){ec='#b06000';eb='#fef7e0';et='PARCIAL';}
-                tSU+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td><td style="padding:5px 6px;text-align:right;">${fmtUSD(s.presupuesto)}</td><td style="padding:5px 6px;text-align:right;color:#10b981;">${fmtUSD(s.pagado)}</td><td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmtUSD(pe)}</td><td style="padding:5px 6px;text-align:right;color:#64748b;">${fmtARS(pe*tc)}</td><td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${eb};color:${ec};">${et}</span></td></tr>`; });
-            tSU+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmtUSD(tpU)}</td><td style="text-align:right;color:#10b981;">${fmtUSD(pgU)}</td><td style="text-align:right;color:#ef4444;">${fmtUSD(peU)}</td><td style="text-align:right;">${fmtARS(peU*tc)}</td><td></td></tr></table></div>`;
+                tSU+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td><td style="padding:5px 6px;text-align:right;">${fmtUSD(s.presupuesto)}</td><td style="padding:5px 6px;text-align:right;color:#10b981;">${fmtUSD(s.pagado)}</td><td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmtUSD(pe)}</td><td style="padding:5px 6px;text-align:right;color:#64748b;">${fmt(pe*tc)}</td><td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${eb};color:${ec};">${et}</span></td></tr>`; });
+            tSU+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmtUSD(tpU)}</td><td style="text-align:right;color:#10b981;">${fmtUSD(pgU)}</td><td style="text-align:right;color:#ef4444;">${fmtUSD(peU)}</td><td style="text-align:right;">${fmt(peU*tc)}</td><td></td></tr></table></div>`;
             wrap.insertAdjacentHTML('beforeend',tSU);
         }
         // Card doble USD: servicios fijos + corrientes
         const srvUSDConPres = listaServiciosUSD.filter(function(s){ return s.presupuesto>0; });
         const porRubroUSD = {};
-        listaCorrientesUSD.filter(function(c){ return c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')); }).forEach(function(c){ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
+        listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{ porRubroUSD[c.rubro]=(porRubroUSD[c.rubro]||0)+c.monto; });
         const itemsCorrUSD = Object.entries(porRubroUSD).map(function(e){ return {label:e[0],valor:e[1]}; });
         if(srvUSDConPres.length>0 || itemsCorrUSD.length>0){
             const divDobleUSD = mkTortaDoble(
@@ -2309,7 +2299,6 @@ async function actualizarYPF() {
 // ═══════════════════════════════════════════
 //  PANEL IA — CONSULTA EN LENGUAJE NATURAL
 // ═══════════════════════════════════════════
-let _aiPanelAbierto = false;
 let _aiHistorial = [];
 
 function buildContextoApp() {
