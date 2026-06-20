@@ -2560,14 +2560,17 @@ function mostrarInformeSemanal() {
     }
 
     // Construir modal
+    // Limpiar modales anteriores del informe
+    document.querySelectorAll('.modal-bg-informe').forEach(function(m){ m.remove(); });
     const modal = document.createElement('div');
-    modal.className = 'modal-bg';
+    modal.className = 'modal-bg modal-bg-informe';
+    modal.style.zIndex = '500';
     modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
 
     let html = '<div class="modal" style="max-width:560px;width:95%;">';
     html += '<div class="modal-header" style="background:#7c3aed;border-radius:8px 8px 0 0;padding:14px 16px;margin:-24px -24px 20px;">';
     html += '<h3 style="margin:0;color:white;font-size:15px;">📊 Informe Semanal — ' + primerDia.toLocaleString('es-AR',{month:'long',year:'numeric'}) + '</h3>';
-    html += '<button onclick="document.querySelector(\'.modal-bg\').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:4px;padding:4px 10px;cursor:pointer;">✕</button></div>';
+    html += '<button onclick="document.querySelector(\'.modal-bg-informe\').remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;border-radius:4px;padding:4px 10px;cursor:pointer;">✕</button></div>';
 
     // Resumen general
     const gastadoTotal = Object.values(gastadoPorRubro).reduce(function(a,b){ return a+b; }, 0);
