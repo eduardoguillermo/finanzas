@@ -345,7 +345,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.10</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.11</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -516,10 +516,10 @@ function buildMesActual() {
                 <button type="submit" class="btn btn-add btn-green">Asentar Gasto Corriente</button>
               </form>
             </div>
-            <div class="no-print" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
-              <input type="text" id="filtro-corrientes" placeholder="🔍 Buscar por rubro o detalle..." style="flex:1;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;" oninput="filtroCorrientes=this.value.toLowerCase();render();">
-              <select id="filtro-clase" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;background:white;min-width:110px;" onchange="filtroClase=this.value;render();"><option value="">Clase</option><option value="M">M — Mío</option><option value="O">O — Oma</option><option value="X">X — Otros</option></select>
-              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;" onclick="filtroCorrientes='';filtroClase='';document.getElementById('filtro-corrientes').value='';document.getElementById('filtro-clase').value='';render();">✕</button>
+            <div class="no-print" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="filtro-corrientes" placeholder="🔍 Buscar por rubro o detalle..." style="flex:1;min-width:180px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;" oninput="filtroCorrientes=this.value.toLowerCase();render();">
+              <select id="filtro-clase" style="width:130px;flex-shrink:0;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;background:white;" onchange="filtroClase=this.value;render();"><option value="">Todas las clases</option><option value="M">M — Mío</option><option value="O">O — Oma</option><option value="X">X — Otros</option></select>
+              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;flex-shrink:0;" onclick="filtroCorrientes='';filtroClase='';document.getElementById('filtro-corrientes').value='';document.getElementById('filtro-clase').value='';render();">✕</button>
             </div>
             <div id="wrap-corrientes"></div>
           </div>
