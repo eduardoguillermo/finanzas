@@ -347,7 +347,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.14</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.15</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -467,7 +467,6 @@ function buildMesActual() {
               </form>
             </div>
             <div id="rubros-lista" class="rubros-wrap"></div>
-            <div id="rubros-presup-wrap" style="margin-top:14px;"></div>
           </div>
         </div>
         <div>
@@ -709,7 +708,6 @@ function render() {
         wC.appendChild(subDiv);
     }
     calcDash();
-    renderPresupRubros();
     if(!_alertasMostradas){ _alertasMostradas=true; setTimeout(modalVencimientos, 300); }
 }
 
