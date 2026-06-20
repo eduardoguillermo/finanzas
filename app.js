@@ -187,7 +187,6 @@ async function syncAlAbrir() {
 document.addEventListener('DOMContentLoaded', () => {
     renderTabs();
     renderContenido();
-    setTimeout(modalVencimientos, 1500);
 });
 
 // ═══════════════════════════════════════════
@@ -710,6 +709,7 @@ function render() {
     }
     calcDash();
     renderPresupRubros();
+    if(!document.getElementById('modal-vto')) setTimeout(modalVencimientos, 300);
 }
 
 // ─────────────────────────────────────────────────────────────────
