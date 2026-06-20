@@ -347,7 +347,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.15</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.16</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -956,6 +956,22 @@ function nuevoMes() {
     listaServicios.forEach(s=>{ if(s.pagado>0&&mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
     listaCorrientes.forEach(c=>{ if(c.fechaPago&&mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
     listaTarjetas.forEach(t=>{ t.saldo=Math.round(t.saldo+(mDeb[t.id]||0)); });
+    // Presupuestos: para rubros sin límite, usar gasto real del mes que cierra
+    const gastadoMes={};
+    listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{
+        gastadoMes[c.rubro]=(gastadoMes[c.rubro]||0)+Math.round(c.monto);
+    });
+    listaRubros.forEach(r=>{
+        if(!(listaPresupRubros[r]>0) && gastadoMes[r]>0) listaPresupRubros[r]=gastadoMes[r];
+    });
+    // USD: mismo criterio
+    const gastadoMesUSD={};
+    listaCorrientesUSD.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{
+        gastadoMesUSD[c.rubro]=(gastadoMesUSD[c.rubro]||0)+c.monto;
+    });
+    listaRubrosUSD.forEach(r=>{
+        if(!(listaPresupRubrosUSD[r]>0) && gastadoMesUSD[r]>0) listaPresupRubrosUSD[r]=Math.round(gastadoMesUSD[r]*100)/100;
+    });
     // Limpiar pesos
     listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; });
     listaCorrientes=listaCorrientes.filter(c=>!c.fechaPago);
