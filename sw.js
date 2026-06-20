@@ -1,4 +1,4 @@
-const CACHE = 'finanzas-v11';
+const CACHE = 'finanzas-v12';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -9,6 +9,10 @@ self.addEventListener('activate', e => {
         )
     );
     self.clients.claim();
+});
+
+self.addEventListener('message', e => {
+    if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
