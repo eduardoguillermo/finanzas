@@ -348,7 +348,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.0</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.1</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -2565,9 +2565,9 @@ function mostrarInformeSemanal() {
         const bg = esActual ? 'background:#1e3a5f;' : (i%2===0 ? '' : 'background:#1e293b;');
         const colDesv = desvio === null ? '#475569' : (desvio > 0 ? '#ef4444' : '#10b981');
         const colRem  = remanente >= 0 ? '#10b981' : '#ef4444';
-        rowsSem += '<tr style="' + bg + (esFutura ? 'opacity:0.65;' : '') + '">';
-        rowsSem += '<td style="padding:7px 8px;color:#e2e8f0;">' + (esActual ? '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 5px;margin-right:4px;">HOY</span>' : '') + 'S' + (i+1) + ' <span style="color:#94a3b8;font-size:10px;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
-        rowsSem += '<td style="padding:7px 8px;text-align:right;color:#cbd5e1;">' + fmt(presupAcum) + '</td>';
+        rowsSem += '<tr style="' + bg + (esFutura ? '' : '') + '">';
+        rowsSem += '<td style="padding:7px 8px;color:#e2e8f0;">' + (esActual ? '<span style="font-size:9px;background:#7c3aed;color:white;border-radius:3px;padding:1px 5px;margin-right:4px;">HOY</span>' : '') + 'S' + (i+1) + ' <span style="color:#e2e8f0;font-size:10px;">(' + fmtFecha(s.desde) + '–' + fmtFecha(s.hasta) + ')</span></td>';
+        rowsSem += '<td style="padding:7px 8px;text-align:right;color:#e2e8f0;">' + fmt(presupAcum) + '</td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;color:' + (esFutura ? '#475569' : '#f59e0b') + ';font-weight:bold;">' + (gastAcum !== null ? fmt(gastAcum) : '—') + '</td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;font-weight:bold;color:' + colDesv + ';">' + (desvio !== null ? (desvio > 0 ? '+' : '') + fmt(desvio) : '—') + '</td>';
         rowsSem += '<td style="padding:7px 8px;text-align:right;color:' + colRem + ';font-weight:bold;">' + fmt(remanente) + '</td>';
@@ -2584,7 +2584,7 @@ function mostrarInformeSemanal() {
         const col  = desv > 0 ? '#ef4444' : '#10b981';
         rowsRub += '<tr style="' + (i%2===0?'':'background:#1e293b;') + '">';
         rowsRub += '<td style="padding:6px 8px;color:#e2e8f0;">' + r + '</td>';
-        rowsRub += '<td style="padding:6px 8px;text-align:right;color:#cbd5e1;">' + fmt(pres) + '</td>';
+        rowsRub += '<td style="padding:6px 8px;text-align:right;color:#e2e8f0;">' + fmt(pres) + '</td>';
         rowsRub += '<td style="padding:6px 8px;text-align:right;color:#f59e0b;font-weight:bold;">' + fmt(gast) + '</td>';
         rowsRub += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:' + col + ';">' + (desv > 0 ? '+' : '') + fmt(desv) + '</td>';
         rowsRub += '</tr>';
@@ -2600,14 +2600,14 @@ function mostrarInformeSemanal() {
 
     // Tabla semanas
     body += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">';
-    body += '<thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:#cbd5e1;font-size:10px;">Semana</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Ppto. acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Gastado acum.</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Desvío</th><th style="padding:7px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Remanente</th></tr></thead>';
+    body += '<thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:#e2e8f0;font-size:10px;">Semana</th><th style="padding:7px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Ppto. acum.</th><th style="padding:7px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Gastado acum.</th><th style="padding:7px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Desvío</th><th style="padding:7px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Remanente</th></tr></thead>';
     body += '<tbody>' + rowsSem + '</tbody></table>';
 
     // Tabla rubros
     if(rowsRub) {
-        body += '<div style="font-size:10px;font-weight:bold;color:#cbd5e1;text-transform:uppercase;margin-bottom:6px;">Desvío por rubro</div>';
+        body += '<div style="font-size:10px;font-weight:bold;color:#e2e8f0;text-transform:uppercase;margin-bottom:6px;">Desvío por rubro</div>';
         body += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-        body += '<thead><tr style="background:#1e293b;"><th style="padding:6px 8px;text-align:left;color:#cbd5e1;font-size:10px;">Rubro</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Presupuesto</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Gastado</th><th style="padding:6px 8px;text-align:right;color:#cbd5e1;font-size:10px;">Desvío</th></tr></thead>';
+        body += '<thead><tr style="background:#1e293b;"><th style="padding:6px 8px;text-align:left;color:#e2e8f0;font-size:10px;">Rubro</th><th style="padding:6px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Presupuesto</th><th style="padding:6px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Gastado</th><th style="padding:6px 8px;text-align:right;color:#e2e8f0;font-size:10px;">Desvío</th></tr></thead>';
         body += '<tbody>' + rowsRub + '</tbody></table>';
     }
 
