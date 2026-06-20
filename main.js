@@ -348,7 +348,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.2</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.3</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -2621,6 +2621,353 @@ function mostrarInformeSemanal() {
         '<div class="modal-footer"><button class="btn btn-dark" onclick="document.querySelector(\'.modal-bg-informe\').remove()">Cerrar</button></div>' +
         '</div>';
     document.body.appendChild(ov);
+}
+
+function iniciarTimerYPF() {
+    clearInterval(_ypfTimer);
+    actualizarYPF();
+    _ypfTimer = setInterval(function() {
+        const ahora = new Date();
+        const dia = ahora.getDay();
+        const hora = ahora.getHours();
+        if(dia>=1 && dia<=5 && hora>=10 && hora<19) actualizarYPF();
+    }, 3600000);
+}
+
+
+function buildAnual() {
+    const wrap = el('div','container'); wrap.style.paddingTop='20px';
+
+    // Header
+    const hdr = el('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #1d4ed8;';
+    hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📅 Resumen Anual</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Últimos 12 períodos cerrados + mes actual</p></div><button onclick="exportarExcel()" class="btn no-print" style="font-size:12px;padding:8px 14px;background:#10b981;color:white;">📥 Exportar Excel</button>`;
+    wrap.appendChild(hdr);
+
+    // Construir array de meses: hasta 12 históricos + mes actual
+    const ultimos = [...historicoMeses].slice(-12).filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026')));
+    const mesesArr = ultimos.map(m => ({ nombre: m.nombre, datos: m.datos, cerrado: true }));
+    mesesArr.push({ nombre: 'Mes Actual', datos: { listaBancos, listaTarjetas, listaServicios, listaCorrientes, listaCuentasUSD, listaServiciosUSD, listaCorrientesUSD, tipoCambio }, cerrado: false });
+
+    if (mesesArr.length === 1) {
+        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:32px;text-align:center;color:#94a3b8;">Todavía no hay períodos cerrados. Cerrá el primer mes para ver el resumen anual.</div>');
+        return wrap;
+    }
+
+    // ── TABLA 1: MÉTRICAS FINANCIERAS ─────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#1d4ed8;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Métricas por Período</h3>');
+
+    function calcMes(m) {
+        const db = m.datos;
+        let banco = 0, deudaTarj = 0, egresado = 0, ingresos = 0;
+        // Banco
+        (db.listaBancos||[]).forEach(b => banco += b.saldo);
+        // Deuda tarjetas
+        const mDeb = {}; (db.listaTarjetas||[]).forEach(t => { mDeb[t.id]=0; deudaTarj+=t.saldo; });
+        (db.listaServicios||[]).forEach(s => { if(s.pagado>0 && mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
+        (db.listaCorrientes||[]).forEach(c => { if(c.fechaPago && mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
+        deudaTarj += Object.values(mDeb).reduce((a,v)=>a+v,0);
+        // Egresado e ingresos corrientes
+        (db.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
+        });
+        // Fijos pagados
+        (db.listaServicios||[]).forEach(s => { if(s.pagado>0) egresado += s.pagado; });
+        // USD en ARS
+        const tc = db.tipoCambio || tipoCambio || 1;
+        let bancoUSD = 0;
+        (db.listaCuentasUSD||[]).forEach(b => bancoUSD += b.saldo);
+        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado * tc);
+        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto * tc; else egresado += c.monto * tc;
+        });
+        const balance = ingresos - egresado;
+        return { banco, bancoUSD, deudaTarj, egresado, ingresos, balance, tc };
+    }
+
+    const resultados = mesesArr.map(m => ({ nombre: m.nombre, cerrado: m.cerrado, ...calcMes(m) }));
+
+    // Tabla horizontal
+    const cols = ['banco','deudaTarj','ingresos','egresado','balance'];
+    const labels = { banco:'🏦 Banco ($)', deudaTarj:'💳 Deuda Tarj.', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
+    let tbl = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #1d4ed8;padding:16px;margin-bottom:20px;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
+<thead><tr style="background:#1e293b;">
+<th style="padding:8px;text-align:left;color:white;white-space:nowrap;">Métrica</th>`;
+    resultados.forEach(r => { tbl += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
+    tbl += `</tr></thead><tbody>`;
+
+    cols.forEach((col,ci) => {
+        const vals = resultados.map(r => r[col]);
+        const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
+        tbl += `<tr style="background:${ci%2===0?'white':'#f8fafc'};">
+<td style="padding:7px 8px;font-weight:bold;color:#334155;white-space:nowrap;">${labels[col]}</td>`;
+        resultados.forEach(r => {
+            const v = r[col];
+            let color = '#334155';
+            if(col==='balance') color = v>=0?'#10b981':'#ef4444';
+            else if(col==='deudaTarj') color = '#a855f7';
+            else if(col==='ingresos') color = '#0284c7';
+            else if(col==='egresado') color = '#f59e0b';
+            // mini barra inline
+            const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
+            const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):(col==='deudaTarj'?'#a855f7':col==='ingresos'?'#0284c7':col==='egresado'?'#f59e0b':'#1d4ed8');
+            tbl += `<td style="padding:7px 8px;text-align:right;">
+<div style="font-weight:bold;color:${color};font-size:10px;">${fmt(v)}</div>
+<div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:${barColor};height:3px;border-radius:2px;width:${pct}%;"></div></div>
+</td>`;
+        });
+        tbl += `</tr>`;
+    });
+    tbl += `</tbody></table></div>`;
+    wrap.insertAdjacentHTML('beforeend', tbl);
+
+    // ── TABLA 2: GASTOS POR RUBRO ─────────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Gastos por Rubro · Todos los Períodos</h3>');
+
+    const todosRubs = new Set();
+    mesesArr.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')) && !c.esIngreso).forEach(c=>todosRubs.add(c.rubro||'Sin rubro')));
+    const rubArr = [...todosRubs].sort();
+
+    if (rubArr.length) {
+        let t2 = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:20px;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
+<thead><tr style="background:#1e293b;">
+<th style="padding:8px;text-align:left;color:white;">Rubro</th>`;
+        resultados.forEach(r => { t2 += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
+        t2 += `<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th><th style="padding:8px;text-align:right;color:#f59e0b;">PROM</th></tr></thead><tbody>`;
+
+        const totMes = new Array(resultados.length).fill(0);
+        let totGen = 0;
+        rubArr.forEach((rub, ri) => {
+            let totR = 0;
+            t2 += `<tr style="background:${ri%2===0?'white':'#f8fafc'};">
+<td style="padding:6px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
+            resultados.forEach((r, mi) => {
+                const mesData = mesesArr[mi].datos;
+                const s = (mesData.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                totMes[mi] += s; totR += s;
+                t2 += `<td style="padding:6px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`;
+            });
+            totGen += totR;
+            const promR = totR / resultados.filter((_,i) => {
+                const mesData = mesesArr[i].datos;
+                return (mesData.listaCorrientes||[]).some(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso);
+            }).length || 1;
+            t2 += `<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td>`;
+            t2 += `<td style="padding:6px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totR/resultados.length)}</td></tr>`;
+        });
+
+        t2 += `<tr style="background:#f1f5f9;font-weight:bold;">
+<td style="padding:7px 8px;color:#1e293b;">TOTAL PERÍODO</td>`;
+        totMes.forEach(t => { t2 += `<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
+        t2 += `<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td>`;
+        t2 += `<td style="padding:7px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totGen/resultados.length)}</td></tr>`;
+        t2 += `</tbody></table></div>`;
+        wrap.insertAdjacentHTML('beforeend', t2);
+    }
+
+    // ── TARJETAS RESUMEN (KPIs) ───────────────────────────────
+    const promedioBalance = resultados.slice(0,-1).reduce((a,r)=>a+r.balance,0) / Math.max(resultados.length-1,1);
+    const mejorMes = [...resultados].sort((a,b)=>b.balance-a.balance)[0];
+    const peorMes  = [...resultados].sort((a,b)=>a.balance-b.balance)[0];
+    const totalEgr = resultados.slice(0,-1).reduce((a,r)=>a+r.egresado,0);
+    const totalIng = resultados.slice(0,-1).reduce((a,r)=>a+r.ingresos,0);
+
+    wrap.insertAdjacentHTML('beforeend',`
+<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#7c3aed;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">KPIs del Período</h3>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;">
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #10b981;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Balance promedio mensual</div>
+    <div style="font-size:18px;font-weight:bold;color:${promedioBalance>=0?'#10b981':'#ef4444'};">${fmt(promedioBalance)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #0284c7;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total egresado (períodos cerrados)</div>
+    <div style="font-size:18px;font-weight:bold;color:#f59e0b;">${fmt(totalEgr)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #a855f7;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Total ingresos (períodos cerrados)</div>
+    <div style="font-size:18px;font-weight:bold;color:#0284c7;">${fmt(totalIng)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #f59e0b;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Mejor período</div>
+    <div style="font-size:14px;font-weight:bold;color:#10b981;">${mejorMes.nombre.replace(' de ',' ')}</div>
+    <div style="font-size:11px;color:#64748b;">${fmt(mejorMes.balance)}</div>
+  </div>
+  <div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:4px solid #ef4444;padding:14px;">
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Peor período</div>
+    <div style="font-size:14px;font-weight:bold;color:#ef4444;">${peorMes.nombre.replace(' de ',' ')}</div>
+    <div style="font-size:11px;color:#64748b;">${fmt(peorMes.balance)}</div>
+  </div>
+</div>`);
+
+    // ── RESUMEN USD ───────────────────────────────────────────
+    wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#16a34a;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Resumen en Dólares · Todos los Períodos</h3>');
+
+    // Tabla métricas USD
+    const mesesUSD = ultimos.filter(m => !(m.nombre.includes('Mayo') && m.nombre.includes('2026'))).map(m => ({ nombre: m.nombre, datos: m.datos }));
+    mesesUSD.push({ nombre: 'Mes Actual', datos: { listaCuentasUSD, listaTarjetasUSD, listaServiciosUSD, listaCorrientesUSD } });
+
+    function calcMesUSD(m) {
+        const db = m.datos;
+        let cuentas = 0, egresado = 0, ingresos = 0;
+        (db.listaCuentasUSD||[]).forEach(b => cuentas += b.saldo);
+        (db.listaServiciosUSD||[]).filter(s=>s.pagado>0).forEach(s => egresado += s.pagado);
+        (db.listaCorrientesUSD||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+            if(c.esIngreso) ingresos += c.monto; else egresado += c.monto;
+        });
+        return { cuentas, egresado, ingresos, balance: ingresos - egresado };
+    }
+
+    const resUSD = mesesUSD.map(m => ({ nombre: m.nombre, ...calcMesUSD(m) }));
+    const tieneUSD = resUSD.some(r => r.cuentas > 0 || r.egresado > 0 || r.ingresos > 0);
+
+    if(!tieneUSD) {
+        wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:20px;text-align:center;color:#94a3b8;margin-bottom:20px;">Sin movimientos en dólares registrados.</div>');
+    } else {
+        const colsUSD = ['cuentas','ingresos','egresado','balance'];
+        const labUSD = { cuentas:'🏦 Cuentas USD', ingresos:'📈 Ingresos', egresado:'📤 Egresado', balance:'⚖️ Balance' };
+        let tUSD = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #16a34a;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Métrica</th>';
+        resUSD.forEach(r => { tUSD += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
+        tUSD += '</tr></thead><tbody>';
+        colsUSD.forEach((col,ci) => {
+            const vals = resUSD.map(r=>r[col]);
+            const maxAbs = Math.max(...vals.map(v=>Math.abs(v)));
+            tUSD += '<tr style="background:'+(ci%2===0?'white':'#f8fafc')+'"><td style="padding:7px 8px;font-weight:bold;color:#334155;">'+labUSD[col]+'</td>';
+            resUSD.forEach(r => {
+                const v = r[col];
+                let color = '#334155';
+                if(col==='balance') color = v>=0?'#10b981':'#ef4444';
+                else if(col==='egresado') color = '#f59e0b';
+                else if(col==='ingresos') color = '#0284c7';
+                else if(col==='cuentas') color = '#16a34a';
+                const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
+                const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):col==='egresado'?'#f59e0b':col==='ingresos'?'#0284c7':'#16a34a';
+                tUSD += '<td style="padding:7px 8px;text-align:right;"><div style="font-weight:bold;color:'+color+';font-size:10px;">'+fmtUSD(v)+'</div><div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:'+barColor+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div></td>';
+            });
+            tUSD += '</tr>';
+        });
+        tUSD += '</tbody></table></div>';
+        wrap.insertAdjacentHTML('beforeend', tUSD);
+
+        // Tabla rubros USD acumulado
+        const rubsUSD = new Set();
+        mesesUSD.forEach(m => (m.datos.listaCorrientesUSD||[]).filter(c=>!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>rubsUSD.add(c.rubro||'Sin rubro')));
+        const rubArrUSD = [...rubsUSD].sort();
+        if(rubArrUSD.length) {
+            let tR = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Gastos por Rubro USD</h4><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:8px;text-align:left;color:white;">Rubro</th>';
+            resUSD.forEach(r => { tR += '<th style="padding:8px;text-align:right;color:#94a3b8;white-space:nowrap;">'+r.nombre.replace(' de ',' ')+'</th>'; });
+            tR += '<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>';
+            rubArrUSD.forEach((rub,ri) => {
+                let totR = 0;
+                tR += '<tr style="background:'+(ri%2===0?'white':'#f8fafc')+'"><td style="padding:6px 8px;font-weight:bold;color:#334155;">'+rub+'</td>';
+                mesesUSD.forEach(m => {
+                    const s = (m.datos.listaCorrientesUSD||[]).filter(c=>c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                    totR += s;
+                    tR += '<td style="padding:6px 8px;text-align:right;color:'+(s>0?'#10b981':'#94a3b8')+';font-weight:'+(s>0?'bold':'normal')+';font-size:10px;">'+(s>0?fmtUSD(s):'—')+'</td>';
+                });
+                tR += '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;font-size:10px;">'+fmtUSD(totR)+'</td></tr>';
+            });
+            tR += '</tbody></table></div>';
+            wrap.insertAdjacentHTML('beforeend', tR);
+        }
+    }
+
+    // ── GRÁFICO EVOLUCIÓN DE SALDOS ─────────────────────────
+    if (resultados.length >= 2) {
+        wrap.insertAdjacentHTML('beforeend','<h3 style="margin:20px 0 14px;font-size:14px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Evolución de Saldos · Banco y Balance</h3>');
+
+        const W = 700, H = 220, PAD = { top: 20, right: 20, bottom: 50, left: 80 };
+        const chartW = W - PAD.left - PAD.right;
+        const chartH = H - PAD.top - PAD.bottom;
+        const n = resultados.length;
+
+        const bancos  = resultados.map(r => r.banco);
+        const balances = resultados.map(r => r.balance);
+        const nombres  = resultados.map(r => r.nombre.replace(' de ',' ').replace('Mes Actual','Actual'));
+
+        const allVals = [...bancos, ...balances];
+        const minV = Math.min(...allVals);
+        const maxV = Math.max(...allVals);
+        const rng  = maxV - minV || 1;
+        const yMin = minV - rng * 0.1;
+        const yMax = maxV + rng * 0.1;
+        const yRng = yMax - yMin;
+
+        function xPos(i) { return PAD.left + (i / (n - 1)) * chartW; }
+        function yPos(v) { return PAD.top + chartH - ((v - yMin) / yRng) * chartH; }
+        function fmtK(v) {
+            const abs = Math.abs(v);
+            const sign = v < 0 ? '-' : '';
+            if(abs >= 1000000) return sign + (abs/1000000).toFixed(1) + 'M';
+            if(abs >= 1000)    return sign + Math.round(abs/1000) + 'K';
+            return sign + Math.round(abs);
+        }
+
+        // Línea banco (azul)
+        const ptsB = bancos.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
+        // Área banco
+        const areaB = 'M'+xPos(0)+','+yPos(bancos[0])+' '+bancos.map((v,i)=>'L'+xPos(i)+','+yPos(v)).join(' ')+' L'+xPos(n-1)+','+yPos(yMin)+' L'+xPos(0)+','+yPos(yMin)+' Z';
+        // Línea balance (verde/rojo según valor)
+        const ptsBal = balances.map((v,i) => xPos(i)+','+yPos(v)).join(' ');
+
+        // Grilla horizontal (4 líneas)
+        let grid = '';
+        for(let i=0;i<=4;i++) {
+            const v = yMin + (yRng/4)*i;
+            const y = yPos(v);
+            grid += '<line x1="'+PAD.left+'" y1="'+y+'" x2="'+(PAD.left+chartW)+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>';
+            grid += '<text x="'+(PAD.left-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+fmtK(v)+'</text>';
+        }
+
+        // Línea de cero si está en rango
+        let zeroLine = '';
+        if(yMin <= 0 && yMax >= 0) {
+            const yz = yPos(0);
+            zeroLine = '<line x1="'+PAD.left+'" y1="'+yz+'" x2="'+(PAD.left+chartW)+'" y2="'+yz+'" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3"/>';
+        }
+
+        // Puntos y etiquetas X
+        let puntosBanco = '', puntosBalance = '', labelsX = '';
+        resultados.forEach((r,i) => {
+            const xb = xPos(i), yb = yPos(bancos[i]);
+            const xbal = xPos(i), ybal = yPos(balances[i]);
+            const balColor = balances[i] >= 0 ? '#10b981' : '#ef4444';
+            puntosBanco   += '<circle cx="'+xb+'" cy="'+yb+'" r="4" fill="#0284c7" stroke="white" stroke-width="2"/>';
+            puntosBalance += '<circle cx="'+xbal+'" cy="'+ybal+'" r="4" fill="'+balColor+'" stroke="white" stroke-width="2"/>';
+            // Label eje X (rotado, cada N si hay muchos)
+            const mostrar = n <= 7 || i % Math.ceil(n/7) === 0 || i === n-1;
+            if(mostrar) {
+                labelsX += '<text x="'+xb+'" y="'+(H-PAD.bottom+14)+'" text-anchor="middle" font-size="8" fill="#64748b" transform="rotate(-30 '+xb+' '+(H-PAD.bottom+14)+')">'+nombres[i]+'</text>';
+            }
+        });
+
+        const svgChart = '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:20px;overflow-x:auto;">' +
+            '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:'+W+'px;display:block;">' +
+            // Área banco
+            '<path d="'+areaB+'" fill="#0284c7" opacity="0.08"/>' +
+            // Grilla
+            grid + zeroLine +
+            // Líneas
+            '<polyline points="'+ptsB+'" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+            '<polyline points="'+ptsBal+'" fill="none" stroke="#10b981" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5,3"/>' +
+            // Puntos
+            puntosBanco + puntosBalance +
+            // Labels X
+            labelsX +
+            // Eje Y label
+            '<text x="12" y="'+(PAD.top+chartH/2)+'" text-anchor="middle" font-size="9" fill="#94a3b8" transform="rotate(-90 12 '+(PAD.top+chartH/2)+')">$ ARS</text>' +
+            // Leyenda
+            '<rect x="'+PAD.left+'" y="'+(H-16)+'" width="10" height="3" fill="#0284c7" rx="1"/>' +
+            '<text x="'+(PAD.left+14)+'" y="'+(H-12)+'" font-size="9" fill="#0284c7">Banco</text>' +
+            '<line x1="'+(PAD.left+60)+'" y1="'+(H-13)+'" x2="'+(PAD.left+70)+'" y2="'+(H-13)+'" stroke="#10b981" stroke-width="2" stroke-dasharray="4,2"/>' +
+            '<text x="'+(PAD.left+74)+'" y="'+(H-12)+'" font-size="9" fill="#10b981">Balance</text>' +
+            '</svg></div>';
+
+        wrap.insertAdjacentHTML('beforeend', svgChart);
+    }
+
+    return wrap;
 }
 
 // ═══════════════════════════════════════════
