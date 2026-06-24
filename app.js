@@ -184,6 +184,7 @@ async function syncAlSalir() {
 //  INIT
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    document.title = 'Control Financiero ' + APP_VERSION;
     renderTabs();
     renderContenido();
 });
