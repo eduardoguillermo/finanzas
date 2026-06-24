@@ -167,6 +167,7 @@ async function syncAlSalir() {
         if(!ok) { alert('Para sincronizar antes de salir, autenticá Drive con el botón ☁️ Drive.'); return; }
     }
     if(!_syncPendiente) {
+        alert('✅ Backup al día. Ya podés cerrar la pestaña.');
         window.close();
         return;
     }
