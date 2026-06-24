@@ -155,6 +155,8 @@ async function syncSilencioso() {
 }
 
 async function syncAlSalir() {
+    // Recuperar token persistido si la variable en memoria está vacía
+    if(!gToken) gTokenCargarLocal();
     if(!gToken) {
         // Si no hay token, intentar obtenerlo silenciosamente
         const ok = await new Promise(resolve => {
