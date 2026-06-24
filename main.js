@@ -96,6 +96,7 @@ function syncSetBadge(estado) {
     else if(estado === 'noauth'){ b.innerText='☁️ Drive'; b.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;'; }
 }
 function syncDebounce() {
+    if(!gToken) gTokenCargarLocal();
     if(!gToken) { syncSetBadge('noauth'); return; }
     _syncPendiente = true;
     syncSetBadge('pend');
@@ -185,6 +186,13 @@ async function syncAlSalir() {
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Control Financiero ' + APP_VERSION;
+    // Sync al ocultar la pestaña (cierre con X, cambio de pestaña, etc.)
+    document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'hidden') {
+            if(!gToken) gTokenCargarLocal();
+            if(gToken && _syncPendiente) syncSilencioso();
+        }
+    });
     renderTabs();
     renderContenido();
 });
