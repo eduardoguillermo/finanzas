@@ -35,6 +35,40 @@ let filtroClase = '';
 let _syncTimer = null;
 let _syncPendiente = false;
 let _syncActivo = false;
+
+// ── Snapshots locales (backup en localStorage, igual que Gestión Docente) ──
+const CF_BKUP_KEY = 'cf_backups';
+const CF_BKUP_MAX = 10;
+
+function cfCargarSnapshots() {
+    try { return JSON.parse(localStorage.getItem(CF_BKUP_KEY)) || []; } catch(e) { return []; }
+}
+function cfGuardarSnapshots(bkups) {
+    try { localStorage.setItem(CF_BKUP_KEY, JSON.stringify(bkups)); } catch(e) {}
+}
+function cfSnapshotData() {
+    return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
+        listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
+        listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
+        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
+}
+function cfHacerSnapshot(manual=false) {
+    try {
+        const bkups = cfCargarSnapshots();
+        bkups.unshift({
+            ts: Date.now(),
+            manual,
+            label: manual ? 'Manual' : 'Automático',
+            data: cfSnapshotData()
+        });
+        // Mantener máximo CF_BKUP_MAX: priorizar borrar automáticos viejos
+        if(bkups.length > CF_BKUP_MAX) {
+            const idxAuto = [...bkups.map((b,i)=>({b,i}))].reverse().find(x=>!x.b.manual);
+            if(idxAuto) bkups.splice(idxAuto.i, 1); else bkups.pop();
+        }
+        cfGuardarSnapshots(bkups);
+    } catch(e) {}
+}
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
 function guardar() {
     try {
@@ -187,9 +221,12 @@ async function syncAlSalir() {
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Control Financiero ' + APP_VERSION;
-    // Sync al ocultar la pestaña (cierre con X, cambio de pestaña, etc.)
+    // Snapshot local al cerrar con X (beforeunload — síncrono, siempre funciona)
+    window.addEventListener('beforeunload', () => { cfHacerSnapshot(false); });
+    // Snapshot + intento Drive al ocultar pestaña
     document.addEventListener('visibilitychange', () => {
         if(document.visibilityState === 'hidden') {
+            cfHacerSnapshot(false);
             if(!gToken) gTokenCargarLocal();
             if(gToken && _syncPendiente) syncSilencioso();
         }
@@ -2372,7 +2409,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.21';
+const APP_VERSION = 'v3.7.22';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
