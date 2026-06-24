@@ -69,6 +69,85 @@ function cfHacerSnapshot(manual=false) {
         cfGuardarSnapshots(bkups);
     } catch(e) {}
 }
+function cfFmtTs(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('es-AR') + ' ' + d.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+}
+function cfRestaurarSnapshot(ts) {
+    if(!confirm('¿Restaurar este snapshot? Los datos actuales se guardarán como snapshot antes de restaurar.')) return;
+    cfHacerSnapshot(false); // guardar estado actual antes
+    const bkups = cfCargarSnapshots();
+    const bkup = bkups.find(b=>b.ts===ts);
+    if(!bkup) { alert('Snapshot no encontrado'); return; }
+    try {
+        const d = JSON.parse(bkup.data);
+        if(d.listaBancos)        listaBancos        = d.listaBancos;
+        if(d.listaTarjetas)      listaTarjetas      = d.listaTarjetas;
+        if(d.listaServicios)     listaServicios     = d.listaServicios;
+        if(d.listaCorrientes)    listaCorrientes    = d.listaCorrientes;
+        if(d.listaRubros)        listaRubros        = d.listaRubros;
+        if(d.listaTransferencias)listaTransferencias= d.listaTransferencias;
+        if(d.listaCuotas)        listaCuotas        = d.listaCuotas;
+        if(d.historicoMeses)     historicoMeses     = d.historicoMeses;
+        if(d.listaCuentasUSD)    listaCuentasUSD    = d.listaCuentasUSD;
+        if(d.listaTarjetasUSD)   listaTarjetasUSD   = d.listaTarjetasUSD;
+        if(d.listaServiciosUSD)  listaServiciosUSD  = d.listaServiciosUSD;
+        if(d.listaCorrientesUSD) listaCorrientesUSD = d.listaCorrientesUSD;
+        if(d.tipoCambio)         tipoCambio         = d.tipoCambio;
+        if(d.listaInstrumentos)  listaInstrumentos  = d.listaInstrumentos;
+        if(d.listaAcciones)      listaAcciones      = d.listaAcciones;
+        if(d.listaPresupRubros)  listaPresupRubros  = d.listaPresupRubros;
+        if(d.listaPresupRubrosUSD) listaPresupRubrosUSD = d.listaPresupRubrosUSD;
+        if(d.listaRubrosUSD)     listaRubrosUSD     = d.listaRubrosUSD;
+        guardar();
+        document.getElementById('modal-cf-snapshots')?.remove();
+        renderTabs(); renderContenido();
+        alert('✅ Snapshot restaurado: ' + cfFmtTs(ts));
+    } catch(e) { alert('Error al restaurar: ' + e.message); }
+}
+function cfBorrarSnapshot(ts) {
+    if(!confirm('¿Eliminar este snapshot?')) return;
+    const bkups = cfCargarSnapshots().filter(b=>b.ts!==ts);
+    cfGuardarSnapshots(bkups);
+    cfMostrarSnapshots();
+}
+function cfMostrarSnapshots() {
+    document.getElementById('modal-cf-snapshots')?.remove();
+    const bkups = cfCargarSnapshots();
+    const ov = document.createElement('div');
+    ov.id = 'modal-cf-snapshots';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:3000;display:flex;align-items:center;justify-content:center;';
+    const rows = bkups.length ? bkups.map(b=>`
+        <tr>
+            <td style="padding:8px 6px;font-size:13px;">${cfFmtTs(b.ts)}</td>
+            <td style="padding:8px 6px;font-size:12px;color:${b.manual?'#15803d':'#6b7280'};">${b.label}</td>
+            <td style="padding:8px 6px;text-align:right;">
+                <button onclick="cfRestaurarSnapshot(${b.ts})" style="background:#0f766e;color:white;border:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;margin-right:4px;">Restaurar</button>
+                <button onclick="cfBorrarSnapshot(${b.ts})" style="background:#dc2626;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;">✕</button>
+            </td>
+        </tr>`).join('') : '<tr><td colspan="3" style="padding:16px;text-align:center;color:#94a3b8;">Sin snapshots guardados</td></tr>';
+    ov.innerHTML = `<div style="background:white;border-radius:10px;padding:24px;min-width:420px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:16px;">💾 Snapshots locales</h3>
+            <button onclick="document.getElementById('modal-cf-snapshots').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">✕</button>
+        </div>
+        <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Backups guardados automáticamente en este dispositivo (máx. 10).</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="border-bottom:2px solid #e2e8f0;">
+                <th style="padding:6px;text-align:left;font-size:12px;color:#64748b;">Fecha</th>
+                <th style="padding:6px;text-align:left;font-size:12px;color:#64748b;">Tipo</th>
+                <th style="padding:6px;text-align:right;font-size:12px;color:#64748b;">Acción</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+            <button onclick="cfHacerSnapshot(true);cfMostrarSnapshots();" style="background:#4f46e5;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer;">📸 Guardar snapshot ahora</button>
+            <button onclick="document.getElementById('modal-cf-snapshots').remove()" style="background:#f1f5f9;color:#334155;border:none;border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer;">Cerrar</button>
+        </div>
+    </div>`;
+    document.body.appendChild(ov);
+}
+
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
 function guardar() {
     try {
@@ -272,6 +351,11 @@ function renderTabs() {
     restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
     restoreEl.onclick=driveRestaurar;
     bar.appendChild(restoreEl);
+    const snapshotEl = document.createElement('button'); snapshotEl.id='btn-snapshot-local';
+    snapshotEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    snapshotEl.innerText='💾 Local'; snapshotEl.title='Ver/restaurar snapshots locales';
+    snapshotEl.onclick=cfMostrarSnapshots;
+    bar.appendChild(snapshotEl);
     const aiEl = document.createElement('button'); aiEl.id='btn-ai-panel';
     aiEl.style.cssText='background:#4f46e5;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
     aiEl.innerText='\uD83E\uDD16 IA'; aiEl.title='Consultar datos con IA';
@@ -2409,7 +2493,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.22';
+const APP_VERSION = 'v3.7.23';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
