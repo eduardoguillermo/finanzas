@@ -123,7 +123,7 @@ async function syncSilencioso() {
             if(listR.ok) {
                 const listD = await listR.json();
                 if(listD.files && listD.files.length > 0) _driveFileId = listD.files[0].id;
-            } else if(listR.status === 401) { gToken=null; _syncActivo=false; syncSetBadge('err'); return; }
+            } else if(listR.status === 401) { gTokenLimpiar(); _syncActivo=false; syncSetBadge('err'); return; }
         }
 
         let resp;
@@ -147,7 +147,7 @@ async function syncSilencioso() {
             _syncPendiente = false;
             syncSetBadge('ok');
         } else {
-            if(resp.status === 401) { gToken=null; _driveFileId=null; }
+            if(resp.status === 401) { gTokenLimpiar(); _driveFileId=null; }
             syncSetBadge('err');
         }
     } catch(e) { syncSetBadge('err'); }
@@ -347,7 +347,7 @@ function buildMesActual() {
     <div class="container">
       <header class="no-print">
         <div>
-          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.19</span></h2>
+          <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span style="font-size:13px;color:#4f46e5;font-weight:bold;">v3.7.20</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
@@ -2362,8 +2362,29 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const GTOKEN_KEY='cf_gtoken';
+const GTOKEN_EXP_KEY='cf_gtoken_exp';
 let gToken=null;
 let _alertasMostradas=false;
+
+// Persistencia de token en localStorage con expiración
+function gTokenGuardar(token, expiresInSec) {
+    const exp = Date.now() + (expiresInSec||3500)*1000;
+    try { localStorage.setItem(GTOKEN_KEY, token); localStorage.setItem(GTOKEN_EXP_KEY, String(exp)); } catch(e){}
+    gToken = token;
+}
+function gTokenCargarLocal() {
+    try {
+        const t = localStorage.getItem(GTOKEN_KEY);
+        const exp = parseInt(localStorage.getItem(GTOKEN_EXP_KEY)||'0');
+        if(t && exp && Date.now() < exp - 60000) { gToken = t; return true; }
+    } catch(e){}
+    return false;
+}
+function gTokenLimpiar() {
+    gToken = null;
+    try { localStorage.removeItem(GTOKEN_KEY); localStorage.removeItem(GTOKEN_EXP_KEY); } catch(e){}
+}
 
 function driveCargarGoogle(cb) {
     if(typeof google!=='undefined'){ cb(); return; }
@@ -2371,6 +2392,8 @@ function driveCargarGoogle(cb) {
     s.onload=cb; s.onerror=()=>alert('No se pudo cargar Google. Verificá la conexión.'); document.head.appendChild(s);
 }
 function driveGetToken(cb) {
+    // Intentar token guardado primero (evita popup al reabrir)
+    if(gTokenCargarLocal()){ cb(gToken); return; }
     driveCargarGoogle(()=>{
         if(gToken){ cb(gToken); return; }
         const client=google.accounts.oauth2.initTokenClient({
@@ -2378,11 +2401,11 @@ function driveGetToken(cb) {
             hint:'factory.viking.systems@gmail.com', prompt:'',
             callback:resp=>{
                 if(resp.error==='interaction_required' || resp.error==='user_logged_out'){
-                    const c2=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:GDRIVE_SCOPE,hint:'factory.viking.systems@gmail.com',callback:r2=>{ if(r2.error){alert('Error: '+r2.error);return;} gToken=r2.access_token; cb(gToken); }});
+                    const c2=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:GDRIVE_SCOPE,hint:'factory.viking.systems@gmail.com',callback:r2=>{ if(r2.error){alert('Error: '+r2.error);return;} gTokenGuardar(r2.access_token, r2.expires_in); cb(gToken); }});
                     c2.requestAccessToken(); return;
                 }
                 if(resp.error){alert('Error Google: '+resp.error);return;}
-                gToken=resp.access_token;
+                gTokenGuardar(resp.access_token, resp.expires_in);
                 syncSetBadge(_syncPendiente?'pend':'noauth');
                 cb(gToken);
             }
@@ -2400,8 +2423,8 @@ function driveSubir() {
         form.append('metadata',new Blob([meta],{type:'application/json'}));
         form.append('file',new Blob([data],{type:'application/json'}));
         fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token},body:form})
-        .then(r=>r.json()).then(f=>{ if(f.id){ _syncPendiente=false; syncSetBadge('ok'); alert('Backup guardado en Drive: '+nombre); } else{alert('Error al subir: '+JSON.stringify(f));gToken=null;} })
-        .catch(e=>{alert('Error: '+e.message);gToken=null;});
+        .then(r=>r.json()).then(f=>{ if(f.id){ _syncPendiente=false; syncSetBadge('ok'); alert('Backup guardado en Drive: '+nombre); } else{alert('Error al subir: '+JSON.stringify(f));gTokenLimpiar();} })
+        .catch(e=>{alert('Error: '+e.message);gTokenLimpiar();});
     });
 }
 function driveRestaurar() {
@@ -2411,7 +2434,7 @@ function driveRestaurar() {
             // Listar todos los backups: manuales + autosync
             const arch=(data.files||[]).filter(f=>f.name.startsWith('backup_'));
             mostrarModalDrive(arch,token);
-        }).catch(e=>{alert('Error al listar Drive: '+e.message);gToken=null;});
+        }).catch(e=>{alert('Error al listar Drive: '+e.message);gTokenLimpiar();});
     });
 }
 function mostrarModalDrive(arch,token) {
@@ -3348,3 +3371,4 @@ function limpiarCache() {
         }).then(doNavegar).catch(doNavegar);
     } else { doNavegar(); }
 }
+
