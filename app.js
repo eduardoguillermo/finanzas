@@ -488,8 +488,6 @@ function buildMesActual() {
           <button class="btn btn-blue"  id="btn-exportar">💾 Exportar</button>
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
-          <button class="btn no-print"  id="btn-drive-up"   style="background:#4285f4;color:white;">☁️ Drive</button>
-          <button class="btn no-print"  id="btn-drive-down" style="background:#4285f4;color:white;">📂 Drive</button>
           <button class="btn btn-dark"  onclick="window.print()">🖨️ PDF</button>
 
         </div>
@@ -676,8 +674,6 @@ function bindMesActual() {
     g('btn-exportar')?.addEventListener('click', exportar);
     g('btn-importar-trigger')?.addEventListener('click', ()=>g('input-backup')?.click());
     g('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
-    g('btn-drive-up')?.addEventListener('click', driveSubir);
-    g('btn-drive-down')?.addEventListener('click', driveRestaurar);
     g('cuota-total')?.addEventListener('input', previewCuota);
     g('cuota-cant')?.addEventListener('input', previewCuota);
 }
@@ -2493,7 +2489,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.23';
+const APP_VERSION = 'v3.7.24';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
