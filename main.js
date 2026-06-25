@@ -9,7 +9,8 @@ const K = {
     serviciosUSD:'f_serviciosUSD_v3', corrientesUSD:'f_corrientesUSD_v3',
     tipoCambio:'f_tipoCambio_v3',
     instrumentos:'f_instrumentos_v1',
-    acciones:'f_acciones_v1'
+    acciones:'f_acciones_v1',
+    ingresos:'f_ingresos_v1'
 };
 let listaRubros        = leer(K.rubros)        || ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
 let listaBancos        = leer(K.bancos)        || [];
@@ -26,6 +27,7 @@ let listaCorrientesUSD = leer(K.corrientesUSD) || [];
 let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
+let listaIngresos      = leer(K.ingresos)      || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
@@ -50,7 +52,7 @@ function cfSnapshotData() {
     return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
         listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
-        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
+        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
 }
 function cfHacerSnapshot(manual=false) {
     try {
@@ -169,6 +171,7 @@ function guardar() {
         localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
+        localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -228,7 +231,7 @@ async function syncSilencioso() {
     syncSetBadge('sync');
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,groqKey});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,groqKey});
 
         // Si no tenemos el ID del archivo, buscarlo en Drive
         if(!_driveFileId) {
@@ -545,9 +548,31 @@ function buildMesActual() {
                 <div class="form-group"><label>Nombre</label><input type="text" id="banco-nombre" required placeholder="Ej. Galicia, MercadoPago"></div>
                 <div class="form-group"><label>Saldo ($)</label><input type="number" id="banco-saldo" required value="0" step="1"></div>
                 <button type="submit" class="btn btn-add btn-blue">Añadir Cuenta</button>
+                <button type="button" class="btn btn-add" style="background:#16a34a;color:white;margin-left:8px;" onclick="abrirModalIngreso()">💰 Ingresar Fondos</button>
               </form>
             </div>
             <table><thead><tr><th style="width:40%">Cuenta</th><th style="width:30%" class="tr">Saldo ($)</th><th style="width:20%" class="tc">Auto⬇</th><th style="width:10%" class="no-print"></th></tr></thead><tbody id="t-bancos"></tbody></table>
+            <div id="panel-historial-ingresos" style="margin-top:16px;display:none;">
+              <h4 style="margin:0 0 8px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">📋 Historial de Ingresos</h4>
+              <table style="font-size:12px;width:100%;border-collapse:collapse;">
+                <thead><tr style="background:#f0fdf4;"><th style="padding:6px 8px;text-align:left;color:#166534;">Fecha</th><th style="padding:6px 8px;text-align:left;color:#166534;">Cuenta</th><th style="padding:6px 8px;text-align:left;color:#166534;">Descripción</th><th style="padding:6px 8px;text-align:right;color:#166534;">Monto</th><th style="padding:6px 8px;" class="no-print"></th></tr></thead>
+                <tbody id="t-ingresos"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Modal Ingresar Fondos -->
+          <div id="modal-ingreso" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:white;border-radius:12px;padding:24px;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+              <h3 style="margin:0 0 16px;color:#166534;font-size:16px;">💰 Ingresar Fondos</h3>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Cuenta destino</label><select id="ing-cuenta" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"></select></div>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Monto ($)</label><input type="number" id="ing-monto" min="0" step="1" value="" placeholder="0" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Descripción</label><input type="text" id="ing-desc" placeholder="Ej. Sueldo, Cobro cliente..." style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="margin-bottom:20px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Fecha</label><input type="date" id="ing-fecha" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="cerrarModalIngreso()" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:14px;">Cancelar</button>
+                <button onclick="confirmarIngreso()" style="padding:8px 20px;border:none;border-radius:6px;background:#16a34a;color:white;cursor:pointer;font-size:14px;font-weight:bold;">✓ Confirmar</button>
+              </div>
+            </div>
           </div>
           <div class="panel panel-tarjetas no-print">
             <h3 class="panel-title">💳 Tarjetas de Crédito</h3>
@@ -713,6 +738,23 @@ function render() {
         tB.appendChild(fila([tdHTML(`<b>${b.nombre}</b>`), tdSB, tdT, tdBtn('✕',()=>elimBanco(b.id))]));
     });
     if(!listaBancos.length) tB.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas.</td></tr>';
+    // Historial de ingresos
+    const panelHist = document.getElementById('panel-historial-ingresos');
+    const tI = document.getElementById('t-ingresos');
+    if(panelHist && tI) {
+        tI.innerHTML = '';
+        if(listaIngresos.length) {
+            panelHist.style.display = 'block';
+            [...listaIngresos].reverse().forEach(ing => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #f0fdf4';
+                tr.innerHTML = `<td style="padding:5px 8px;color:#475569;">${ing.fecha||'—'}</td><td style="padding:5px 8px;font-weight:bold;color:#166534;">${ing.bancoNombre||'—'}</td><td style="padding:5px 8px;color:#475569;">${ing.descripcion||'—'}</td><td style="padding:5px 8px;text-align:right;font-weight:bold;color:#16a34a;">${fmt(ing.monto)}</td><td style="padding:5px 8px;" class="no-print"><button onclick="elimIngreso('${ing.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button></td>`;
+                tI.appendChild(tr);
+            });
+        } else {
+            panelHist.style.display = 'none';
+        }
+    }
     // Tarjetas
     listaTarjetas.forEach(t=>{
         const inp=inpNum(t.saldo,v=>{ t.saldo=v; guardar(); calcDash(); }); inp.id='saldo-t-'+t.id;
@@ -1001,6 +1043,47 @@ function calcDash() {
 //  ALTAS PESOS
 // ═══════════════════════════════════════════
 function altaBanco(e) { e.preventDefault(); listaBancos.push({id:'b_'+Date.now(),nombre:vGet('banco-nombre'),saldo:nGet('banco-saldo'),autoDescontar:false}); guardar(); e.target.reset(); render(); }
+
+// ── Ingresar Fondos ──────────────────────────────────────────
+function abrirModalIngreso() {
+    const sel = document.getElementById('ing-cuenta');
+    if(!sel) return;
+    sel.innerHTML = '';
+    listaBancos.forEach(b => { const o=document.createElement('option'); o.value=b.id; o.textContent='🏦 '+b.nombre; sel.appendChild(o); });
+    document.getElementById('ing-monto').value = '';
+    document.getElementById('ing-desc').value = '';
+    document.getElementById('ing-fecha').value = new Date().toISOString().slice(0,10);
+    const m = document.getElementById('modal-ingreso');
+    m.style.display = 'flex';
+}
+function cerrarModalIngreso() {
+    document.getElementById('modal-ingreso').style.display = 'none';
+}
+function confirmarIngreso() {
+    const bancoId = document.getElementById('ing-cuenta').value;
+    const monto = parseFloat(document.getElementById('ing-monto').value)||0;
+    const desc = document.getElementById('ing-desc').value.trim()||'Sin descripción';
+    const fecha = document.getElementById('ing-fecha').value||new Date().toISOString().slice(0,10);
+    if(!bancoId){ alert('Seleccioná una cuenta.'); return; }
+    if(monto<=0){ alert('Ingresá un monto mayor a cero.'); return; }
+    const banco = listaBancos.find(b=>b.id===bancoId);
+    if(!banco){ alert('Cuenta no encontrada.'); return; }
+    banco.saldo += monto;
+    listaIngresos.push({id:'ing_'+Date.now(), bancoId, bancoNombre:banco.nombre, monto, descripcion:desc, fecha});
+    guardar();
+    cerrarModalIngreso();
+    render();
+}
+function elimIngreso(id) {
+    const ing = listaIngresos.find(i=>i.id===id);
+    if(!ing) return;
+    if(!confirm('¿Eliminar este ingreso? Se restará el monto del saldo de la cuenta.')) return;
+    const banco = listaBancos.find(b=>b.id===ing.bancoId);
+    if(banco) banco.saldo -= ing.monto;
+    listaIngresos = listaIngresos.filter(i=>i.id!==id);
+    guardar();
+    render();
+}
 function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.now(),nombre:vGet('tarjeta-nombre'),saldo:nGet('tarjeta-saldo')}); guardar(); e.target.reset(); render(); }
 function altaServicio(e) {
     e.preventDefault();
@@ -1141,7 +1224,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1164,6 +1247,7 @@ function cargarDatos(res) {
     if(res.listaPresupRubros)    listaPresupRubros    = res.listaPresupRubros;
     if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
+    if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
     if(res.groqKey)            localStorage.setItem('groq_api_key', res.groqKey);
 }
 function importar(event) {
@@ -2489,7 +2573,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.24';
+const APP_VERSION = 'v3.7.25';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
@@ -2547,7 +2631,7 @@ function driveSubir() {
     driveGetToken(token=>{
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD});
+        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
         const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
