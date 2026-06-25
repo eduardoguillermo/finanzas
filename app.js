@@ -548,10 +548,12 @@ function buildMesActual() {
                 <div class="form-group"><label>Nombre</label><input type="text" id="banco-nombre" required placeholder="Ej. Galicia, MercadoPago"></div>
                 <div class="form-group"><label>Saldo ($)</label><input type="number" id="banco-saldo" required value="0" step="1"></div>
                 <button type="submit" class="btn btn-add btn-blue">Añadir Cuenta</button>
-                <button type="button" class="btn btn-add" style="background:#16a34a;color:white;margin-left:8px;" onclick="abrirModalIngreso()">💰 Ingresar Fondos</button>
               </form>
             </div>
             <table><thead><tr><th style="width:40%">Cuenta</th><th style="width:30%" class="tr">Saldo ($)</th><th style="width:20%" class="tc">Auto⬇</th><th style="width:10%" class="no-print"></th></tr></thead><tbody id="t-bancos"></tbody></table>
+            <div style="margin-top:8px;text-align:right;">
+              <button type="button" onclick="abrirModalIngreso()" style="background:none;border:1px solid #0284c7;color:#0284c7;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;line-height:1.6;">💰 Ingresar fondos</button>
+            </div>
             <div id="panel-historial-ingresos" style="margin-top:16px;display:none;">
               <h4 style="margin:0 0 8px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">📋 Historial de Ingresos</h4>
               <table style="font-size:12px;width:100%;border-collapse:collapse;">
@@ -570,7 +572,7 @@ function buildMesActual() {
               <div style="margin-bottom:20px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Fecha</label><input type="date" id="ing-fecha" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
               <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="cerrarModalIngreso()" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:14px;">Cancelar</button>
-                <button onclick="confirmarIngreso()" style="padding:8px 20px;border:none;border-radius:6px;background:#16a34a;color:white;cursor:pointer;font-size:14px;font-weight:bold;">✓ Confirmar</button>
+                <button onclick="confirmarIngreso()" style="padding:8px 20px;border:none;border-radius:6px;background:#0284c7;color:white;cursor:pointer;font-size:14px;font-weight:bold;">✓ Confirmar</button>
               </div>
             </div>
           </div>
@@ -2573,7 +2575,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.25';
+const APP_VERSION = 'v3.7.26';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
