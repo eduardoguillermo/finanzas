@@ -2023,36 +2023,53 @@ function buildReportes() {
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>');
     const ultimos12=[...historicoMeses].slice(-12);
     const mesesData=ultimos12.map(m=>({nombre:m.nombre,datos:m.datos}));
-    mesesData.push({nombre:'Mes Actual',datos:{listaCorrientes,listaRubros}});
+    mesesData.push({nombre:'Mes Actual',datos:{listaCorrientes,listaServicios,listaRubros}});
     const todosRub2=new Set(); mesesData.forEach(m=>(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>todosRub2.add(c.rubro)));
     const rubrosArr=[...todosRub2].sort();
-    if(!rubrosArr.length){ wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos históricos aún.</div>'); }
-    else {
+    // Filtro dinámico Reporte 2
+    let filtroR2='';
+    const fwR2=el('div'); fwR2.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:12px;';
+    fwR2.innerHTML='<label style="font-size:12px;color:#64748b;font-weight:bold;">Filtrar rubro:</label>';
+    const selR2=el('select'); selR2.style.cssText='padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;color:#334155;';
+    addOpt(selR2,'','— Todos los rubros —');
+    rubrosArr.forEach(r=>addOpt(selR2,r,r));
+    selR2.onchange=e=>{ filtroR2=e.target.value; renderTablaR2(); };
+    fwR2.appendChild(selR2); wrap.appendChild(fwR2);
+    const contR2=el('div'); wrap.appendChild(contR2);
+    const renderTablaR2=()=>{
+        const rubFilt=filtroR2?[filtroR2]:rubrosArr;
+        if(!rubFilt.length){ contR2.innerHTML='<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos.</div>'; return; }
         let t2=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:white;">Rubro</th>`;
         mesesData.forEach(m=>{ t2+=`<th style="padding:7px 8px;text-align:right;color:white;">${m.nombre.replace(' de ',' ')}</th>`; });
         t2+=`<th style="padding:7px 8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>`;
         const totMes=new Array(mesesData.length).fill(0); let totGen=0;
-        rubrosArr.forEach((rub,ri)=>{ let totR=0; t2+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};"><td style="padding:5px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
-            mesesData.forEach((m,mi)=>{ 
+        rubFilt.forEach((rub,ri)=>{
+            let totR=0;
+            t2+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};"><td style="padding:5px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
+            mesesData.forEach((m,mi)=>{
                 const sc=(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
                 const sfPres=(m.datos.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.presupuesto,0);
                 const sfPag=(m.datos.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.pagado,0);
                 const s=sc+sfPres;
-                const tooltip=sfPres>0?` title="Corrientes: ${fmt(sc)} | Fijos presup: ${fmt(sfPres)} | Fijos pag: ${fmt(sfPag)}"`:''; 
-                totMes[mi]+=s; totR+=s; t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};"${tooltip}>${s>0?fmt(s):'—'}</td>`; 
+                const tip=sfPres>0?` title="Corrientes: ${fmt(sc)} | Fijos presup: ${fmt(sfPres)} | Fijos pag: ${fmt(sfPag)}"`:''; 
+                totMes[mi]+=s; totR+=s;
+                t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};"${tip}>${s>0?fmt(s):'—'}</td>`;
             });
-            totGen+=totR; t2+=`<td style="padding:5px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td></tr>`; });
-        t2+=`<tr style="background:#f1f5f9;font-weight:bold;"><td style="padding:7px 8px;color:#1e293b;">TOTAL MES</td>`;
+            totGen+=totR;
+            t2+=`<td style="padding:5px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td></tr>`;
+        });
+        t2+=`<tr style="background:#f1f5f9;font-weight:bold;"><td style="padding:7px 8px;color:#1e293b;">TOTAL</td>`;
         totMes.forEach(t=>{ t2+=`<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
         t2+=`<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td></tr></tbody></table></div>`;
-        wrap.insertAdjacentHTML('beforeend',t2);
-        const topR=[...rubrosArr].map(r=>({rubro:r,total:mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((b,c)=>b+c.monto,0),0)})).sort((a,b)=>b.total-a.total);
+        // Participación
+        const topR=rubFilt.map(r=>({rubro:r,total:mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((b,c)=>b+c.monto,0)+(m.datos.listaServicios||[]).filter(sv=>sv.rubro===r).reduce((b,sv)=>b+sv.presupuesto,0),0)})).sort((a,b)=>b.total-a.total);
         const totAc=topR.reduce((a,r)=>a+r.total,0);
         let res=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Participación por Rubro (acumulado)</h4>`;
         topR.forEach(r=>{ const pct=totAc>0?(r.total/totAc*100).toFixed(1):0; res+=`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="font-weight:bold;color:#334155;">${r.rubro}</span><span style="color:#64748b;">${fmt(r.total)} · ${pct}%</span></div><div style="background:#e2e8f0;border-radius:4px;height:10px;"><div style="background:linear-gradient(90deg,#f59e0b,#f97316);height:10px;border-radius:4px;width:${Math.round(pct)}%;"></div></div></div>`; });
         res+=`<div style="font-size:12px;color:#64748b;text-align:right;margin-top:8px;font-weight:bold;">Total acumulado: ${fmt(totAc)}</div></div>`;
-        wrap.insertAdjacentHTML('beforeend',res);
+        contR2.innerHTML=t2+res;
     }
+    renderTablaR2();
 
     // ── REPORTE 3: CLASE O ─────────────────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#a855f7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 3 · Detalle Clase O — Mes Actual</h3>');
@@ -2606,7 +2623,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.27';
+const APP_VERSION = 'v3.7.28';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
@@ -3238,46 +3255,64 @@ function buildAnual() {
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 14px;font-size:14px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Gastos por Rubro · Todos los Períodos</h3>');
 
     const todosRubs = new Set();
-    mesesArr.forEach(m => (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')) && !c.esIngreso).forEach(c=>todosRubs.add(c.rubro||'Sin rubro')));
+    mesesArr.forEach(m => {
+        (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago && !(c.rubro&&c.rubro.toLowerCase().includes('tarjeta')) && !c.esIngreso).forEach(c=>todosRubs.add(c.rubro||'Sin rubro'));
+        (m.datos.listaServicios||[]).filter(s=>s.rubro).forEach(s=>todosRubs.add(s.rubro));
+    });
     const rubArr = [...todosRubs].sort();
 
-    if (rubArr.length) {
+    // Filtro dinámico Anual
+    let filtroAnual='';
+    const fwA=el('div'); fwA.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:12px;';
+    fwA.innerHTML='<label style="font-size:12px;color:#64748b;font-weight:bold;">Filtrar rubro:</label>';
+    const selA=el('select'); selA.style.cssText='padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;color:#334155;';
+    addOpt(selA,'','— Todos los rubros —');
+    rubArr.forEach(r=>addOpt(selA,r,r));
+    selA.onchange=e=>{ filtroAnual=e.target.value; renderTablaAnual(); };
+    fwA.appendChild(selA); wrap.appendChild(fwA);
+    const contAnual=el('div'); wrap.appendChild(contAnual);
+    const renderTablaAnual=()=>{
+        const rubFilt=filtroAnual?[filtroAnual]:rubArr;
+        if(!rubFilt.length){ contAnual.innerHTML=''; return; }
         let t2 = `<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:20px;overflow-x:auto;">
 <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
 <thead><tr style="background:#1e293b;">
 <th style="padding:8px;text-align:left;color:white;">Rubro</th>`;
         resultados.forEach(r => { t2 += `<th style="padding:8px;text-align:right;color:${r.cerrado?'#94a3b8':'#fbbf24'};white-space:nowrap;">${r.nombre.replace(' de ',' ')}</th>`; });
         t2 += `<th style="padding:8px;text-align:right;color:#f59e0b;">TOTAL</th><th style="padding:8px;text-align:right;color:#f59e0b;">PROM</th></tr></thead><tbody>`;
-
         const totMes = new Array(resultados.length).fill(0);
         let totGen = 0;
-        rubArr.forEach((rub, ri) => {
+        rubFilt.forEach((rub, ri) => {
             let totR = 0;
             t2 += `<tr style="background:${ri%2===0?'white':'#f8fafc'};">
 <td style="padding:6px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
             resultados.forEach((r, mi) => {
                 const mesData = mesesArr[mi].datos;
-                const s = (mesData.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                const sc = (mesData.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                const sfPres = (mesData.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.presupuesto,0);
+                const sfPag  = (mesData.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.pagado,0);
+                const s = sc + sfPres;
+                const tip = sfPres>0 ? ` title="Corrientes: ${fmt(sc)} | Fijos presup: ${fmt(sfPres)} | Fijos pag: ${fmt(sfPag)}"` : '';
                 totMes[mi] += s; totR += s;
-                t2 += `<td style="padding:6px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`;
+                t2 += `<td style="padding:6px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};"${tip}>${s>0?fmt(s):'—'}</td>`;
             });
             totGen += totR;
-            const promR = totR / resultados.filter((_,i) => {
+            const promR = totR / (resultados.filter((_,i) => {
                 const mesData = mesesArr[i].datos;
-                return (mesData.listaCorrientes||[]).some(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso);
-            }).length || 1;
+                return (mesData.listaCorrientes||[]).some(c=>c.fechaPago&&c.rubro===rub&&!c.esIngreso) || (mesData.listaServicios||[]).some(sv=>sv.rubro===rub);
+            }).length || 1);
             t2 += `<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td>`;
-            t2 += `<td style="padding:6px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totR/resultados.length)}</td></tr>`;
+            t2 += `<td style="padding:6px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(promR)}</td></tr>`;
         });
-
         t2 += `<tr style="background:#f1f5f9;font-weight:bold;">
 <td style="padding:7px 8px;color:#1e293b;">TOTAL PERÍODO</td>`;
         totMes.forEach(t => { t2 += `<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
         t2 += `<td style="padding:7px 8px;text-align:right;color:#f59e0b;">${fmt(totGen)}</td>`;
         t2 += `<td style="padding:7px 8px;text-align:right;color:#64748b;font-size:10px;">${fmt(totGen/resultados.length)}</td></tr>`;
         t2 += `</tbody></table></div>`;
-        wrap.insertAdjacentHTML('beforeend', t2);
+        contAnual.innerHTML = t2;
     }
+    if (rubArr.length) renderTablaAnual();
 
     // ── TARJETAS RESUMEN (KPIs) ───────────────────────────────
     const promedioBalance = resultados.slice(0,-1).reduce((a,r)=>a+r.balance,0) / Math.max(resultados.length-1,1);
