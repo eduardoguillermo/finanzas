@@ -2667,10 +2667,10 @@ function driveGetToken(cb) {
         if(gToken){ cb(gToken); return; }
         const client=google.accounts.oauth2.initTokenClient({
             client_id:GDRIVE_CLIENT_ID, scope:GDRIVE_SCOPE,
-            hint:'factory.viking.systems@gmail.com', prompt:'',
+            hint:'', prompt:'',
             callback:resp=>{
                 if(resp.error==='interaction_required' || resp.error==='user_logged_out'){
-                    const c2=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:GDRIVE_SCOPE,hint:'factory.viking.systems@gmail.com',callback:r2=>{ if(r2.error){alert('Error: '+r2.error);return;} gTokenGuardar(r2.access_token, r2.expires_in); cb(gToken); }});
+                    const c2=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CLIENT_ID,scope:GDRIVE_SCOPE,hint:'',callback:r2=>{ if(r2.error){alert('Error: '+r2.error);return;} gTokenGuardar(r2.access_token, r2.expires_in); cb(gToken); }});
                     c2.requestAccessToken(); return;
                 }
                 if(resp.error){alert('Error Google: '+resp.error);return;}
