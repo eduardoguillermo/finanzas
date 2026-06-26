@@ -639,13 +639,14 @@ function buildMesActual() {
                 </div>
                 <div class="form-row" style="margin-bottom:12px;">
                   <div><label>Clase</label><select id="srv-clase" required><option value="M">M — Mío</option><option value="O">O — Oma</option><option value="X">X — Otros</option></select></div>
+                  <div><label>Rubro</label><select id="srv-rubro"><option value="">— Sin rubro —</option></select></div>
                   <div style="flex:3"><label>Nota (opcional)</label><input type="text" id="srv-nota" placeholder="Ej. Contrato N° 1234, renovación anual"></div>
                 </div>
                 <button type="submit" class="btn btn-add btn-indigo">Configurar Servicio Fijo</button>
               </form>
             </div>
             <table><thead><tr>
-              <th style="width:18%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:12%" class="tc">Vto.</th>
+              <th style="width:16%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:10%" class="tc">Rubro</th><th style="width:10%" class="tc">Vto.</th>
               <th style="width:10%" class="tr">Presup.</th><th style="width:10%" class="tr">Pagado</th>
               <th style="width:11%" class="tc">F.Pago</th><th style="width:14%">Medio</th>
               <th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th>
@@ -720,6 +721,8 @@ function render() {
     listaBancos.forEach(b=>{ [sMedio,sOrig,sDest,sMedCuota].forEach(s=>{ if(s) addOpt(s,b.id,'🏦 '+b.nombre); }); });
     listaTarjetas.forEach(t=>{ [sMedio,sOrig,sDest,sMedCuota].forEach(s=>{ if(s) addOpt(s,t.id,'💳 '+t.nombre); }); });
     if(sRubro){ sRubro.innerHTML=''; [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>addOpt(sRubro,r,r)); }
+    const sSrvRubro=document.getElementById('srv-rubro');
+    if(sSrvRubro){ sSrvRubro.innerHTML='<option value="">— Sin rubro —</option>'; [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>addOpt(sSrvRubro,r,r)); }
     listaRubros.forEach(r=>{
         const b=el('div','rubro-badge'); 
         const col=colorRubro(r);
@@ -776,6 +779,12 @@ function render() {
         ['M','O','X'].forEach(op=>{ const o=el('option'); o.value=op; o.innerText=op; if((s.clase||'M')===op) o.selected=true; selCl.appendChild(o); });
         selCl.onchange=e=>{ s.clase=e.target.value; guardar(); };
         const tdCl=el('td','tc'); tdCl.appendChild(selCl);
+        // Select rubro inline
+        const selRub=el('select'); selRub.className='inp'; selRub.style.cssText='font-size:11px;max-width:90px;';
+        addOpt(selRub,'','— —');
+        listaRubros.forEach(r=>{ const o=el('option'); o.value=r; o.innerText=r; if((s.rubro||'')===r) o.selected=true; selRub.appendChild(o); });
+        selRub.onchange=e=>{ s.rubro=e.target.value; guardar(); };
+        const tdRub=el('td','tc'); tdRub.appendChild(selRub);
         const estSpan=el('span'); estSpan.id='est-'+s.id; estSpan.style.cssText='font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;';
         const tdEst=el('td','tc'); tdEst.appendChild(estSpan);
         const tdPag=el('td','tr');
@@ -801,7 +810,7 @@ function render() {
         const noteBtn=el('span'); noteBtn.innerText=s.nota?'📝':'＋'; noteBtn.style.cssText='font-size:10px;cursor:pointer;color:#94a3b8;margin-left:5px;';
         noteBtn.title='Agregar/editar nota'; noteBtn.onclick=()=>{ notaEdit.style.display=notaEdit.style.display==='none'?'block':'none'; if(notaEdit.style.display==='block') notaEdit.focus(); };
         tdNom.appendChild(nomSpan2); tdNom.appendChild(noteBtn); tdNom.appendChild(notaEdit);
-        [tdNom, tdCl, tdInpDate(s.fVto,v=>{ s.fVto=v; guardar(); }),
+        [tdNom, tdCl, tdRub, tdInpDate(s.fVto,v=>{ s.fVto=v; guardar(); }),
          tdInpNum(s.presupuesto,v=>{ s.presupuesto=v; guardar(); calcDash(); },'tr'),
          tdPag, tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
          (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{ s.medioPagoId=v; guardar(); calcDash(); })); return td; })(),
@@ -814,7 +823,7 @@ function render() {
         ].forEach(td=>tr.appendChild(td));
         tS.appendChild(tr);
     });
-    if(!listaServicios.length) tS.innerHTML='<tr><td colspan="9" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios.</td></tr>';
+    if(!listaServicios.length) tS.innerHTML='<tr><td colspan="10" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios.</td></tr>';
     // Totales fila servicios
     const tSFoot = document.getElementById('t-servicios-foot');
     if(tSFoot) {
@@ -1090,7 +1099,7 @@ function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.n
 function altaServicio(e) {
     e.preventDefault();
     const medioId=(listaTarjetas[0]?.id)||(listaBancos.find(b=>!b.autoDescontar)?.id)||(listaBancos[0]?.id)||'';
-    listaServicios.push({id:'s_'+Date.now(),nombre:vGet('srv-nombre'),presupuesto:nGet('srv-presupuesto'),pagado:0,fVto:vGet('srv-vto'),fPago:'',medioPagoId:medioId,clase:vGet('srv-clase')||'M',nota:vGet('srv-nota')||''});
+    listaServicios.push({id:'s_'+Date.now(),nombre:vGet('srv-nombre'),presupuesto:nGet('srv-presupuesto'),pagado:0,fVto:vGet('srv-vto'),fPago:'',medioPagoId:medioId,clase:vGet('srv-clase')||'M',rubro:vGet('srv-rubro')||'',nota:vGet('srv-nota')||''});
     guardar(); e.target.reset(); render();
 }
 function altaCorriente(e) {
@@ -1710,8 +1719,14 @@ function buildPresupuesto() {
     listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>{
         gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto;
     });
+    // Fijos con rubro asignado
+    const fijosPrespRubro = {}; const fijosPagRubro = {};
+    listaServicios.filter(s=>s.rubro).forEach(s=>{
+        fijosPrespRubro[s.rubro]=(fijosPrespRubro[s.rubro]||0)+s.presupuesto;
+        fijosPagRubro[s.rubro]=(fijosPagRubro[s.rubro]||0)+s.pagado;
+    });
     // Rubros con gasto pero sin presupuesto también se muestran
-    const todosRubros = new Set([...listaRubros, ...Object.keys(gastado)]);
+    const todosRubros = new Set([...listaRubros, ...Object.keys(gastado), ...Object.keys(fijosPrespRubro)]);
 
     const totalPresup = Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
     const totalGast   = listaRubros.reduce((a,r)=>a+(gastado[r]||0),0);
@@ -1777,6 +1792,15 @@ function buildPresupuesto() {
         card += '<span style="color:#64748b;">Gastado: <b style="color:'+(superado?'#ef4444':'#334155')+';">'+fmt(gast)+'</b></span>';
         if(pres>0) card += '<span style="color:#64748b;">'+( lib>=0?'Libre':'Exceso')+': <b style="color:'+(lib>=0?'#16a34a':'#ef4444')+';">'+fmt(Math.abs(lib))+'</b></span>';
         card += '</div>';
+        // Fijos asignados a este rubro
+        const fPresR=fijosPrespRubro[r]||0; const fPagR=fijosPagRubro[r]||0;
+        if(fPresR>0||fPagR>0){
+            card += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:11px;">';
+            card += '<span style="color:#854d0e;font-weight:bold;">📋 Fijos: </span>';
+            card += '<span style="color:#92400e;">Presup. <b>'+fmt(fPresR)+'</b></span>';
+            card += ' &nbsp;·&nbsp; <span style="color:#15803d;">Pagado <b>'+fmt(fPagR)+'</b></span>';
+            card += '</div>';
+        }
 
         // Barra
         if(pres>0){
@@ -2009,7 +2033,14 @@ function buildReportes() {
         t2+=`<th style="padding:7px 8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>`;
         const totMes=new Array(mesesData.length).fill(0); let totGen=0;
         rubrosArr.forEach((rub,ri)=>{ let totR=0; t2+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};"><td style="padding:5px 8px;font-weight:bold;color:#334155;">${rub}</td>`;
-            mesesData.forEach((m,mi)=>{ const s=(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0); totMes[mi]+=s; totR+=s; t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};">${s>0?fmt(s):'—'}</td>`; });
+            mesesData.forEach((m,mi)=>{ 
+                const sc=(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===rub&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((a,c)=>a+c.monto,0);
+                const sfPres=(m.datos.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.presupuesto,0);
+                const sfPag=(m.datos.listaServicios||[]).filter(sv=>sv.rubro===rub).reduce((a,sv)=>a+sv.pagado,0);
+                const s=sc+sfPres;
+                const tooltip=sfPres>0?` title="Corrientes: ${fmt(sc)} | Fijos presup: ${fmt(sfPres)} | Fijos pag: ${fmt(sfPag)}"`:''; 
+                totMes[mi]+=s; totR+=s; t2+=`<td style="padding:5px 8px;text-align:right;color:${s>0?'#10b981':'#94a3b8'};font-weight:${s>0?'bold':'normal'};"${tooltip}>${s>0?fmt(s):'—'}</td>`; 
+            });
             totGen+=totR; t2+=`<td style="padding:5px 8px;text-align:right;font-weight:bold;color:#f59e0b;">${fmt(totR)}</td></tr>`; });
         t2+=`<tr style="background:#f1f5f9;font-weight:bold;"><td style="padding:7px 8px;color:#1e293b;">TOTAL MES</td>`;
         totMes.forEach(t=>{ t2+=`<td style="padding:7px 8px;text-align:right;color:#4f46e5;">${fmt(t)}</td>`; });
