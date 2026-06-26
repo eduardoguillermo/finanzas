@@ -2606,7 +2606,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.26';
+const APP_VERSION = 'v3.7.27';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
