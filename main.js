@@ -2024,7 +2024,11 @@ function buildReportes() {
     const ultimos12=[...historicoMeses].slice(-12);
     const mesesData=ultimos12.map(m=>({nombre:m.nombre,datos:m.datos}));
     mesesData.push({nombre:'Mes Actual',datos:{listaCorrientes,listaServicios,listaRubros}});
-    const todosRub2=new Set(); mesesData.forEach(m=>(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>todosRub2.add(c.rubro)));
+    const todosRub2=new Set();
+    mesesData.forEach(m=>{
+        (m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).forEach(c=>todosRub2.add(c.rubro));
+        (m.datos.listaServicios||[]).filter(s=>s.rubro).forEach(s=>todosRub2.add(s.rubro));
+    });
     const rubrosArr=[...todosRub2].sort();
     // Filtro dinámico Reporte 2
     let filtroR2='';
@@ -2623,7 +2627,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.28';
+const APP_VERSION = 'v3.7.29';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
