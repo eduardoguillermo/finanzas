@@ -948,6 +948,7 @@ function actualizarPresupRubro(inp) {
     const v = parseFloat(inp.value)||0;
     if(v>0) listaPresupRubros[r]=v; else delete listaPresupRubros[r];
     guardar(); renderPresupRubros();
+    if(tabActivo==='presupuesto') renderContenido();
 }
 
 // ═══════════════════════════════════════════
@@ -2627,7 +2628,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.29';
+const APP_VERSION = 'v3.7.30';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
