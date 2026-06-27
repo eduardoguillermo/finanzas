@@ -178,6 +178,8 @@ function guardar() {
             alert('⚠️ Almacenamiento local lleno. Exportá un backup ahora y considerá eliminar meses históricos antiguos.');
         } else { console.error('Error al guardar:', e); }
     }
+    // Backup automático en carpeta local si está vinculada
+    if (window._cfFolderHandle) cfBackupEnCarpeta(window._cfFolderHandle);
 }
 
 // ═══════════════════════════════════════════
@@ -315,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     renderTabs();
     renderContenido();
+    cfRestaurarCarpeta();
 });
 
 // ═══════════════════════════════════════════
@@ -2628,7 +2631,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.31';
+const APP_VERSION = 'v3.7.32';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
