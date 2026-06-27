@@ -1,26 +1,13 @@
-const CACHE = 'finanzas-v24';
-self.addEventListener('install',()=>self.skipWaiting());
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener('message',e=>{if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();});
-self.addEventListener('fetch',e=>{
-  const url=e.request.url;
-  if(url.includes('.html')||url.includes('.js')){
-    e.respondWith(
-      fetch(e.request).then(r=>{
-        if(!r||!r.ok) return r;
-        const rc=r.clone();
-        caches.open(CACHE).then(c=>c.put(e.request,rc));
-        return r;
-      }).catch(()=>caches.match(e.request).then(r=>r||new Response('Offline',{status:503,headers:{'Content-Type':'text/plain'}})))
-    );
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
-      if(!res||!res.ok) return res;
-      const rc=res.clone();
-      caches.open(CACHE).then(c=>c.put(e.request,rc));
-      return res;
-    }))
-  );
+const CACHE = 'finanzas-v25';
+const ASSETS = ['./control_financiero_v3.html', './app.js', './main.js', './manifest.json', './xlsx.full.min.js'];
+self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(a => fetch(a + '?v=' + Date.now(), {cache:'no-store'}).then(r => { if(r.ok) c.put(a, r); }).catch(()=>{}))))); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('message', e => { if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting(); });
+self.addEventListener('fetch', e => {
+  if(e.request.method !== 'GET') return;
+  const url = new URL(e.request.url); const esPropio = url.origin === self.location.origin;
+  if(!esPropio) { e.respondWith(fetch(e.request).catch(() => new Response('', {status:503}))); return; }
+  const urlBustada = new URL(e.request.url); urlBustada.searchParams.set('_sw', Date.now());
+  const req = new Request(urlBustada.toString(), {method:'GET', headers:e.request.headers, mode: e.request.mode==='navigate'?'same-origin':e.request.mode, credentials:e.request.credentials, redirect:e.request.redirect, cache:'no-store'});
+  e.respondWith(fetch(req).then(res => { if(res.status === 200) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); } return res; }).catch(() => caches.match(e.request)));
 });
