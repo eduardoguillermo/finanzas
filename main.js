@@ -495,6 +495,8 @@ function buildMesActual() {
           <button class="btn btn-green" id="btn-importar-trigger">📥 Importar</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
           <button class="btn btn-dark"  onclick="window.print()">🖨️ PDF</button>
+          <button class="btn" id="btn-cf-carpeta" onclick="cfSeleccionarCarpeta()" title="Vincular carpeta para backup automático" style="background:#0f766e;color:white;font-size:12px;padding:7px 12px;">📂 Carpeta</button>
+          <span id="cf-carpeta-status" style="display:none;font-size:10px;color:#34d399;font-weight:700;"></span>
 
         </div>
       </header>
@@ -2631,7 +2633,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.32';
+const APP_VERSION = 'v3.7.33';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
