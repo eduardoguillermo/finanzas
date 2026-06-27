@@ -303,6 +303,117 @@ async function syncAlSalir() {
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+//  CARPETA LOCAL — File System Access API + IndexedDB
+// ═══════════════════════════════════════════════════════════════
+const CF_FOLDER_DB    = 'cf-folder-db';
+const CF_FOLDER_STORE = 'handles';
+const CF_FOLDER_KEY   = 'carpeta';
+const CF_MAX_BK       = 7;
+
+function cfAbrirFolderDB() {
+    return new Promise((res, rej) => {
+        const req = indexedDB.open(CF_FOLDER_DB, 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore(CF_FOLDER_STORE);
+        req.onsuccess = e => res(e.target.result);
+        req.onerror   = e => rej(e.target.error);
+    });
+}
+
+async function cfGuardarHandle(handle) {
+    try {
+        const db = await cfAbrirFolderDB();
+        const tx = db.transaction(CF_FOLDER_STORE, 'readwrite');
+        tx.objectStore(CF_FOLDER_STORE).put(handle, CF_FOLDER_KEY);
+        await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+        db.close();
+    } catch(e) { console.warn('cfGuardarHandle:', e); }
+}
+
+async function cfLeerHandle() {
+    try {
+        const db = await cfAbrirFolderDB();
+        const tx = db.transaction(CF_FOLDER_STORE, 'readonly');
+        const req = tx.objectStore(CF_FOLDER_STORE).get(CF_FOLDER_KEY);
+        const handle = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = rej; });
+        db.close();
+        return handle || null;
+    } catch(e) { return null; }
+}
+
+async function cfVerificarPermiso(handle) {
+    try {
+        const opts = { mode: 'readwrite' };
+        if (await handle.queryPermission(opts) === 'granted') return true;
+        if (await handle.requestPermission(opts) === 'granted') return true;
+        return false;
+    } catch(e) { return false; }
+}
+
+async function cfSeleccionarCarpeta() {
+    if (!('showDirectoryPicker' in window)) {
+        alert('Tu navegador no soporta la selección de carpeta local. Usá Chrome o Brave.');
+        return;
+    }
+    try {
+        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        await cfGuardarHandle(handle);
+        window._cfFolderHandle = handle;
+        cfActualizarEstadoCarpeta(handle.name);
+        await cfBackupEnCarpeta(handle);
+    } catch(e) {
+        if (e.name !== 'AbortError') console.warn('cfSeleccionarCarpeta:', e);
+    }
+}
+
+function cfActualizarEstadoCarpeta(nombre) {
+    const btn = document.getElementById('btn-cf-carpeta');
+    const st  = document.getElementById('cf-carpeta-status');
+    if (btn) btn.title = 'Carpeta: ' + nombre;
+    if (st)  { st.textContent = '📁 ' + nombre; st.style.display = 'inline'; }
+}
+
+async function cfBackupEnCarpeta(handle) {
+    if (!handle) return;
+    const ok = await cfVerificarPermiso(handle);
+    if (!ok) return;
+    try {
+        const fecha  = new Date().toISOString().slice(0, 10);
+        const nombre = 'cf_backup_' + fecha + '.json';
+        const data   = {listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
+                        listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,
+                        listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,
+                        listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,
+                        listaRubrosUSD,listaIngresos};
+        const fileHandle = await handle.getFileHandle(nombre, { create: true });
+        const writable   = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+        const entries = [];
+        for await (const entry of handle.values()) {
+            if (entry.kind === 'file' && entry.name.startsWith('cf_backup_') && entry.name.endsWith('.json'))
+                entries.push(entry.name);
+        }
+        entries.sort().reverse();
+        for (const old of entries.slice(CF_MAX_BK)) {
+            try { await handle.removeEntry(old); } catch(e) {}
+        }
+        cfActualizarEstadoCarpeta(handle.name);
+    } catch(e) { console.warn('cfBackupEnCarpeta:', e); }
+}
+
+async function cfRestaurarCarpeta() {
+    try {
+        const handle = await cfLeerHandle();
+        if (!handle) return;
+        const ok = await cfVerificarPermiso(handle);
+        if (!ok) return;
+        window._cfFolderHandle = handle;
+        cfActualizarEstadoCarpeta(handle.name);
+    } catch(e) { console.warn('cfRestaurarCarpeta:', e); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Control Financiero ' + APP_VERSION;
     // Snapshot local al cerrar con X (beforeunload — síncrono, siempre funciona)
