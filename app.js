@@ -2628,7 +2628,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.30';
+const APP_VERSION = 'v3.7.31';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
@@ -3630,15 +3630,8 @@ function exportarExcel() {
         XLSX.writeFile(wb, `control_financiero_${ts}.xlsx`);
     }
 
-    if (window.XLSX) {
-        generarXLSX();
-    } else {
-        const sc = document.createElement('script');
-        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        sc.onload = generarXLSX;
-        sc.onerror = () => alert('No se pudo cargar la librería Excel. Verificá tu conexión.');
-        document.head.appendChild(sc);
-    }
+    // SheetJS cargado localmente (offline-ready)
+    generarXLSX();
 }
 
 
