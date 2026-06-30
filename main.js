@@ -1329,7 +1329,7 @@ function nuevoMes() {
         if(!(listaPresupRubrosUSD[r]>0) && gastadoMesUSD[r]>0) listaPresupRubrosUSD[r]=Math.round(gastadoMesUSD[r]*100)/100;
     });
     // Limpiar pesos
-    listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; });
+    listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; if(!s.esCuota) s.fVto=''; });
     listaCorrientes=listaCorrientes.filter(c=>!c.fechaPago);
     listaTransferencias=[];
     // Generar cuotas
@@ -1341,7 +1341,7 @@ function nuevoMes() {
     listaCorrientesUSD.forEach(c=>{ if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
     listaTarjetasUSD.forEach(t=>{ t.saldo=Math.round((t.saldo+(mDU[t.id]||0))*100)/100; });
     // Limpiar USD
-    listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; });
+    listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; if(!s.esCuota) s.fVto=''; });
     listaCorrientesUSD=[];
     guardar(); renderTabs(); renderContenido();
     alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
@@ -2744,7 +2744,7 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.33';
+const APP_VERSION = 'v3.7.34';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GTOKEN_KEY='cf_gtoken';
