@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control Financiero · Manual de Usuario</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #eef2ff;
+    --green: #10b981;
+    --green-light: #ecfdf5;
+    --amber: #f59e0b;
+    --amber-light: #fffbeb;
+    --red: #ef4444;
+    --red-light: #fef2f2;
+    --teal: #0f766e;
+    --teal-light: #f0fdfa;
+    --blue: #0284c7;
+    --blue-light: #f0f9ff;
+    --purple: #a855f7;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --sidebar-w: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: var(--sidebar-w);
+    background: #1e293b;
+    color: #cbd5e1;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 0 0 32px 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid #334155;
+    margin-bottom: 8px;
+  }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 700; color: white; }
+  .sidebar-logo p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 20px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .sidebar a:hover, .sidebar a.active {
+    color: white;
+    background: #0f172a;
+    border-left-color: var(--primary);
+  }
+  .sidebar .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #475569;
+    padding: 16px 20px 4px;
+  }
+  .content {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    max-width: 860px;
+    padding: 40px 48px 80px;
+  }
+
+  /* Secciones */
+  .section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  .section-icon { font-size: 28px; }
+  .section-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  h2 { font-size: 17px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--text); }
+  p { margin-bottom: 10px; color: #374151; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; color: #374151; }
+
+  /* Cards de funcionalidad */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .card-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: #4b5563; }
+
+  /* Notas */
+  .note {
+    background: var(--amber-light);
+    border-left: 4px solid var(--amber);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #78350f;
+  }
+  .tip {
+    background: var(--green-light);
+    border-left: 4px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #065f46;
+  }
+  .warning {
+    background: var(--red-light);
+    border-left: 4px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #7f1d1d;
+  }
+  .info {
+    background: var(--blue-light);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #0c4a6e;
+  }
+
+  /* Tabla */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 600; border: 1px solid var(--border); }
+  td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) { background: #f8fafc; }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-blue  { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-red   { background: #fee2e2; color: #991b1b; }
+  .badge-purple{ background: #f3e8ff; color: #6b21a8; }
+
+  /* Code */
+  code {
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #1e293b;
+  }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+
+  /* Steps */
+  .steps { counter-reset: step; }
+  .step {
+    display: flex; gap: 14px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    counter-increment: step;
+    min-width: 28px; height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-body { padding-top: 4px; font-size: 14px; }
+
+  /* Header hero */
+  .hero {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    padding: 40px 48px;
+    margin: -40px -48px 48px;
+  }
+  .hero h1 { font-size: 28px; font-weight: 800; }
+  .hero p { color: #94a3b8; margin-top: 6px; font-size: 15px; }
+  .hero-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* Dashboard visual */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .dash-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border-left: 4px solid currentColor;
+  }
+  .dash-card h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; }
+  .dash-card .value { font-size: 18px; font-weight: 700; }
+
+  /* Responsive sidebar */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { margin-left: 0; padding: 20px 16px; }
+    .hero { margin: -20px -16px 32px; padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>💰 Control Financiero</h1>
+    <p>Manual de usuario · v3.7.35</p>
+  </div>
+
+  <div class="section-label">Introducción</div>
+  <a href="#intro">🏠 ¿Qué es esta app?</a>
+  <a href="#navegacion">🗂 Navegación</a>
+  <a href="#backup">💾 Backup y datos</a>
+
+  <div class="section-label">Secciones principales</div>
+  <a href="#mes-actual">📊 Mes Actual</a>
+  <a href="#bancos">🏦 Bancos y efectivo</a>
+  <a href="#tarjetas">💳 Tarjetas</a>
+  <a href="#servicios">📋 Servicios fijos</a>
+  <a href="#corrientes">🛍️ Gastos corrientes</a>
+  <a href="#cuotas">📅 Cuotas</a>
+  <a href="#transferencias">↔️ Transferencias</a>
+  <a href="#rubros">⚙️ Rubros</a>
+
+  <div class="section-label">Módulos adicionales</div>
+  <a href="#dolares">💵 Dólares</a>
+  <a href="#presupuesto">🎯 Presupuesto</a>
+  <a href="#reportes">📈 Reportes</a>
+  <a href="#inversiones">📊 Inversiones</a>
+  <a href="#anual">📅 Resumen Anual</a>
+  <a href="#historico">🗂 Períodos cerrados</a>
+
+  <div class="section-label">Funciones especiales</div>
+  <a href="#nuevo-mes">🔄 Nuevo Mes</a>
+  <a href="#gmail">📧 Módulo Gmail</a>
+  <a href="#carpeta">📂 Backup en carpeta</a>
+  <a href="#drive">☁️ Sincronización Drive</a>
+  <a href="#impresion">🖨️ Impresión / PDF</a>
+  <a href="#consola">🛠 Comandos consola</a>
+</nav>
+
+<!-- Contenido -->
+<main class="content">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>💰 Control Financiero</h1>
+    <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
+    <div class="hero-badges">
+      <span class="badge badge-green">✓ v3.7.35</span>
+      <span class="badge badge-blue">✓ Sin servidor</span>
+      <span class="badge badge-amber">✓ Datos locales</span>
+      <span class="badge badge-purple">✓ Gmail integrado</span>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <span class="section-icon">🏠</span>
+      <div>
+        <div class="section-title">¿Qué es Control Financiero?</div>
+        <div class="section-subtitle">Descripción general de la aplicación</div>
+      </div>
+    </div>
+    <p>Control Financiero es una aplicación web progresiva (PWA) para gestionar las finanzas personales mensualmente. Funciona directamente en el navegador, sin servidor ni cuenta: todos los datos se guardan en el dispositivo (localStorage) y opcionalmente en Google Drive como backup.</p>
+    <p>Permite llevar control de:</p>
+    <ul>
+      <li>Saldos en cuentas bancarias y efectivo</li>
+      <li>Deudas en tarjetas de crédito</li>
+      <li>Servicios fijos y su estado de pago mensual</li>
+      <li>Gastos corrientes categorizados por rubro</li>
+      <li>Compras en cuotas</li>
+      <li>Transferencias entre cuentas</li>
+      <li>Todo lo anterior en dólares (cuentas, tarjetas, servicios y gastos en USD)</li>
+      <li>Presupuesto mensual por rubro</li>
+      <li>Inversiones y portfolio</li>
+      <li>Historial de períodos cerrados</li>
+    </ul>
+    <div class="tip">💡 La app funciona offline. Una vez instalada como PWA, no necesita internet para operar (excepto para sincronizar con Drive o Gmail).</div>
+  </section>
+
+  <!-- NAVEGACIÓN -->
+  <section class="section" id="navegacion">
+    <div class="section-header">
+      <span class="section-icon">🗂</span>
+      <div>
+        <div class="section-title">Navegación</div>
+        <div class="section-subtitle">Pestañas y estructura de la app</div>
+      </div>
+    </div>
+    <p>La app se organiza en pestañas horizontales en la parte superior:</p>
+    <table>
+      <tr><th>Pestaña</th><th>Contenido</th></tr>
+      <tr><td>📊 Mes Actual</td><td>Vista principal con todos los paneles del período en curso</td></tr>
+      <tr><td>🎯 Presupuesto</td><td>Límites de gasto por rubro y seguimiento de cumplimiento</td></tr>
+      <tr><td>💵 Dólares</td><td>Cuentas, tarjetas, servicios y gastos en USD</td></tr>
+      <tr><td>📈 Reportes</td><td>Gráficos y resúmenes del período actual</td></tr>
+      <tr><td>📊 Inversiones</td><td>Portfolio de acciones e instrumentos financieros</td></tr>
+      <tr><td>📅 Anual</td><td>Resumen de los últimos 12 períodos cerrados</td></tr>
+      <tr><td>Períodos anteriores</td><td>Tabs adicionales por cada mes cerrado (solo lectura)</td></tr>
+    </table>
+    <div class="info">ℹ️ Los períodos cerrados aparecen como tabs adicionales a la derecha. Son de solo lectura y muestran el estado exacto al cierre.</div>
+  </section>
+
+  <!-- BACKUP -->
+  <section class="section" id="backup">
+    <div class="section-header">
+      <span class="section-icon">💾</span>
+      <div>
+        <div class="section-title">Backup y datos</div>
+        <div class="section-subtitle">Cómo se guardan y protegen los datos</div>
+      </div>
+    </div>
+    <h2>Dónde viven los datos</h2>
+    <p>Todos los datos se guardan en el <strong>localStorage</strong> del navegador. Esto significa que son locales al dispositivo y al navegador que se usa. Si se borra el caché o se cambia de navegador, los datos no estarán disponibles a menos que se haya hecho un backup.</p>
+
+    <h2>Métodos de backup</h2>
+    <div class="card">
+      <div class="card-title">☁️ Google Drive (automático)</div>
+      <div class="card-body">Al hacer login con Google, la app sincroniza automáticamente cada vez que se detectan cambios. También al cerrar con el botón 🚪 Salir.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📂 Carpeta local (automático)</div>
+      <div class="card-body">Vinculando una carpeta del sistema de archivos, la app guarda un backup local automáticamente (últimos 7 backups). Requiere Chrome/Edge en escritorio.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">💾 Exportar JSON (manual)</div>
+      <div class="card-body">El botón "Exportar" descarga un archivo JSON con todos los datos. Puede importarse luego con el botón "Importar".</div>
+    </div>
+
+    <div class="warning">⚠️ Se recomienda hacer backup a Drive y/o carpeta local regularmente. Los datos en localStorage pueden perderse si se borra la caché del navegador.</div>
+  </section>
+
+  <!-- MES ACTUAL -->
+  <section class="section" id="mes-actual">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <div>
+        <div class="section-title">Mes Actual</div>
+        <div class="section-subtitle">Panel principal del período en curso</div>
+      </div>
+    </div>
+    <p>Es la vista principal de la app. Muestra el estado financiero del período actual con un dashboard de indicadores clave y paneles de carga de datos.</p>
+
+    <h2>Dashboard — Indicadores</h2>
+    <div class="dashboard-grid">
+      <div class="dash-card" style="color: #0284c7;">
+        <h4>Efectivo / Banco</h4>
+        <div class="value" style="color: #0284c7;">Suma de saldos</div>
+      </div>
+      <div class="dash-card" style="color: #ef4444;">
+        <h4>Fijos Pendientes</h4>
+        <div class="value" style="color: #ef4444;">Sin pagar aún</div>
+      </div>
+      <div class="dash-card" style="color: #f59e0b;">
+        <h4>Saldo Proyectado</h4>
+        <div class="value" style="color: #f59e0b;">Banco − fijos</div>
+      </div>
+      <div class="dash-card" style="color: #a855f7;">
+        <h4>Deuda Tarjetas</h4>
+        <div class="value" style="color: #a855f7;">Total a pagar</div>
+      </div>
+      <div class="dash-card" style="color: #10b981;">
+        <h4>YPF.BA</h4>
+        <div class="value" style="color: #10b981;">Cotización USD</div>
+      </div>
+    </div>
+    <p>El <strong>Saldo Proyectado</strong> es interactivo: hacer clic en él despliega el detalle de cómo se calcula (banco disponible menos fijos pendientes y gastos corrientes).</p>
+
+    <h2>Botones del header</h2>
+    <table>
+      <tr><th>Botón</th><th>Función</th></tr>
+      <tr><td>📊 Informe Semanal</td><td>Muestra un resumen de los gastos de la semana actual</td></tr>
+      <tr><td>🔄 Abrir Nuevo Mes</td><td>Cierra el período actual y abre uno nuevo</td></tr>
+      <tr><td>💾 Exportar</td><td>Descarga un backup JSON de todos los datos</td></tr>
+      <tr><td>📥 Importar</td><td>Restaura datos desde un archivo JSON previamente exportado</td></tr>
+      <tr><td>🖨️ PDF</td><td>Imprime la vista actual o la exporta como PDF</td></tr>
+      <tr><td>📂 Carpeta</td><td>Vincula una carpeta local para backup automático</td></tr>
+      <tr><td>☁️ Drive</td><td>Sube un backup manual a Google Drive</td></tr>
+      <tr><td>📂 Drive (bajar)</td><td>Lista y restaura backups guardados en Google Drive</td></tr>
+      <tr><td>📧 Gmail</td><td>Lee mails de Santander y detecta gastos automáticamente (solo PC)</td></tr>
+    </table>
+  </section>
+
+  <!-- BANCOS -->
+  <section class="section" id="bancos">
+    <div class="section-header">
+      <span class="section-icon">🏦</span>
+      <div>
+        <div class="section-title">Bancos y Efectivo</div>
+        <div class="section-subtitle">Gestión de cuentas bancarias y saldos en pesos</div>
+      </div>
+    </div>
+    <p>Panel para registrar y actualizar los saldos de cuentas bancarias, cajas de ahorro, cuentas corrientes y efectivo en pesos.</p>
+
+    <h2>Cómo agregar una cuenta</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Completar el campo "Nombre" con el nombre de la cuenta (ej. "Santander 068", "Mercado Pago", "Efectivo").</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el saldo actual en el campo "Saldo $".</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Hacer clic en "+ Agregar".</div></div>
+    </div>
+
+    <h2>Actualizar un saldo</h2>
+    <p>Hacer clic en el valor del saldo en la tabla. Se convierte en un campo editable. Ingresar el nuevo valor y presionar Enter o hacer clic fuera.</p>
+
+    <h2>Eliminar una cuenta</h2>
+    <p>Hacer clic en el botón 🗑 de la fila correspondiente. La app pedirá confirmación.</p>
+
+    <div class="note">📌 Los saldos de bancos son la base del cálculo de "Efectivo / Banco Disponible" y "Saldo Proyectado" en el dashboard.</div>
+  </section>
+
+  <!-- TARJETAS -->
+  <section class="section" id="tarjetas">
+    <div class="section-header">
+      <span class="section-icon">💳</span>
+      <div>
+        <div class="section-title">Tarjetas de Crédito</div>
+        <div class="section-subtitle">Control de deuda en tarjetas en pesos</div>
+      </div>
+    </div>
+    <p>Panel para registrar el saldo adeudado en cada tarjeta de crédito en pesos. El saldo representa la deuda acumulada de consumos del período.</p>
+
+    <h2>Cómo agregar una tarjeta</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Ingresar el nombre de la tarjeta (ej. "Visa Santander", "American Santander").</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el saldo actual adeudado.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Hacer clic en "+ Agregar".</div></div>
+    </div>
+
+    <div class="tip">💡 El nombre de la tarjeta es importante para el módulo Gmail. El sistema auto-detecta la tarjeta del mail de Santander buscando "Visa" o "Amex" en el nombre de la tarjeta.</div>
+
+    <h2>Actualizar saldo</h2>
+    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline.</p>
+  </section>
+
+  <!-- SERVICIOS FIJOS -->
+  <section class="section" id="servicios">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <div>
+        <div class="section-title">Servicios y Vencimientos Fijos</div>
+        <div class="section-subtitle">Gastos recurrentes mensuales con fecha de vencimiento</div>
+      </div>
+    </div>
+    <p>Panel para registrar todos los gastos fijos del mes: servicios (luz, gas, internet), seguros, suscripciones, expensas, etc. Cada servicio tiene un presupuesto estimado y se va marcando como pagado cuando se abona.</p>
+
+    <h2>Campos de un servicio fijo</h2>
+    <table>
+      <tr><th>Campo</th><th>Descripción</th></tr>
+      <tr><td>Nombre</td><td>Identificador del servicio (ej. "Edemsa", "Claro", "Spotify")</td></tr>
+      <tr><td>Presupuesto</td><td>Monto estimado que se pagará este mes</td></tr>
+      <tr><td>Vencimiento</td><td>Fecha límite de pago (se limpia al abrir nuevo mes)</td></tr>
+      <tr><td>Medio de pago</td><td>Tarjeta o cuenta con la que se paga</td></tr>
+      <tr><td>Clase</td><td>M=Mendoza, O=Rosario, X=Otros (para filtrado)</td></tr>
+      <tr><td>Rubro</td><td>Categoría del gasto</td></tr>
+    </table>
+
+    <h2>Registrar un pago</h2>
+    <p>Al pagar un servicio, hacer clic en la celda de "F.Pago" (fecha de pago) en la tabla y seleccionar la fecha. El sistema marca automáticamente el servicio como pagado y actualiza el indicador de "Fijos Pendientes" en el dashboard.</p>
+
+    <h2>Estados de un servicio</h2>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+      <span class="badge badge-green">✓ PAGADO</span>
+      <span class="badge badge-amber">◑ PARCIAL</span>
+      <span class="badge badge-red">✗ PENDIENTE</span>
+    </div>
+
+    <div class="tip">💡 Con el módulo Gmail activo, los pagos de servicios fijos se pueden asentar automáticamente cuando llega el mail de débito de Santander, sin necesidad de hacerlo manualmente.</div>
+
+    <div class="note">📌 Al abrir un Nuevo Mes, todos los servicios se resetean: el monto pagado vuelve a 0, la fecha de pago se borra y la fecha de vencimiento también se limpia (para ingresarla nuevamente para el nuevo mes).</div>
+  </section>
+
+  <!-- GASTOS CORRIENTES -->
+  <section class="section" id="corrientes">
+    <div class="section-header">
+      <span class="section-icon">🛍️</span>
+      <div>
+        <div class="section-title">Gastos Corrientes / Caja Diaria</div>
+        <div class="section-subtitle">Registro de gastos variables del mes</div>
+      </div>
+    </div>
+    <p>Panel para registrar todos los gastos variables del mes: supermercado, restaurantes, farmacia, ropa, etc. A diferencia de los servicios fijos, estos no se resetean al abrir nuevo mes — quedan en el historial del período.</p>
+
+    <h2>Cómo registrar un gasto</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Seleccionar el <strong>Rubro</strong> (categoría del gasto).</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el <strong>Detalle</strong> (descripción breve, ej. "Carrefour", "YPF").</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar el <strong>Monto</strong>.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">Seleccionar el <strong>Medio de pago</strong> (tarjeta o banco).</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body">Completar la <strong>Fecha</strong> de pago.</div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body">Hacer clic en "+ Registrar gasto".</div></div>
+    </div>
+
+    <h2>Clasificación</h2>
+    <p>Cada gasto se clasifica opcionalmente con una clase:</p>
+    <ul>
+      <li><strong>M</strong> — Mendoza</li>
+      <li><strong>O</strong> — Rosario</li>
+      <li><strong>X</strong> — Otros / Extraordinario</li>
+    </ul>
+
+    <div class="tip">💡 Con el módulo Gmail, los consumos de tarjeta de crédito detectados en los mails de Santander se registran automáticamente como gastos corrientes si no coinciden con un servicio fijo.</div>
+  </section>
+
+  <!-- CUOTAS -->
+  <section class="section" id="cuotas">
+    <div class="section-header">
+      <span class="section-icon">📅</span>
+      <div>
+        <div class="section-title">Compras en Cuotas</div>
+        <div class="section-subtitle">Seguimiento de compras financiadas</div>
+      </div>
+    </div>
+    <p>Panel para registrar compras financiadas en cuotas. Cada cuota se genera automáticamente como un servicio fijo en cada período hasta completar el total de cuotas.</p>
+
+    <h2>Cómo registrar una compra en cuotas</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Ingresar la <strong>descripción</strong> de la compra.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el <strong>monto por cuota</strong>.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar el <strong>total de cuotas</strong>.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">Seleccionar el <strong>medio de pago</strong>.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body">Hacer clic en "+ Agregar cuota".</div></div>
+    </div>
+    <p>La primera cuota aparece inmediatamente en el panel de Servicios Fijos. Al abrir cada nuevo mes, la siguiente cuota se genera automáticamente hasta completar el total.</p>
+    <div class="note">📌 Si quedan 1 o 2 cuotas pendientes, la app muestra una alerta visual en la sección de próximos vencimientos.</div>
+  </section>
+
+  <!-- TRANSFERENCIAS -->
+  <section class="section" id="transferencias">
+    <div class="section-header">
+      <span class="section-icon">↔️</span>
+      <div>
+        <div class="section-title">Transferencias entre Cuentas</div>
+        <div class="section-subtitle">Movimientos internos entre bancos y tarjetas</div>
+      </div>
+    </div>
+    <p>Panel para registrar transferencias de fondos entre cuentas propias: de banco a banco, de banco a tarjeta (pago de tarjeta), etc.</p>
+
+    <h2>Cómo registrar una transferencia</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Seleccionar la cuenta <strong>Origen</strong>.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Seleccionar la cuenta <strong>Destino</strong>.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar el <strong>monto</strong>.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">Ingresar la <strong>fecha</strong>.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body">Hacer clic en "+ Registrar".</div></div>
+    </div>
+    <div class="info">ℹ️ Las transferencias quedan registradas en el historial del período cerrado, pero no afectan directamente los saldos de bancos (los saldos se actualizan manualmente).</div>
+  </section>
+
+  <!-- RUBROS -->
+  <section class="section" id="rubros">
+    <div class="section-header">
+      <span class="section-icon">⚙️</span>
+      <div>
+        <div class="section-title">Rubros de Gasto</div>
+        <div class="section-subtitle">Categorías personalizables para clasificar gastos</div>
+      </div>
+    </div>
+    <p>Los rubros son las categorías con las que se clasifican los gastos corrientes (ej. "Supermercado", "Restaurantes", "Farmacia", "Combustible"). Se pueden crear y eliminar libremente.</p>
+
+    <h2>Crear un rubro</h2>
+    <p>Ingresar el nombre del rubro en el campo de texto y hacer clic en "+ Agregar".</p>
+
+    <h2>Eliminar un rubro</h2>
+    <p>Hacer clic en el botón 🗑 junto al rubro. Si hay gastos asociados a ese rubro, quedarán sin categoría.</p>
+
+    <div class="note">📌 Los rubros son independientes para pesos y dólares. Cada moneda tiene su propia lista de rubros.</div>
+  </section>
+
+  <!-- DÓLARES -->
+  <section class="section" id="dolares">
+    <div class="section-header">
+      <span class="section-icon">💵</span>
+      <div>
+        <div class="section-title">Módulo Dólares</div>
+        <div class="section-subtitle">Gestión de cuentas, tarjetas, servicios y gastos en USD</div>
+      </div>
+    </div>
+    <p>La pestaña Dólares replica la estructura del Mes Actual pero en moneda extranjera. Permite gestionar de forma independiente todo lo denominado en USD.</p>
+
+    <h2>Secciones del módulo Dólares</h2>
+    <table>
+      <tr><th>Panel</th><th>Descripción</th></tr>
+      <tr><td>🏦 Cuentas en USD</td><td>Cuentas bancarias y efectivo en dólares</td></tr>
+      <tr><td>💳 Tarjetas en USD</td><td>Tarjetas de crédito con saldo en USD (ej. Visa Internacional)</td></tr>
+      <tr><td>📋 Servicios Fijos en USD</td><td>Suscripciones y servicios que se cobran en dólares (ej. Spotify, Netflix, Claude)</td></tr>
+      <tr><td>🛍️ Gastos Corrientes en USD</td><td>Gastos variables en dólares</td></tr>
+    </table>
+
+    <h2>Tipo de cambio</h2>
+    <p>La app obtiene automáticamente el tipo de cambio oficial (dólar venta) al abrir la pestaña Dólares. También se puede ingresar manualmente. El tipo de cambio se usa para mostrar los totales en pesos equivalentes.</p>
+
+    <div class="tip">💡 Los servicios en USD también se integran con el módulo Gmail: cuando llega un mail de Santander con un débito en U$S, la app intenta matchear con los servicios en USD antes de crear un gasto corriente.</div>
+  </section>
+
+  <!-- PRESUPUESTO -->
+  <section class="section" id="presupuesto">
+    <div class="section-header">
+      <span class="section-icon">🎯</span>
+      <div>
+        <div class="section-title">Presupuesto</div>
+        <div class="section-subtitle">Límites de gasto mensual por categoría</div>
+      </div>
+    </div>
+    <p>La pestaña Presupuesto permite definir límites de gasto mensual para cada rubro y hacer seguimiento del cumplimiento en tiempo real.</p>
+
+    <h2>Configurar un límite</h2>
+    <p>Para cada rubro se puede definir un monto máximo mensual. La app muestra el gasto actual vs el límite con una barra de progreso y una indicación de porcentaje.</p>
+
+    <h2>Indicadores visuales</h2>
+    <ul>
+      <li><span class="badge badge-green">Verde</span> — Dentro del presupuesto</li>
+      <li><span class="badge badge-amber">Amarillo</span> — Cerca del límite (>80%)</li>
+      <li><span class="badge badge-red">Rojo</span> — Presupuesto superado</li>
+    </ul>
+  </section>
+
+  <!-- REPORTES -->
+  <section class="section" id="reportes">
+    <div class="section-header">
+      <span class="section-icon">📈</span>
+      <div>
+        <div class="section-title">Reportes</div>
+        <div class="section-subtitle">Análisis y visualización del período actual</div>
+      </div>
+    </div>
+    <p>La pestaña Reportes muestra gráficos y resúmenes del período en curso para analizar la distribución de gastos.</p>
+
+    <h2>Contenido</h2>
+    <ul>
+      <li>Distribución de gastos corrientes por rubro</li>
+      <li>Comparativa entre presupuesto y gasto real por categoría</li>
+      <li>Resumen de servicios fijos pagados vs pendientes</li>
+      <li>Totales por medio de pago</li>
+      <li>Comparativa entre períodos (si hay historial)</li>
+    </ul>
+  </section>
+
+  <!-- INVERSIONES -->
+  <section class="section" id="inversiones">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <div>
+        <div class="section-title">Inversiones</div>
+        <div class="section-subtitle">Seguimiento de portfolio y cotizaciones</div>
+      </div>
+    </div>
+    <p>La pestaña Inversiones permite llevar el control de un portfolio de inversiones con cotizaciones en tiempo real.</p>
+
+    <h2>Instrumentos manuales</h2>
+    <p>Se pueden cargar instrumentos financieros manualmente con su monto en ARS o USD. Útil para plazo fijo, FCI, obligaciones negociables, etc.</p>
+
+    <h2>Acciones (YPF.BA)</h2>
+    <p>La app tiene integración especial con la cotización de YPF.BA. Se puede registrar la cantidad de acciones poseídas y la app calcula automáticamente el valor del portfolio en USD y en pesos.</p>
+
+    <div class="info">ℹ️ La cotización de YPF.BA se actualiza automáticamente al abrir la pestaña y cada cierto tiempo. También se puede actualizar manualmente haciendo clic en el valor.</div>
+  </section>
+
+  <!-- ANUAL -->
+  <section class="section" id="anual">
+    <div class="section-header">
+      <span class="section-icon">📅</span>
+      <div>
+        <div class="section-title">Resumen Anual</div>
+        <div class="section-subtitle">Comparativa de los últimos 12 períodos</div>
+      </div>
+    </div>
+    <p>La pestaña Anual muestra una tabla comparativa con los datos de los últimos 12 períodos cerrados más el mes actual. Permite ver la evolución de gastos, saldos y deudas a lo largo del tiempo.</p>
+    <p>Incluye un botón para exportar el resumen anual a Excel.</p>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section class="section" id="historico">
+    <div class="section-header">
+      <span class="section-icon">🗂</span>
+      <div>
+        <div class="section-title">Períodos Cerrados</div>
+        <div class="section-subtitle">Historial de meses anteriores (solo lectura)</div>
+      </div>
+    </div>
+    <p>Cada vez que se abre un Nuevo Mes, el período actual se archiva y aparece como una tab adicional. Los períodos cerrados son de solo lectura y muestran el estado exacto al momento del cierre.</p>
+
+    <h2>Contenido de un período cerrado</h2>
+    <ul>
+      <li>Saldos de bancos al cierre</li>
+      <li>Deuda de tarjetas al cierre</li>
+      <li>Servicios fijos con estado de pago</li>
+      <li>Gastos corrientes del período</li>
+      <li>Transferencias</li>
+    </ul>
+
+    <h2>Eliminar un período</h2>
+    <p>Hacer clic en el ✕ de la tab del período. Esta acción es irreversible.</p>
+
+    <div class="note">📌 Los períodos cerrados se incluyen en el backup a Drive y en el export JSON.</div>
+  </section>
+
+  <!-- NUEVO MES -->
+  <section class="section" id="nuevo-mes">
+    <div class="section-header">
+      <span class="section-icon">🔄</span>
+      <div>
+        <div class="section-title">Abrir Nuevo Mes</div>
+        <div class="section-subtitle">Proceso de cierre y apertura de período</div>
+      </div>
+    </div>
+    <p>Al hacer clic en "🔄 Abrir Nuevo Mes", la app realiza las siguientes acciones:</p>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Archiva el período actual:</strong> guarda una snapshot de todos los datos en el historial.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Limpia los gastos corrientes:</strong> la lista de gastos del mes se vacía.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Resetea los servicios fijos:</strong> el monto pagado vuelve a 0, la fecha de pago y vencimiento se borran. El nombre, presupuesto y medio de pago se conservan.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Avanza las cuotas:</strong> genera la siguiente cuota de cada compra en cuotas activa.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Limpia las transferencias:</strong> la lista de transferencias se vacía.</div></div>
+    </div>
+
+    <div class="warning">⚠️ Esta acción no se puede deshacer directamente. Se recomienda exportar un backup JSON antes de ejecutarla.</div>
+
+    <div class="tip">💡 Los saldos de bancos y tarjetas NO se resetean automáticamente. Deben actualizarse manualmente con los saldos reales del nuevo período.</div>
+  </section>
+
+  <!-- GMAIL -->
+  <section class="section" id="gmail">
+    <div class="section-header">
+      <span class="section-icon">📧</span>
+      <div>
+        <div class="section-title">Módulo Gmail</div>
+        <div class="section-subtitle">Registro automático de gastos desde mails de Santander</div>
+      </div>
+    </div>
+    <p>El módulo Gmail lee automáticamente los correos de débito y consumo que envía el Banco Santander Argentina y los registra en la app sin necesidad de ingresarlos manualmente.</p>
+
+    <h2>Requisitos</h2>
+    <ul>
+      <li>Gmail API habilitada en el proyecto Google Cloud.</li>
+      <li>Reenvío automático configurado desde la cuenta personal (donde llegan los mails del banco) hacia la cuenta del proyecto Google Cloud.</li>
+      <li>Servicios fijos cargados con nombres similares a los comercios de Santander (para el matching automático).</li>
+    </ul>
+
+    <h2>Cómo usar</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Hacer clic en el botón rojo <strong>📧 Gmail</strong> del header (solo visible en PC).</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Seleccionar la cuenta Google del proyecto y aceptar los permisos.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">La app busca mails de Santander de los últimos 30 días y muestra los gastos detectados en modales.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">Confirmar o cancelar cada gasto detectado.</div></div>
+    </div>
+
+    <h2>Tipos de modal</h2>
+    <div class="card" style="border-left: 4px solid #0f766e;">
+      <div class="card-title">🔧 Modal verde — Pago de servicio fijo</div>
+      <div class="card-body">Aparece cuando el comercio del mail coincide con un servicio fijo pendiente. Permite asentar el pago directamente en el servicio existente.</div>
+    </div>
+    <div class="card" style="border-left: 4px solid #ea4335;">
+      <div class="card-title">📧 Modal rojo — Gasto corriente</div>
+      <div class="card-body">Aparece cuando no hay match con servicios fijos. Registra el gasto en la lista de corrientes ARS o USD según la moneda detectada.</div>
+    </div>
+
+    <h2>Comandos útiles (consola del navegador)</h2>
+    <pre>// Buscar mails manualmente
+cfGmailChequear()
+
+// Resetear historial y buscar todos los mails de 30 días
+localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
+
+    <div class="note">📌 El token de Gmail dura aproximadamente 1 hora. Después de ese tiempo es necesario hacer clic en 📧 Gmail nuevamente para renovarlo.</div>
+  </section>
+
+  <!-- CARPETA -->
+  <section class="section" id="carpeta">
+    <div class="section-header">
+      <span class="section-icon">📂</span>
+      <div>
+        <div class="section-title">Backup en Carpeta Local</div>
+        <div class="section-subtitle">Guardado automático en el sistema de archivos</div>
+      </div>
+    </div>
+    <p>La función "Carpeta" vincula una carpeta del sistema de archivos donde la app guarda backups automáticos JSON cada vez que hay cambios.</p>
+
+    <h2>Cómo configurar</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-body">Hacer clic en el botón <strong>📂 Carpeta</strong> del header.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Seleccionar una carpeta del sistema de archivos.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Otorgar los permisos de escritura cuando el navegador lo solicite.</div></div>
+    </div>
+    <p>La app mantiene los últimos 7 backups en la carpeta, eliminando los más antiguos automáticamente.</p>
+
+    <div class="note">📌 Esta función requiere Chrome o Edge en escritorio. No disponible en Firefox ni Safari.</div>
+  </section>
+
+  <!-- DRIVE -->
+  <section class="section" id="drive">
+    <div class="section-header">
+      <span class="section-icon">☁️</span>
+      <div>
+        <div class="section-title">Sincronización con Google Drive</div>
+        <div class="section-subtitle">Backup en la nube con Google</div>
+      </div>
+    </div>
+    <p>La app puede sincronizar automáticamente con Google Drive usando la cuenta Google configurada.</p>
+
+    <h2>Login con Google</h2>
+    <p>Al hacer login (mediante el módulo Gmail o el botón ☁️ Drive), la app obtiene acceso a Drive y Gmail con los permisos necesarios.</p>
+
+    <h2>Sync automático</h2>
+    <p>La app sincroniza automáticamente a Drive cuando detecta cambios pendientes, y también al cerrar la app con el botón Salir.</p>
+
+    <h2>Restaurar desde Drive</h2>
+    <p>El botón 📂 Drive (bajar) lista los backups disponibles en Drive y permite seleccionar uno para restaurar.</p>
+
+    <div class="tip">💡 El archivo de sync automático se llama <code>backup_autosync.json</code> en el appdata de Drive. No ocupa espacio visible en "Mi unidad".</div>
+  </section>
+
+  <!-- IMPRESIÓN -->
+  <section class="section" id="impresion">
+    <div class="section-header">
+      <span class="section-icon">🖨️</span>
+      <div>
+        <div class="section-title">Impresión y PDF</div>
+        <div class="section-subtitle">Exportar vistas como PDF</div>
+      </div>
+    </div>
+    <p>El botón 🖨️ PDF imprime la vista actual del navegador, que puede guardarse como PDF usando la función "Guardar como PDF" del diálogo de impresión del sistema operativo.</p>
+    <p>Los elementos del header (botones, controles) se ocultan en la impresión para mostrar solo los datos.</p>
+  </section>
+
+  <!-- CONSOLA -->
+  <section class="section" id="consola">
+    <div class="section-header">
+      <span class="section-icon">🛠</span>
+      <div>
+        <div class="section-title">Comandos de Consola</div>
+        <div class="section-subtitle">Comandos útiles para la consola del navegador (F12)</div>
+      </div>
+    </div>
+
+    <h2>Gmail</h2>
+    <pre>// Buscar mails nuevos de Santander
+cfGmailChequear()
+
+// Resetear procesados y buscar todos
+localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()
+
+// Ver mails en cola
+console.log(JSON.stringify(cfGmailQueue.map(g=>({comercio:g.comercio,monto:g.monto}))))
+
+// Verificar si un gasto ya fue registrado
+console.log(cfGmailYaRegistrado({comercio:'Spotify', monto:2.25, fecha:'2026-06-30'}))</pre>
+
+    <h2>Datos</h2>
+    <pre>// Ver servicios fijos en USD
+console.log(JSON.stringify(listaServiciosUSD))
+
+// Ver últimos gastos corrientes
+console.log(JSON.stringify(listaCorrientes.slice(-5)))
+
+// Ver saldos de bancos
+console.log(JSON.stringify(listaBancos))</pre>
+
+    <h2>Drive</h2>
+    <pre>// Forzar sincronización manual
+syncSilencioso()
+
+// Ver token de Drive activo
+console.log(gToken ? 'Token activo' : 'Sin token')</pre>
+  </section>
+
+</main>
+</div>
+
+<script>
+// Resaltar sección activa en sidebar al hacer scroll
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sidebar a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = entry.target.id;
+      const active = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
