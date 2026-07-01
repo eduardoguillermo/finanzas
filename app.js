@@ -2789,7 +2789,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.42';
+const APP_VERSION = 'v3.7.43';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -4028,7 +4028,14 @@ function cfGmailLoginYChequear() {
 
 async function cfGmailChequear() {
     if (cfEsMovil()) return;
-    if (!gTokenCargarLocal()) return;
+    if (!gTokenCargarLocal()) {
+        // Token vencido o ausente: intentar renovar en silencio (sin popup) si hay sesión Google activa
+        const renovado = await new Promise(resolve => {
+            driveGetToken(t => resolve(!!t));
+            setTimeout(() => resolve(false), 8000);
+        });
+        if (!renovado) { console.log('[CF Gmail] Sin token válido y no se pudo renovar en silencio.'); return; }
+    }
     console.log('[CF Gmail] Chequeando mails Santander...');
     try {
         const gastos = await cfGmailBuscarGastos(gToken);
@@ -4039,6 +4046,13 @@ async function cfGmailChequear() {
         setTimeout(cfGmailMostrarSiguiente, 5500);
     } catch(e) { console.error('[CF Gmail] Error:', e.message); }
 }
+
+// Renovación silenciosa periódica del token (evita que expire mientras la app está abierta)
+setInterval(() => {
+    if (cfEsMovil()) return;
+    if (!gToken) return; // solo renovamos si ya hubo login en esta sesión
+    driveGetToken(() => {});
+}, 50 * 60 * 1000);
 
 function cfAbrirModalPagoServicio(datos, servicio) {
     const prev = document.getElementById('cf-gmail-overlay');
