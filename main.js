@@ -2789,7 +2789,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.41';
+const APP_VERSION = 'v3.7.42';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -3899,7 +3899,7 @@ function cfParsearMailMercadoPago(texto) {
     const esMP = /mercado\s*pago/i.test(texto) && /(pagaste|compraste)/i.test(texto);
     if (!esMP) return null;
     const t = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const resultado = { moneda: 'ARS', monto: null, comercio: '', fecha: '', hora: '', cuotas: null, tarjeta: '', tipo_tarjeta: 'Tarjeta', tipo: 'gasto' };
+    const resultado = { moneda: 'ARS', monto: null, comercio: '', fecha: '', hora: '', cuotas: null, tarjeta: '', tipo_tarjeta: 'Tarjeta', tipo: 'gasto', origen: 'MercadoPago' };
     const rComercio = /Le compraste a\s*([^\n]+)/i.exec(t);
     if (rComercio) resultado.comercio = rComercio[1].trim();
     const rMonto = /Pagaste\s*\$\s?([\d.,]+)/i.exec(t);
@@ -3915,6 +3915,33 @@ function cfParsearMailMercadoPago(texto) {
     return resultado;
 }
 
+const CF_MP_TRANSFER_RUBROS = {
+    'carlos alfredo irrera': 'Sodero',
+    'miguel angel torres': 'Jardinero',
+    'edgardo sebastian soria': 'Delivery',
+    'elvira reina tito': 'Carnicería / Verdulería'
+};
+
+function cfNormalizarNombre(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function cfParsearMailMercadoPagoTransferencia(texto) {
+    if (!texto) return null;
+    const esTransf = /ya enviamos tu transferencia/i.test(texto);
+    if (!esTransf) return null;
+    const t = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const resultado = { moneda: 'ARS', monto: null, comercio: '', fecha: '', hora: '', cuotas: null, tarjeta: '', tipo_tarjeta: 'Transferencia', tipo: 'gasto', origen: 'MercadoPago' };
+    const rMonto = /transferencia de\s*\$\s?([\d.,]+)/i.exec(t);
+    if (rMonto) resultado.monto = parseFloat(rMonto[1].replace(/\./g, '').replace(',', '.'));
+    const rNombre = /Nombre y apellido:\s*([^\n]+)/i.exec(t);
+    if (rNombre) resultado.comercio = rNombre[1].trim();
+    const rubro = CF_MP_TRANSFER_RUBROS[cfNormalizarNombre(resultado.comercio)];
+    if (rubro) resultado.rubroSugerido = rubro;
+    resultado.tipo = 'gasto';
+    return resultado;
+}
+
 async function cfGmailBuscarGastos(token) {
     const query = encodeURIComponent(CF_SANTANDER_QUERY);
     const resp = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=20`, { headers: { Authorization: 'Bearer ' + token } });
@@ -3926,7 +3953,7 @@ async function cfGmailBuscarGastos(token) {
         if (cfGmailIsProcessed(msg.id)) continue;
         const det = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json());
         const texto = cfGmailExtraerTexto(det.payload);
-        const datos = cfParsearMailSantander(texto) || cfParsearMailMercadoPago(texto);
+        const datos = cfParsearMailSantander(texto) || cfParsearMailMercadoPago(texto) || cfParsearMailMercadoPagoTransferencia(texto);
         if (datos) {
             if (!datos.fecha && det.internalDate) {
                 const d = new Date(parseInt(det.internalDate));
@@ -4026,7 +4053,7 @@ function cfAbrirModalPagoServicio(datos, servicio) {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
             <span style="font-size:24px;">🔧</span>
             <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Pago de servicio fijo</h3>
-            <span style="font-size:10px;background:#0f766e;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">Santander</span>
+            <span style="font-size:10px;background:#0f766e;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">${datos.origen || 'Santander'}</span>
         </div>
         <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #0f766e;">
             <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${servicio.nombre}</div>
@@ -4104,7 +4131,7 @@ function cfAbrirModalGasto(datos) {
     }
     const opsTarjetas = listaTarjetasActual.map(t => `<option value="${t.id}" ${t.id === medioPagoId ? 'selected' : ''}>💳 ${t.nombre}</option>`).join('');
     const listaRubrosActual = esUSD ? listaRubrosUSD : listaRubros;
-    const opsRubros = listaRubrosActual.map(r => `<option value="${r}">${r}</option>`).join('');
+    const opsRubros = listaRubrosActual.map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
     const fechaHoy = new Date().toISOString().split('T')[0];
     const overlay = document.createElement('div');
     overlay.id = 'cf-gmail-overlay';
@@ -4114,7 +4141,7 @@ function cfAbrirModalGasto(datos) {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
             <span style="font-size:24px;">📧</span>
             <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Gasto detectado</h3>
-            <span style="font-size:10px;background:#ea4335;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">Santander</span>
+            <span style="font-size:10px;background:#ea4335;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">${datos.origen || 'Santander'}</span>
         </div>
         ${(!datos.monto || !datos.comercio) ? `<div style="font-size:12px;color:#fbbf24;background:#78350f;border-radius:7px;padding:7px 10px;margin-bottom:10px;">⚠️ Algunos datos no se detectaron. Revisá los campos.</div>` : ''}
         <div style="display:flex;gap:8px;margin-bottom:11px;">
