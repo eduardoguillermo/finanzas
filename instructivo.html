@@ -362,11 +362,19 @@
     <h2>Métodos de backup</h2>
     <div class="card">
       <div class="card-title">☁️ Google Drive (automático)</div>
-      <div class="card-body">Al hacer login con Google, la app sincroniza automáticamente cada vez que se detectan cambios. También al cerrar con el botón 🚪 Salir.</div>
+      <div class="card-body">Al hacer login con Google, la app sincroniza automáticamente cada vez que se detectan cambios.</div>
     </div>
     <div class="card">
       <div class="card-title">📂 Carpeta local (automático)</div>
-      <div class="card-body">Vinculando una carpeta del sistema de archivos, la app guarda un backup local automáticamente (últimos 7 backups). Requiere Chrome/Edge en escritorio.</div>
+      <div class="card-body">Vinculando una carpeta del sistema de archivos, la app guarda un backup local automáticamente (últimos 7 backups) cada vez que se guardan cambios. Requiere Chrome/Edge en escritorio.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📸 Snapshot local</div>
+      <div class="card-body">La app guarda automáticamente snapshots en localStorage al cerrar la pestaña o al ocultarla (cambiar de pestaña), manteniendo los últimos 10. También se pueden ver y restaurar manualmente desde el modal de snapshots.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🚪 Salir (backup completo)</div>
+      <div class="card-body">Al tocar el botón 🚪 Salir, la app ejecuta los tres backups en secuencia — snapshot local, backup en carpeta (si está vinculada) y sincronización con Drive (si hay sesión iniciada) — y muestra un cartel con el detalle de cada uno antes de cerrar la pestaña.</div>
     </div>
     <div class="card">
       <div class="card-title">💾 Exportar JSON (manual)</div>
@@ -423,7 +431,7 @@
       <tr><td>📂 Carpeta</td><td>Vincula una carpeta local para backup automático</td></tr>
       <tr><td>☁️ Drive</td><td>Sube un backup manual a Google Drive</td></tr>
       <tr><td>📂 Drive (bajar)</td><td>Lista y restaura backups guardados en Google Drive</td></tr>
-      <tr><td>📧 Gmail</td><td>Lee mails de Santander y detecta gastos automáticamente (solo PC)</td></tr>
+      <tr><td>📧 Gmail</td><td>Lee mails de Santander y MercadoPago y detecta gastos automáticamente (solo PC)</td></tr>
     </table>
   </section>
 
@@ -770,23 +778,23 @@
       <span class="section-icon">📧</span>
       <div>
         <div class="section-title">Módulo Gmail</div>
-        <div class="section-subtitle">Registro automático de gastos desde mails de Santander</div>
+        <div class="section-subtitle">Registro automático de gastos desde mails de Santander y MercadoPago</div>
       </div>
     </div>
-    <p>El módulo Gmail lee automáticamente los correos de débito y consumo que envía el Banco Santander Argentina y los registra en la app sin necesidad de ingresarlos manualmente.</p>
+    <p>El módulo Gmail lee automáticamente los correos de débito y consumo que envía el Banco Santander Argentina, y los correos de compra que envía MercadoPago (<code>info@mercadopago.com</code>), registrando los gastos en la app sin necesidad de ingresarlos manualmente.</p>
 
     <h2>Requisitos</h2>
     <ul>
       <li>Gmail API habilitada en el proyecto Google Cloud.</li>
-      <li>Reenvío automático configurado desde la cuenta personal (donde llegan los mails del banco) hacia la cuenta del proyecto Google Cloud.</li>
-      <li>Servicios fijos cargados con nombres similares a los comercios de Santander (para el matching automático).</li>
+      <li>Reenvío automático configurado desde la cuenta personal (donde llegan los mails del banco y/o MercadoPago) hacia la cuenta del proyecto Google Cloud. Se necesita un filtro de reenvío separado por cada remitente (Santander y MercadoPago).</li>
+      <li>Servicios fijos cargados con nombres similares a los comercios de Santander o MercadoPago (para el matching automático).</li>
     </ul>
 
     <h2>Cómo usar</h2>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div class="step-body">Hacer clic en el botón rojo <strong>📧 Gmail</strong> del header (solo visible en PC).</div></div>
       <div class="step"><div class="step-num">2</div><div class="step-body">Seleccionar la cuenta Google del proyecto y aceptar los permisos.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body">La app busca mails de Santander de los últimos 30 días y muestra los gastos detectados en modales.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">La app busca mails de Santander y de MercadoPago de los últimos 30 días y muestra los gastos detectados en modales.</div></div>
       <div class="step"><div class="step-num">4</div><div class="step-body">Confirmar o cancelar cada gasto detectado.</div></div>
     </div>
 
@@ -847,7 +855,7 @@ localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
     <p>Al hacer login (mediante el módulo Gmail o el botón ☁️ Drive), la app obtiene acceso a Drive y Gmail con los permisos necesarios.</p>
 
     <h2>Sync automático</h2>
-    <p>La app sincroniza automáticamente a Drive cuando detecta cambios pendientes, y también al cerrar la app con el botón Salir.</p>
+    <p>La app sincroniza automáticamente a Drive cuando detecta cambios pendientes. Al tocar 🚪 Salir, la sincronización con Drive corre junto con el snapshot local y el backup en carpeta, mostrando un cartel con el resultado de cada uno.</p>
 
     <h2>Restaurar desde Drive</h2>
     <p>El botón 📂 Drive (bajar) lista los backups disponibles en Drive y permite seleccionar uno para restaurar.</p>
