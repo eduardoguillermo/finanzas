@@ -2761,7 +2761,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.37';
+const APP_VERSION = 'v3.7.39';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -3792,7 +3792,7 @@ function limpiarCache() {
 //  Detección automática mails Santander
 // ════════════════════════════════════════════════════
 
-const CF_SANTANDER_QUERY = 'subject:(Pagaste OR "débito automático" OR "débito con tu") newer_than:30d';
+const CF_SANTANDER_QUERY = '(subject:(Pagaste OR "débito automático" OR "débito con tu") OR from:info@mercadopago.com) newer_than:30d';
 
 function cfEsMovil() {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
@@ -3866,6 +3866,27 @@ function cfParsearMailSantander(texto) {
     return resultado;
 }
 
+function cfParsearMailMercadoPago(texto) {
+    if (!texto) return null;
+    const esMP = /mercado\s*pago/i.test(texto) && /(pagaste|compraste)/i.test(texto);
+    if (!esMP) return null;
+    const t = texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const resultado = { moneda: 'ARS', monto: null, comercio: '', fecha: '', hora: '', cuotas: null, tarjeta: '', tipo_tarjeta: 'Tarjeta', tipo: 'gasto' };
+    const rComercio = /Le compraste a\s*([^\n]+)/i.exec(t);
+    if (rComercio) resultado.comercio = rComercio[1].trim();
+    const rMonto = /Pagaste\s*\$\s?([\d.,]+)/i.exec(t);
+    if (rMonto) resultado.monto = parseFloat(rMonto[1].replace(/\./g, '').replace(',', '.'));
+    const rCuotas = /(\d+)\s*cuota/i.exec(t);
+    if (rCuotas) resultado.cuotas = parseInt(rCuotas[1]);
+    const rTarjeta = /\*{2,4}\s?(\d{4})/.exec(t);
+    if (rTarjeta) resultado.tarjeta = rTarjeta[1];
+    if (/american express|amex/i.test(t)) resultado.tipo_tarjeta = 'Amex';
+    else if (/visa/i.test(t)) resultado.tipo_tarjeta = 'Visa Crédito';
+    else if (/santander/i.test(t)) resultado.tipo_tarjeta = 'Santander Crédito';
+    resultado.tipo = (resultado.cuotas && resultado.cuotas > 1) ? 'cuota' : 'gasto';
+    return resultado;
+}
+
 async function cfGmailBuscarGastos(token) {
     const query = encodeURIComponent(CF_SANTANDER_QUERY);
     const resp = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=20`, { headers: { Authorization: 'Bearer ' + token } });
@@ -3877,8 +3898,15 @@ async function cfGmailBuscarGastos(token) {
         if (cfGmailIsProcessed(msg.id)) continue;
         const det = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json());
         const texto = cfGmailExtraerTexto(det.payload);
-        const datos = cfParsearMailSantander(texto);
-        if (datos) { datos._gmailId = msg.id; gastos.push(datos); }
+        const datos = cfParsearMailSantander(texto) || cfParsearMailMercadoPago(texto);
+        if (datos) {
+            if (!datos.fecha && det.internalDate) {
+                const d = new Date(parseInt(det.internalDate));
+                datos.fecha = d.toISOString().split('T')[0];
+            }
+            datos._gmailId = msg.id;
+            gastos.push(datos);
+        }
     }
     return gastos;
 }
