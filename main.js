@@ -2040,7 +2040,7 @@ function buildReportes() {
 
     // Bancos
     let totB=0; listaBancos.forEach(b=>totB+=b.saldo);
-    let cB=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;margin-bottom:0px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🏦 Cuentas Bancarias</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Cuenta</th><th style="padding:6px;text-align:right;">Saldo Disponible</th></tr>`;
+    let cB=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;margin-bottom:0px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🏦 Cuentas Bancarias</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Cuenta</th><th style="padding:6px;text-align:right;">Saldo Disponible</th></tr>`;
     listaBancos.forEach(b=>{ cB+=`<tr><td style="padding:5px 6px;font-weight:bold;">${b.nombre}</td><td style="padding:5px 6px;text-align:right;color:#0284c7;font-weight:bold;">${fmt(b.saldo)}</td></tr>`; });
     cB+=`<tr style="background:#f8fafc;font-weight:bold;"><td style="padding:6px;">TOTAL</td><td style="padding:6px;text-align:right;color:#0284c7;">${fmt(totB)}</td></tr></table></div>`;
 
@@ -2049,7 +2049,7 @@ function buildReportes() {
     listaServicios.forEach(s=>{ if(s.pagado>0&&mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
     listaCorrientes.forEach(c=>{ if(c.fechaPago&&mDeb[c.medioPagoId]!==undefined) mDeb[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
     let totT=0;
-    let cT=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">💳 Tarjetas de Crédito</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Tarjeta</th><th style="padding:6px;text-align:right;">Saldo base</th><th style="padding:6px;text-align:right;">Consumo mes</th><th style="padding:6px;text-align:right;">Total deuda</th></tr>`;
+    let cT=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">💳 Tarjetas de Crédito</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Tarjeta</th><th style="padding:6px;text-align:right;">Saldo base</th><th style="padding:6px;text-align:right;">Consumo mes</th><th style="padding:6px;text-align:right;">Total deuda</th></tr>`;
     listaTarjetas.forEach(t=>{ const c=mDeb[t.id]||0,tot=t.saldo+c; totT+=tot; cT+=`<tr><td style="padding:5px 6px;font-weight:bold;">${t.nombre}</td><td style="padding:5px 6px;text-align:right;">${fmt(t.saldo)}</td><td style="padding:5px 6px;text-align:right;color:#a855f7;">${fmt(c)}</td><td style="padding:5px 6px;text-align:right;font-weight:bold;color:#a855f7;">${fmt(tot)}</td></tr>`; });
     cT+=`<tr style="background:#f8fafc;font-weight:bold;"><td colspan="3" style="padding:6px;">TOTAL DEUDA</td><td style="padding:6px;text-align:right;color:#a855f7;">${fmt(totT)}</td></tr></table></div>`;
 
@@ -2059,7 +2059,7 @@ function buildReportes() {
     // Servicios fijos
     let totPres=0,totPag=0,totPend=0;
     listaServicios.forEach(s=>{ totPres+=s.presupuesto; totPag+=s.pagado; if(s.presupuesto>s.pagado) totPend+=(s.presupuesto-s.pagado); });
-    let tSrv=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos del Mes</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:center;">Clase</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pendiente</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
+    let tSrv=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos del Mes</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:center;">Clase</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pendiente</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
     listaServicios.forEach((s,ri)=>{
         const pend=Math.max(0,s.presupuesto-s.pagado), cc={'M':'#0284c7','O':'#a855f7','X':'#64748b'}[s.clase||'M'];
         let ec='#c5221f',eb='#fce8e6',et='PENDIENTE'; if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';eb='#e6f4ea';et='PAGADO';} else if(s.pagado>0){ec='#b06000';eb='#fef7e0';et='PARCIAL';}
@@ -2070,7 +2070,7 @@ function buildReportes() {
 
     // Por clase
     const clases=[{k:'M',label:'M — Mío',color:'#0284c7'},{k:'O',label:'O — Oma',color:'#a855f7'},{k:'X',label:'X — Otros',color:'#64748b'}];
-    let tCl=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #6366f1;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Servicios Fijos por Clase</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Clase</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pendiente</th><th style="padding:6px;text-align:right;">%</th></tr>`;
+    let tCl=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #6366f1;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Servicios Fijos por Clase</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Clase</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pendiente</th><th style="padding:6px;text-align:right;">%</th></tr>`;
     clases.forEach(cl=>{ const sc=listaServicios.filter(s=>(s.clase||'M')===cl.k); const p=sc.reduce((a,s)=>a+s.presupuesto,0),pg=sc.reduce((a,s)=>a+s.pagado,0),pe=sc.reduce((a,s)=>a+Math.max(0,s.presupuesto-s.pagado),0),pct=totPres>0?((p/totPres)*100).toFixed(1):'0.0';
         tCl+=`<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;"><span style="font-weight:bold;padding:2px 8px;border-radius:4px;background:${cl.color}22;color:${cl.color};">${cl.label}</span></td><td style="padding:5px 6px;text-align:right;font-weight:bold;">${fmt(p)}</td><td style="padding:5px 6px;text-align:right;color:#10b981;">${fmt(pg)}</td><td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmt(pe)}</td><td style="padding:5px 6px;text-align:right;">${pct}%</td></tr>`; });
     tCl+=`<tr style="background:#f8fafc;font-weight:bold;"><td>TOTAL</td><td style="text-align:right;">${fmt(totPres)}</td><td style="text-align:right;color:#10b981;">${fmt(totPag)}</td><td style="text-align:right;color:#ef4444;">${fmt(totPend)}</td><td></td></tr></table></div>`;
@@ -2093,7 +2093,7 @@ function buildReportes() {
         if(!porRConClase[c.rubro]) porRConClase[c.rubro]={monto:0,clase:c.clase||'M'};
         porRConClase[c.rubro].monto+=c.monto;
     });
-    let tCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:center;">Clase</th><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Sin confirmar</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
+    let tCorr=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:16px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">🛍️ Gastos Corrientes por Rubro</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:center;">Clase</th><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Sin confirmar</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
     [...todosR].sort().forEach(r=>{
         const pg=porR[r]||0,sf=porRSF[r]||0,pct=totCorr>0?((pg/totCorr)*100).toFixed(1):'0.0',col=colorRubro(r);
         const clase=(porRConClase[r]&&porRConClase[r].clase)||'M';
@@ -2110,7 +2110,7 @@ function buildReportes() {
 
     // Subtotales corrientes por clase
     const clases3=['M','O','X'], claseLabels={'M':'M — Mío','O':'O — Oma','X':'X — Otros'};
-    let tClaseCorr=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Gastos Corrientes por Clase</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Clase</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
+    let tClaseCorr=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #10b981;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📊 Gastos Corrientes por Clase</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Clase</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">% del total</th></tr>`;
     clases3.forEach(function(cl){
         const total=listaCorrientes.filter(c=>c.fechaPago&&(c.clase||'M')===cl&&!esPagoTarjeta(c.rubro)).reduce((a,c)=>a+c.monto,0);
         const pct=totCorr>0?((total/totCorr)*100).toFixed(1):'0.0';
@@ -2144,10 +2144,10 @@ function buildReportes() {
         const mDU2=calcMDU(), tc=tipoCambio;
         const tD=listaCuentasUSD.reduce((a,c)=>a+c.saldo,0), tTU=listaTarjetasUSD.reduce((a,t)=>a+(t.saldo+(mDU2[t.id]||0)),0), bal=tD-tTU;
         const gU=el('div'); gU.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;';
-        gU.innerHTML=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(tD)}</p><small style="color:#64748b;">${fmt(tD*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(tTU)}</p><small style="color:#64748b;">${fmt(tTU*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal>=0?'#16a34a':'#ef4444'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal>=0?'#16a34a':'#ef4444'};">${fmtUSD(bal)}</p><small style="color:#64748b;">${fmt(Math.abs(bal)*tc)}</small></div><div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal<0?'#ef4444':'#94a3b8'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal<0?'#ef4444':'#94a3b8'};">${bal<0?fmtUSD(Math.abs(bal)):'—'}</p><small style="color:#64748b;">${bal<0?fmt(Math.abs(bal)*tc):''}</small></div>`;
+        gU.innerHTML=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #16a34a;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD Disponibles</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#16a34a;">${fmtUSD(tD)}</p><small style="color:#64748b;">${fmt(tD*tc)}</small></div><div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #a855f7;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Pagar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#a855f7;">${fmtUSD(tTU)}</p><small style="color:#64748b;">${fmt(tTU*tc)}</small></div><div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal>=0?'#16a34a':'#ef4444'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Balance USD</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal>=0?'#16a34a':'#ef4444'};">${fmtUSD(bal)}</p><small style="color:#64748b;">${fmt(Math.abs(bal)*tc)}</small></div><div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid ${bal<0?'#ef4444':'#94a3b8'};padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">USD a Comprar</h4><p style="margin:0;font-size:20px;font-weight:bold;color:${bal<0?'#ef4444':'#94a3b8'};">${bal<0?fmtUSD(Math.abs(bal)):'—'}</p><small style="color:#64748b;">${bal<0?fmt(Math.abs(bal)*tc):''}</small></div>`;
         wrap.appendChild(gU);
         if(listaServiciosUSD.length>0){
-            let tSU=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmt(tc)}</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pend. (USD)</th><th style="padding:6px;text-align:right;">Pend. (ARS)</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
+            let tSU=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #4f46e5;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">📋 Servicios Fijos en USD · TC ${fmt(tc)}</h4><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:right;">Pend. (USD)</th><th style="padding:6px;text-align:right;">Pend. (ARS)</th><th style="padding:6px;text-align:center;">Estado</th></tr>`;
             let tpU=0,pgU=0,peU=0;
             listaServiciosUSD.forEach((s,ri)=>{ const pe=Math.max(0,s.presupuesto-s.pagado); tpU+=s.presupuesto; pgU+=s.pagado; peU+=pe; let ec='#c5221f',eb='#fce8e6',et='PENDIENTE'; if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';eb='#e6f4ea';et='PAGADO';} else if(s.pagado>0){ec='#b06000';eb='#fef7e0';et='PARCIAL';}
                 tSU+=`<tr style="background:${ri%2===0?'white':'#f8fafc'};border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-weight:bold;">${s.nombre}</td><td style="padding:5px 6px;text-align:right;">${fmtUSD(s.presupuesto)}</td><td style="padding:5px 6px;text-align:right;color:#10b981;">${fmtUSD(s.pagado)}</td><td style="padding:5px 6px;text-align:right;color:#ef4444;">${fmtUSD(pe)}</td><td style="padding:5px 6px;text-align:right;color:#64748b;">${fmt(pe*tc)}</td><td style="padding:5px 6px;text-align:center;"><span style="font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;background:${eb};color:${ec};">${et}</span></td></tr>`; });
@@ -2174,7 +2174,7 @@ function buildReportes() {
             }
         }
 
-    } else { wrap.insertAdjacentHTML('beforeend','<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>'); }
+    } else { wrap.insertAdjacentHTML('beforeend','<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>'); }
 
     // ── REPORTE 2: ACUMULADO 12 MESES ─────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>');
@@ -2199,8 +2199,8 @@ function buildReportes() {
     const contR2=el('div'); wrap.appendChild(contR2);
     const renderTablaR2=()=>{
         const rubFilt=filtroR2?[filtroR2]:rubrosArr;
-        if(!rubFilt.length){ contR2.innerHTML='<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos.</div>'; return; }
-        let t2=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:white;">Rubro</th>`;
+        if(!rubFilt.length){ contR2.innerHTML='<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;">Sin datos.</div>'; return; }
+        let t2=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #f59e0b;padding:16px;margin-bottom:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:600px;"><thead><tr style="background:#1e293b;"><th style="padding:7px 8px;text-align:left;color:white;">Rubro</th>`;
         mesesData.forEach(m=>{ t2+=`<th style="padding:7px 8px;text-align:right;color:white;">${m.nombre.replace(' de ',' ')}</th>`; });
         t2+=`<th style="padding:7px 8px;text-align:right;color:#f59e0b;">TOTAL</th></tr></thead><tbody>`;
         const totMes=new Array(mesesData.length).fill(0); let totGen=0;
@@ -2225,7 +2225,7 @@ function buildReportes() {
         // Participación
         const topR=rubFilt.map(r=>({rubro:r,total:mesesData.reduce((a,m)=>a+(m.datos.listaCorrientes||[]).filter(c=>c.fechaPago&&c.rubro===r&&!(c.rubro&&c.rubro.toLowerCase().includes('tarjeta'))).reduce((b,c)=>b+c.monto,0)+(m.datos.listaServicios||[]).filter(sv=>sv.rubro===r).reduce((b,sv)=>b+sv.presupuesto,0),0)})).sort((a,b)=>b.total-a.total);
         const totAc=topR.reduce((a,r)=>a+r.total,0);
-        let res=`<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Participación por Rubro (acumulado)</h4>`;
+        let res=`<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;padding:16px;margin-bottom:24px;"><h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Participación por Rubro (acumulado)</h4>`;
         topR.forEach(r=>{ const pct=totAc>0?(r.total/totAc*100).toFixed(1):0; res+=`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="font-weight:bold;color:#334155;">${r.rubro}</span><span style="color:#64748b;">${fmt(r.total)} · ${pct}%</span></div><div style="background:#e2e8f0;border-radius:4px;height:10px;"><div style="background:linear-gradient(90deg,#f59e0b,#f97316);height:10px;border-radius:4px;width:${Math.round(pct)}%;"></div></div></div>`; });
         res+=`<div style="font-size:12px;color:#64748b;text-align:right;margin-top:8px;font-weight:bold;">Total acumulado: ${fmt(totAc)}</div></div>`;
         contR2.innerHTML=t2+res;
@@ -2258,7 +2258,7 @@ function buildReportes() {
 
     // Tabla fijos
     if(srvO.length){
-        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:16px;">';
+        rO += '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:16px;">';
         rO += '<h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Servicios Fijos — Clase O</h4>';
         rO += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Servicio</th><th style="padding:6px;text-align:center;">F. Pago</th><th style="padding:6px;text-align:right;">Presup.</th><th style="padding:6px;text-align:right;">Pagado</th><th style="padding:6px;text-align:center;">Estado</th></tr>';
         srvO.forEach((s,ri)=>{
@@ -2275,7 +2275,7 @@ function buildReportes() {
 
     // Tabla corrientes
     if(corrO.length){
-        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:24px;">';
+        rO += '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #a855f7;padding:16px;margin-bottom:24px;">';
         rO += '<h4 style="margin:0 0 12px;font-size:12px;color:#64748b;text-transform:uppercase;">Gastos Corrientes — Clase O</h4>';
         rO += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f8fafc;"><th style="padding:6px;text-align:left;">Rubro</th><th style="padding:6px;text-align:left;">Detalle</th><th style="padding:6px;text-align:center;">F. Pago</th><th style="padding:6px;text-align:right;">Monto</th></tr>';
         corrO.forEach((c,ri)=>{
@@ -2287,7 +2287,7 @@ function buildReportes() {
     }
 
     if(!srvO.length && !corrO.length){
-        rO += '<div style="background:white;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos de Clase O para este mes.</div>';
+        rO += '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos de Clase O para este mes.</div>';
     }
 
     wrap.insertAdjacentHTML('beforeend', rO);
@@ -2789,7 +2789,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.43';
+const APP_VERSION = 'v3.7.44';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
