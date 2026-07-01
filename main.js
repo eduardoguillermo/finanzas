@@ -429,6 +429,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTabs();
     renderContenido();
     cfRestaurarCarpeta();
+    // Módulo Gmail: chequear mails de Santander automáticamente en PC
+    setTimeout(() => { cfGmailChequear(); }, 800);
 });
 
 // ═══════════════════════════════════════════
@@ -468,6 +470,11 @@ function renderTabs() {
     restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
     restoreEl.onclick=driveRestaurar;
     bar.appendChild(restoreEl);
+    const gmailEl = document.createElement('button'); gmailEl.id='btn-gmail-santander';
+    gmailEl.style.cssText='background:#ea4335;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;' + (cfEsMovil() ? 'display:none;' : '');
+    gmailEl.innerText='📧 Gmail'; gmailEl.title='Leer mails de Santander';
+    gmailEl.onclick=cfGmailLoginYChequear;
+    bar.appendChild(gmailEl);
     const snapshotEl = document.createElement('button'); snapshotEl.id='btn-snapshot-local';
     snapshotEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
     snapshotEl.innerText='💾 Local'; snapshotEl.title='Ver/restaurar snapshots locales';
@@ -2744,9 +2751,10 @@ function actualizarPresupRubroUSD(inp) {
 // ═══════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v3.7.34';
+const APP_VERSION = 'v3.7.35';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
-const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
+const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
 const GTOKEN_KEY='cf_gtoken';
 const GTOKEN_EXP_KEY='cf_gtoken_exp';
 let gToken=null;
@@ -3768,3 +3776,341 @@ function limpiarCache() {
     } else { doNavegar(); }
 }
 
+
+// ════════════════════════════════════════════════════
+//  MÓDULO GMAIL API · Control Financiero Producción
+//  Detección automática mails Santander
+// ════════════════════════════════════════════════════
+
+const CF_SANTANDER_QUERY = 'subject:(Pagaste OR "débito automático" OR "débito con tu") newer_than:30d';
+
+function cfEsMovil() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+}
+
+function cfGmailGetProcessed() {
+    try { return JSON.parse(localStorage.getItem(CF_GMAIL_PROCESSED_KEY)) || []; } catch(e) { return []; }
+}
+
+function cfGmailMarkProcessed(id) {
+    const lista = cfGmailGetProcessed();
+    if (!lista.includes(id)) {
+        lista.push(id);
+        if (lista.length > 100) lista.splice(0, lista.length - 100);
+        try { localStorage.setItem(CF_GMAIL_PROCESSED_KEY, JSON.stringify(lista)); } catch(e) {}
+    }
+}
+
+function cfGmailIsProcessed(id) { return cfGmailGetProcessed().includes(id); }
+
+function cfGmailDecodeBody(encoded) {
+    try {
+        const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch(e) { return ''; }
+}
+
+function cfGmailExtraerTexto(payload) {
+    if (!payload) return '';
+    if (payload.body && payload.body.data) return cfGmailDecodeBody(payload.body.data);
+    if (payload.parts) {
+        for (const part of payload.parts) {
+            if (part.mimeType === 'text/plain' && part.body && part.body.data)
+                return cfGmailDecodeBody(part.body.data);
+        }
+        for (const part of payload.parts) {
+            if (part.mimeType === 'text/html' && part.body && part.body.data)
+                return cfGmailDecodeBody(part.body.data).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (part.parts) { const sub = cfGmailExtraerTexto(part); if (sub) return sub; }
+        }
+    }
+    return '';
+}
+
+function cfParsearMailSantander(texto) {
+    if (!texto) return null;
+    const esSantander = /santander/i.test(texto) && /monto|consumo|d.?bito/i.test(texto);
+    if (!esSantander) return null;
+    const t = texto.replace(/\*/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const resultado = { moneda: 'ARS', monto: null, comercio: '', fecha: '', hora: '', cuotas: null, tarjeta: '', tipo_tarjeta: 'Tarjeta', tipo: 'gasto' };
+    const rUSD = /Monto\s*(?:\n\s*)?U\$S\s?([\d.,]+)/i.exec(t);
+    const rARS = /Monto\s*(?:\n\s*)?\$([\d.,]+)/i.exec(t);
+    if (rUSD) { resultado.moneda = 'USD'; resultado.monto = parseFloat(rUSD[1].replace(/\./g,'').replace(',','.')); }
+    else if (rARS) { resultado.moneda = 'ARS'; resultado.monto = parseFloat(rARS[1].replace(/\./g,'').replace(',','.')); }
+    const rCuotas  = /Cuotas\s*(?:\n\s*)?(\d+)/i.exec(t);
+    if (rCuotas) resultado.cuotas = parseInt(rCuotas[1]);
+    const rComercio = /Comercio\s*(?:\n\s*)?([A-ZÁÉÍÓÚÑ0-9 .*\-&]+)/i.exec(t);
+    if (rComercio) resultado.comercio = rComercio[1].trim();
+    const rFecha = /Fecha\s*(?:\n\s*)?(\d{2})\/(\d{2})\/(\d{4})/i.exec(t);
+    if (rFecha) resultado.fecha = `${rFecha[3]}-${rFecha[2]}-${rFecha[1]}`;
+    const rHora = /Hora\s*(?:\n\s*)?(\d{2}:\d{2})/i.exec(t);
+    if (rHora) resultado.hora = rHora[1];
+    const rTarjeta = /terminada en (\d{4})/i.exec(t);
+    if (rTarjeta) resultado.tarjeta = rTarjeta[1];
+    if (/american express|amex/i.test(t)) resultado.tipo_tarjeta = 'Amex';
+    else if (/visa/i.test(t)) resultado.tipo_tarjeta = 'Visa Crédito';
+    resultado.tipo = (resultado.cuotas && resultado.cuotas > 1) ? 'cuota' : 'gasto';
+    return resultado;
+}
+
+async function cfGmailBuscarGastos(token) {
+    const query = encodeURIComponent(CF_SANTANDER_QUERY);
+    const resp = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=20`, { headers: { Authorization: 'Bearer ' + token } });
+    if (!resp.ok) { console.error('[CF Gmail] Error:', resp.status); return []; }
+    const data = await resp.json();
+    if (!data.messages || !data.messages.length) return [];
+    const gastos = [];
+    for (const msg of data.messages) {
+        if (cfGmailIsProcessed(msg.id)) continue;
+        const det = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`, { headers: { Authorization: 'Bearer ' + token } }).then(r => r.json());
+        const texto = cfGmailExtraerTexto(det.payload);
+        const datos = cfParsearMailSantander(texto);
+        if (datos) { datos._gmailId = msg.id; gastos.push(datos); }
+    }
+    return gastos;
+}
+
+function cfGmailYaRegistrado(datos) {
+    const needle = (datos.comercio || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10);
+    const fecha  = datos.fecha || '';
+    const monto  = datos.monto || 0;
+    const enARS = listaCorrientes.some(c => Math.abs(c.monto - monto) < 0.01 && c.fechaPago === fecha && (c.detalle || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(needle));
+    const enUSD = listaCorrientesUSD.some(c => Math.abs(c.monto - monto) < 0.01 && c.fechaPago === fecha && (c.detalle || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(needle));
+    const enServ = listaServicios.some(s => Math.abs((s.pagado || 0) - monto) < 0.01 && s.fPago === fecha);
+    const enServUSD = listaServiciosUSD.some(s => Math.abs((s.pagado || 0) - monto) < 0.01 && s.fPago === fecha);
+    return enARS || enUSD || enServ || enServUSD;
+}
+
+function cfBuscarServicioMatch(comercio, esUSD) {
+    const lista = esUSD ? listaServiciosUSD : listaServicios;
+    if (!comercio || !lista || !lista.length) return null;
+    const needle = comercio.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return lista.find(s => {
+        if (s.pagado >= s.presupuesto && s.presupuesto > 0) return false;
+        const hay = (s.nombre || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (needle.length >= 4 && hay.includes(needle.substring(0, Math.min(needle.length, 8)))) return true;
+        if (hay.length >= 4 && needle.includes(hay.substring(0, Math.min(hay.length, 8)))) return true;
+        return false;
+    }) || null;
+}
+
+let cfGmailQueue = [];
+let cfGmailIdx   = 0;
+
+function cfGmailMostrarSiguiente() {
+    if (cfGmailIdx >= cfGmailQueue.length) return;
+    const datos = cfGmailQueue[cfGmailIdx];
+    if (cfGmailYaRegistrado(datos)) {
+        console.log('[CF Gmail] Duplicado detectado, saltando:', datos.comercio, datos.fecha);
+        if (datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
+        cfGmailIdx++;
+        if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 200);
+        return;
+    }
+    const servicioMatch = cfBuscarServicioMatch(datos.comercio, datos.moneda === 'USD');
+    if (servicioMatch) {
+        cfAbrirModalPagoServicio(datos, servicioMatch);
+    } else {
+        cfAbrirModalGasto(datos);
+    }
+}
+
+function cfGmailLoginYChequear() {
+    gTokenLimpiar();
+    driveCargarGoogle(() => {
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: GDRIVE_CLIENT_ID, scope: GDRIVE_SCOPE,
+            callback: resp => {
+                if (resp.error) { alert('Error Google: ' + resp.error); return; }
+                gTokenGuardar(resp.access_token, resp.expires_in);
+                cfGmailChequear();
+            }
+        });
+        client.requestAccessToken({ prompt: 'consent' });
+    });
+}
+
+async function cfGmailChequear() {
+    if (cfEsMovil()) return;
+    if (!gTokenCargarLocal()) return;
+    console.log('[CF Gmail] Chequeando mails Santander...');
+    try {
+        const gastos = await cfGmailBuscarGastos(gToken);
+        if (!gastos.length) { console.log('[CF Gmail] Sin gastos nuevos.'); return; }
+        console.log(`[CF Gmail] ${gastos.length} gasto(s) nuevo(s).`);
+        cfGmailQueue = gastos;
+        cfGmailIdx   = 0;
+        setTimeout(cfGmailMostrarSiguiente, 5500);
+    } catch(e) { console.error('[CF Gmail] Error:', e.message); }
+}
+
+function cfAbrirModalPagoServicio(datos, servicio) {
+    const prev = document.getElementById('cf-gmail-overlay');
+    if (prev) prev.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'cf-gmail-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    const montoPago = datos.monto ? datos.monto.toFixed(2) : (servicio.presupuesto || 0).toFixed(2);
+    overlay.innerHTML = `
+    <div style="background:#1e293b;border-radius:14px;width:100%;max-width:420px;padding:20px 18px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
+            <span style="font-size:24px;">🔧</span>
+            <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Pago de servicio fijo</h3>
+            <span style="font-size:10px;background:#0f766e;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">Santander</span>
+        </div>
+        <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #0f766e;">
+            <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${servicio.nombre}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Presupuesto: $${(servicio.presupuesto||0).toLocaleString('es-AR')} · Pagado: $${(servicio.pagado||0).toLocaleString('es-AR')}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:11px;">
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto pagado</label>
+            <input type="number" id="cf-gm-srv-monto" step="0.01" value="${montoPago}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;"></div>
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha de pago</label>
+            <input type="date" id="cf-gm-srv-fecha" value="${datos.fecha || fechaHoy}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;"></div>
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:14px;">Comercio: <span style="color:#94a3b8;font-weight:600;">${datos.comercio}</span> · ${datos.tipo_tarjeta} terminada en ${datos.tarjeta}</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onclick="cfConfirmarPagoServicio('${servicio.id}')" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;background:#0f766e;color:white;cursor:pointer;">✓ Asentar pago</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button onclick="cfModalPagoACorriente()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">↩ Registrar como gasto corriente</button>
+            <button onclick="cfCerrarModalGasto()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">✕ Cancelar</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+}
+
+function cfConfirmarPagoServicio(servicioId) {
+    const monto = parseFloat(document.getElementById('cf-gm-srv-monto').value);
+    const fecha = document.getElementById('cf-gm-srv-fecha').value;
+    if (isNaN(monto) || monto <= 0) { alert('El monto no es válido.'); return; }
+    let s = listaServicios.find(x => x.id === servicioId);
+    let esUSD = false;
+    if (!s) { s = listaServiciosUSD.find(x => x.id === servicioId); esUSD = true; }
+    if (!s) { alert('Servicio no encontrado.'); return; }
+    s.pagado = monto;
+    s.fPago  = fecha;
+    guardar();
+    if (esUSD) { if (typeof renderDolares === 'function') renderDolares(); }
+    else { render(); }
+    const datos = cfGmailQueue[cfGmailIdx];
+    if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
+    const ov = document.getElementById('cf-gmail-overlay');
+    if (ov) ov.remove();
+    cfGmailIdx++;
+    if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 600);
+}
+
+function cfModalPagoACorriente() {
+    const datos = cfGmailQueue[cfGmailIdx];
+    cfAbrirModalGasto(datos);
+}
+
+function cfCerrarModalGasto() {
+    const datos = cfGmailQueue[cfGmailIdx];
+    if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
+    const ov = document.getElementById('cf-gmail-overlay');
+    if (ov) ov.remove();
+    cfGmailIdx++;
+    if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 400);
+}
+
+function cfAbrirModalGasto(datos) {
+    const prev = document.getElementById('cf-gmail-overlay');
+    if (prev) prev.remove();
+    const esUSD = datos.moneda === 'USD';
+    const listaTarjetasActual = esUSD ? listaTarjetasUSD : listaTarjetas;
+    let medioPagoId = '';
+    if (datos.tipo_tarjeta) {
+        const tipo = datos.tipo_tarjeta.toLowerCase();
+        const num  = datos.tarjeta || '';
+        let tarjeta = listaTarjetasActual.find(t => num && t.nombre && t.nombre.includes(num));
+        if (!tarjeta) {
+            if (tipo.includes('amex') || tipo.includes('american')) tarjeta = listaTarjetasActual.find(t => /amex|american/i.test(t.nombre));
+            else if (tipo.includes('visa')) tarjeta = listaTarjetasActual.find(t => /visa/i.test(t.nombre));
+        }
+        if (!tarjeta) tarjeta = listaTarjetasActual.find(t => /santander/i.test(t.nombre));
+        if (tarjeta) medioPagoId = tarjeta.id;
+    }
+    const opsTarjetas = listaTarjetasActual.map(t => `<option value="${t.id}" ${t.id === medioPagoId ? 'selected' : ''}>💳 ${t.nombre}</option>`).join('');
+    const listaRubrosActual = esUSD ? listaRubrosUSD : listaRubros;
+    const opsRubros = listaRubrosActual.map(r => `<option value="${r}">${r}</option>`).join('');
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    const overlay = document.createElement('div');
+    overlay.id = 'cf-gmail-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+    overlay.innerHTML = `
+    <div style="background:#1e293b;border-radius:14px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;padding:20px 18px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
+            <span style="font-size:24px;">📧</span>
+            <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Gasto detectado</h3>
+            <span style="font-size:10px;background:#ea4335;color:white;padding:2px 7px;border-radius:20px;font-weight:600;">Santander</span>
+        </div>
+        ${(!datos.monto || !datos.comercio) ? `<div style="font-size:12px;color:#fbbf24;background:#78350f;border-radius:7px;padding:7px 10px;margin-bottom:10px;">⚠️ Algunos datos no se detectaron. Revisá los campos.</div>` : ''}
+        <div style="display:flex;gap:8px;margin-bottom:11px;">
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto</label>
+            <input type="number" id="cf-gm-monto" step="0.01" value="${datos.monto ? datos.monto.toFixed(2) : ''}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;"></div>
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Moneda</label>
+            <select id="cf-gm-moneda" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+                <option value="ARS" ${datos.moneda==='ARS'?'selected':''}>$ ARS</option>
+                <option value="USD" ${datos.moneda==='USD'?'selected':''}>U$S USD</option>
+            </select></div>
+        </div>
+        <div style="margin-bottom:11px;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Comercio / Detalle</label>
+        <input type="text" id="cf-gm-detalle" value="${datos.comercio || ''}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+        <div style="font-size:11px;color:#64748b;margin-top:3px;">${datos.tipo_tarjeta} terminada en ${datos.tarjeta}</div></div>
+        <div style="display:flex;gap:8px;margin-bottom:11px;">
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha</label>
+            <input type="date" id="cf-gm-fecha" value="${datos.fecha || fechaHoy}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;"></div>
+            <div style="flex:1;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Cuotas</label>
+            <input type="number" id="cf-gm-cuotas" min="1" max="72" value="${datos.cuotas || 1}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;"></div>
+        </div>
+        <div style="margin-bottom:11px;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Rubro</label>
+        <select id="cf-gm-rubro" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            <option value="">— Seleccioná rubro —</option>${opsRubros}
+        </select></div>
+        <div style="margin-bottom:11px;"><label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Medio de pago</label>
+        <select id="cf-gm-medio" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            <option value="">— Seleccioná tarjeta —</option>${opsTarjetas}
+        </select></div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+            <button onclick="cfCerrarModalGasto()" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:1.5px solid #334155;background:#0f172a;color:#f1f5f9;cursor:pointer;">✕ Cancelar</button>
+            <button onclick="cfConfirmarGasto()" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;background:#4f46e5;color:white;cursor:pointer;">✓ Registrar gasto</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+}
+
+function cfConfirmarGasto() {
+    const monto   = parseFloat(document.getElementById('cf-gm-monto').value);
+    const moneda  = document.getElementById('cf-gm-moneda').value;
+    const detalle = document.getElementById('cf-gm-detalle').value.trim();
+    const fecha   = document.getElementById('cf-gm-fecha').value;
+    const cuotas  = parseInt(document.getElementById('cf-gm-cuotas').value) || 1;
+    const rubro   = document.getElementById('cf-gm-rubro').value;
+    const medioId = document.getElementById('cf-gm-medio').value;
+    if (!detalle)               { alert('Ingresá el detalle del gasto.'); return; }
+    if (isNaN(monto)||monto<=0) { alert('El monto no es válido.'); return; }
+    if (!rubro)                 { alert('Seleccioná un rubro.'); return; }
+    if (!medioId)               { alert('Seleccioná el medio de pago.'); return; }
+    const detalleF = moneda === 'USD' ? `[USD ${monto.toFixed(2)}] ${detalle}` : detalle;
+    const notasCuota = cuotas > 1 ? ` (${cuotas} cuotas)` : '';
+    if (moneda === 'USD') {
+        listaCorrientesUSD.push({ id: 'c_' + Date.now(), rubro, detalle: detalleF + notasCuota, monto, fechaPago: fecha, medioPagoId: medioId, esIngreso: false, clase: 'M' });
+    } else {
+        listaCorrientes.push({ id: 'c_' + Date.now(), rubro, detalle: detalleF + notasCuota, monto, fechaPago: fecha, medioPagoId: medioId, esIngreso: false, clase: 'M' });
+    }
+    guardar();
+    if (moneda === 'USD') { if (typeof renderDolares === 'function') renderDolares(); }
+    else { render(); }
+    const datos = cfGmailQueue[cfGmailIdx];
+    if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
+    const ov = document.getElementById('cf-gmail-overlay');
+    if (ov) ov.remove();
+    cfGmailIdx++;
+    if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 600);
+}
