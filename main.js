@@ -276,27 +276,52 @@ async function syncSilencioso() {
 async function syncAlSalir() {
     // Recuperar token persistido si la variable en memoria está vacía
     if(!gToken) gTokenCargarLocal();
+
+    // 1) Snapshot local — siempre
+    let snapOk = false;
+    try { cfHacerSnapshot(true); snapOk = true; } catch(e) { console.warn('Snapshot:', e); }
+
+    // 2) Backup en carpeta local — solo si está vinculada
+    let carpetaEstado = null; // null = no vinculada
+    if (window._cfFolderHandle) {
+        try {
+            const permOk = await cfVerificarPermiso(window._cfFolderHandle);
+            if (permOk) { await cfBackupEnCarpeta(window._cfFolderHandle); carpetaEstado = true; }
+            else carpetaEstado = false;
+        } catch(e) { carpetaEstado = false; }
+    }
+
+    // 3) Drive
     if(!gToken) {
-        // Si no hay token, intentar obtenerlo silenciosamente
         const ok = await new Promise(resolve => {
             driveGetToken(t => { if(t) resolve(true); else resolve(false); });
             setTimeout(()=>resolve(false), 8000);
         });
-        if(!ok) { alert('Para sincronizar antes de salir, autenticá Drive con el botón ☁️ Drive.'); return; }
+        if(!ok) gToken = null;
     }
-    if(!_syncPendiente) {
-        alert('✅ Backup al día. Ya podés cerrar la pestaña.');
-        window.close();
-        return;
-    }
-    clearTimeout(_syncTimer);
-    _syncActivo = false; // reset por si estaba colgado
-    await syncSilencioso();
-    if(!_syncPendiente) {
-        alert('✅ Sincronizado con Drive. Ya podés cerrar la pestaña.');
+    let driveLinea;
+    if(gToken) {
+        if(_syncPendiente) {
+            clearTimeout(_syncTimer);
+            _syncActivo = false;
+            await syncSilencioso();
+            driveLinea = _syncPendiente ? '⚠️ Drive: no se pudo sincronizar' : '✅ Drive: sincronizado';
+        } else {
+            driveLinea = '✅ Drive: al día';
+        }
     } else {
-        alert('⚠️ No se pudo sincronizar. Usá el botón ☁️ Drive manualmente antes de cerrar.');
+        driveLinea = '⚠️ Drive: sin autenticar, no se sincronizó';
     }
+
+    const lineas = [
+        '📦 Backup al salir',
+        '',
+        (snapOk ? '✅' : '❌') + ' Snapshot local: ' + (snapOk ? 'guardado' : 'error'),
+        (carpetaEstado === null ? '➖ Carpeta local: no vinculada' : (carpetaEstado ? '✅ Carpeta local: guardado' : '❌ Carpeta local: error')),
+        driveLinea
+    ];
+    alert(lineas.join('\n'));
+    window.close();
 }
 
 
@@ -2764,7 +2789,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.40';
+const APP_VERSION = 'v3.7.41';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
