@@ -186,6 +186,7 @@ function guardar() {
 //  FORMATO
 // ═══════════════════════════════════════════
 function fmt(n) { return '$ ' + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
+function cfFechaLocal(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function fmtN(n)   { return Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmt(n) { return '$ '   + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
@@ -404,7 +405,7 @@ async function cfBackupEnCarpeta(handle) {
     const ok = await cfVerificarPermiso(handle);
     if (!ok) return;
     try {
-        const fecha  = new Date().toISOString().slice(0, 10);
+        const fecha  = cfFechaLocal();
         const nombre = 'cf_backup_' + fecha + '.json';
         const data   = {listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
                         listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,
@@ -1220,7 +1221,7 @@ function abrirModalIngreso() {
     listaBancos.forEach(b => { const o=document.createElement('option'); o.value=b.id; o.textContent='🏦 '+b.nombre; sel.appendChild(o); });
     document.getElementById('ing-monto').value = '';
     document.getElementById('ing-desc').value = '';
-    document.getElementById('ing-fecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('ing-fecha').value = cfFechaLocal();
     const m = document.getElementById('modal-ingreso');
     m.style.display = 'flex';
 }
@@ -1231,7 +1232,7 @@ function confirmarIngreso() {
     const bancoId = document.getElementById('ing-cuenta').value;
     const monto = parseFloat(document.getElementById('ing-monto').value)||0;
     const desc = document.getElementById('ing-desc').value.trim()||'Sin descripción';
-    const fecha = document.getElementById('ing-fecha').value||new Date().toISOString().slice(0,10);
+    const fecha = document.getElementById('ing-fecha').value||cfFechaLocal();
     if(!bancoId){ alert('Seleccioná una cuenta.'); return; }
     if(monto<=0){ alert('Ingresá un monto mayor a cero.'); return; }
     const banco = listaBancos.find(b=>b.id===bancoId);
@@ -2789,7 +2790,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.44';
+const APP_VERSION = 'v3.7.45';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -3236,7 +3237,7 @@ function mostrarInformeSemanal() {
     });
 
     function gastadoHasta(fecha) {
-        const fStr = fecha.toISOString().slice(0,10);
+        const fStr = cfFechaLocal(fecha);
         let total = 0;
         listaCorrientes.filter(function(c){ return c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta')) && c.fechaPago <= fStr; }).forEach(function(c){ total += c.monto; });
         listaServicios.filter(function(s){ return s.pagado > 0 && (!s.fPago || s.fPago <= fStr); }).forEach(function(s){ total += s.pagado; });
@@ -3957,7 +3958,7 @@ async function cfGmailBuscarGastos(token) {
         if (datos) {
             if (!datos.fecha && det.internalDate) {
                 const d = new Date(parseInt(det.internalDate));
-                datos.fecha = d.toISOString().split('T')[0];
+                datos.fecha = cfFechaLocal(d);
             }
             datos._gmailId = msg.id;
             gastos.push(datos);
@@ -4060,7 +4061,7 @@ function cfAbrirModalPagoServicio(datos, servicio) {
     const overlay = document.createElement('div');
     overlay.id = 'cf-gmail-overlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
-    const fechaHoy = new Date().toISOString().split('T')[0];
+    const fechaHoy = cfFechaLocal();
     const montoPago = datos.monto ? datos.monto.toFixed(2) : (servicio.presupuesto || 0).toFixed(2);
     overlay.innerHTML = `
     <div style="background:#1e293b;border-radius:14px;width:100%;max-width:420px;padding:20px 18px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#f1f5f9;">
@@ -4146,7 +4147,7 @@ function cfAbrirModalGasto(datos) {
     const opsTarjetas = listaTarjetasActual.map(t => `<option value="${t.id}" ${t.id === medioPagoId ? 'selected' : ''}>💳 ${t.nombre}</option>`).join('');
     const listaRubrosActual = esUSD ? listaRubrosUSD : listaRubros;
     const opsRubros = listaRubrosActual.map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
-    const fechaHoy = new Date().toISOString().split('T')[0];
+    const fechaHoy = cfFechaLocal();
     const overlay = document.createElement('div');
     overlay.id = 'cf-gmail-overlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
