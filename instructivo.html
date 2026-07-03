@@ -231,6 +231,16 @@
   }
   .dash-card h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; }
   .dash-card .value { font-size: 18px; font-weight: 700; }
+  .changelog-entry { border-left: 3px solid var(--accent, #6366f1); padding: 4px 0 4px 16px; margin-bottom: 28px; }
+  .changelog-version { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .changelog-version .v-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .changelog-list { margin: 0; padding-left: 20px; font-size: 13.5px; color: #4b5563; line-height: 1.7; }
+  .changelog-list li { margin-bottom: 3px; }
+  .changelog-tag { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 4px; }
+  .tag-feature { background: #dbeafe; color: #1e40af; }
+  .tag-fix { background: #fee2e2; color: #991b1b; }
+  .tag-infra { background: #f3e8ff; color: #6b21a8; }
+  .tag-docs { background: #fef3c7; color: #92400e; }
 
   /* Responsive sidebar */
   @media (max-width: 768px) {
@@ -281,6 +291,9 @@
   <a href="#drive">☁️ Sincronización Drive</a>
   <a href="#impresion">🖨️ Impresión / PDF</a>
   <a href="#consola">🛠 Comandos consola</a>
+
+  <div class="section-label">Historial</div>
+  <a href="#changelog">🧾 Historial de cambios</a>
 </nav>
 
 <!-- Contenido -->
@@ -982,6 +995,56 @@ syncSilencioso()
 
 // Ver token de Drive activo
 console.log(gToken ? 'Token activo' : 'Sin token')</pre>
+  </section>
+
+  <!-- CHANGELOG -->
+  <section class="section" id="changelog">
+    <div class="section-header">
+      <span class="section-icon">🧾</span>
+      <div>
+        <div class="section-title">Historial de cambios</div>
+        <div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div>
+      </div>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.46</span><span class="changelog-tag tag-infra">infra</span></div>
+      <ul class="changelog-list">
+        <li>Sincronización completa entre producción (finanzas) y desarrollo (control-financiero-2, namespace dev2_)</li>
+        <li>Drive sync confirmado deshabilitado en dev para no pisar el backup de producción</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.38 – v3.7.45</span><span class="changelog-tag tag-feature">feature</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Parser de MercadoPago: notificaciones de compra y transferencias, con mapeo automático de rubro por beneficiario (Sodero, Jardinero, Delivery, Carnicería/Verdulería)</li>
+        <li>Nombres de servicios fijos ahora editables directamente en la tabla</li>
+        <li>Botón Salir unificado: snapshot + backup a carpeta + Drive en un solo flujo, con alert de resultado</li>
+        <li>Fix UTC: reemplazo de <code>toISOString()</code> por <code>cfFechaLocal()</code> en todas las fechas</li>
+        <li>Fix <code>nuevoMes()</code>: las fechas de vencimiento no se limpiaban al resetear servicios</li>
+        <li>Fix de contraste: texto gris ilegible sobre fondo blanco en Reportes</li>
+        <li>Renovación silenciosa del token Gmail cada 50 minutos, con toast si hace falta reautenticar</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.37</span><span class="changelog-tag tag-docs">docs</span></div>
+      <ul class="changelog-list">
+        <li>Instructivo actualizado: mockups SVG de los modales de Gmail, sección de MercadoPago y sección de backup revisada</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.34</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Módulo Gmail API: OAuth contra Google Cloud, lectura de mails reenviados de Santander</li>
+        <li>Parser de emails Santander (monto, moneda ARS/USD, comercio, fecha, tipo de tarjeta)</li>
+        <li>Deduplicación por ID de mail (cf_gmail_processed) + chequeo por contenido para reenvíos manuales</li>
+        <li>Modal de confirmación: verde si matchea servicio fijo existente, azul si es gasto corriente nuevo</li>
+      </ul>
+    </div>
+
   </section>
 
 </main>
