@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#1e293b">
     <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
     <title>Control Financiero</title>
     <style>
         * { box-sizing: border-box; }
@@ -122,8 +124,68 @@
     </style>
 </head>
 <body>
+
+<!-- SPLASH -->
+<div id="cf-splash" style="
+    position:fixed;inset:0;z-index:9999;
+    background:#0b1220;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity .3s ease;
+">
+    <div style="width:340px;border-radius:10px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.35);border:1px solid #1e293b;">
+        <div style="background:#0b1220;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 40px;text-align:center;">
+            <div style="width:56px;height:56px;border-radius:10px;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7dd3c0" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+            </div>
+            <div style="font-size:22px;font-weight:600;color:#f1f5f9;letter-spacing:-0.2px;">Control Financiero</div>
+            <div style="width:32px;height:2px;background:#7dd3c0;margin:12px 0;"></div>
+            <div id="cf-splash-version" style="font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:0.3px;"></div>
+            <div id="cf-splash-datetime" style="font-size:12.5px;color:#cbd5e1;margin-top:14px;"></div>
+            <div style="margin-top:22px;font-family:'Dancing Script',cursive;font-size:17px;color:#7dd3c0;">Development by Guillermo</div>
+            <div style="margin-top:32px;display:flex;align-items:center;gap:8px;opacity:0.85;animation:cf-splash-pulse 1.8s ease-in-out infinite;">
+                <span style="border:1.2px solid #334155;border-radius:5px;padding:3px 9px;font-size:10.5px;color:#cbd5e1;font-weight:600;">ENTER</span>
+                <span style="font-size:11.5px;color:#64748b;">para continuar</span>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+@keyframes cf-splash-pulse { 0%,100%{opacity:0.45;} 50%{opacity:1;} }
+</style>
+
 <div class="tabs-bar" id="tabs-bar"></div>
 <div id="app-content"></div>
+
+<script>
+// Splash: versión, reloj en vivo, y cierre al presionar Enter
+(function(){
+    const vEl = document.getElementById('cf-splash-version');
+    const dEl = document.getElementById('cf-splash-datetime');
+    if(vEl) vEl.textContent = 'v3.7.52';
+
+    function tickReloj(){
+        const dt = new Date();
+        const fecha = dt.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+        const hora  = dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        if(dEl) dEl.textContent = fecha + ' · ' + hora;
+    }
+    tickReloj();
+    const cfSplashReloj = setInterval(tickReloj, 1000);
+
+    function cerrarSplash(){
+        const splash = document.getElementById('cf-splash');
+        if(!splash) return;
+        clearInterval(cfSplashReloj);
+        document.removeEventListener('keydown', onKeydown);
+        splash.style.opacity='0';
+        setTimeout(()=>{ if(splash.parentNode) splash.parentNode.removeChild(splash); },300);
+    }
+    function onKeydown(e){
+        if(e.key === 'Enter') cerrarSplash();
+    }
+    document.addEventListener('keydown', onKeydown);
+})();
+</script>
 
 <script src="xlsx.full.min.js"></script>
 <script src="app.js"></script>
