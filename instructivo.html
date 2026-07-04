@@ -444,7 +444,8 @@
       <tr><td>📂 Carpeta</td><td>Vincula una carpeta local para backup automático</td></tr>
       <tr><td>☁️ Drive</td><td>Sube un backup manual a Google Drive</td></tr>
       <tr><td>📂 Drive (bajar)</td><td>Lista y restaura backups guardados en Google Drive</td></tr>
-      <tr><td>📧 Gmail</td><td>Lee mails de Santander y MercadoPago y detecta gastos automáticamente (solo PC)</td></tr>
+      <tr><td>📧 Gmail</td><td>Login + lee mails de Santander y MercadoPago y detecta gastos automáticamente (solo PC)</td></tr>
+      <tr><td>🔍 Pendientes</td><td>Revisa manualmente si hay mails de pagos pendientes de procesar, usando la sesión ya activa (funciona también en mobile)</td></tr>
     </table>
   </section>
 
@@ -805,10 +806,15 @@
 
     <h2>Cómo usar</h2>
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body">Hacer clic en el botón rojo <strong>📧 Gmail</strong> del header (solo visible en PC).</div></div>
+      <div class="step"><div class="step-num">1</div><div class="step-body">Hacer clic en el botón rojo <strong>📧 Gmail</strong> del header (solo visible en PC) para hacer login y chequear de una.</div></div>
       <div class="step"><div class="step-num">2</div><div class="step-body">Seleccionar la cuenta Google del proyecto y aceptar los permisos.</div></div>
       <div class="step"><div class="step-num">3</div><div class="step-body">La app busca mails de Santander y de MercadoPago de los últimos 30 días y muestra los gastos detectados en modales.</div></div>
       <div class="step"><div class="step-num">4</div><div class="step-body">Confirmar o cancelar cada gasto detectado.</div></div>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #0f766e;">
+      <div class="card-title">🔍 Botón "Pendientes" — chequeo manual (también en mobile)</div>
+      <div class="card-body">A diferencia del botón 📧 Gmail (que siempre fuerza un login nuevo), el botón <strong>🔍 Pendientes</strong> usa la sesión ya activa sin pedir login de nuevo, y está disponible tanto en PC como en mobile. Muestra un toast con el resultado: "✅ Sin mails pendientes" o "📬 X gasto(s) pendiente(s) encontrado(s)". Si no hay sesión activa, recién ahí dispara el login (una sola vez).</div>
     </div>
 
     <h2>Tipos de modal</h2>
@@ -896,6 +902,8 @@ cfGmailChequear()
 localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
 
     <div class="note">📌 El token de Gmail dura aproximadamente 1 hora. Después de ese tiempo es necesario hacer clic en 📧 Gmail nuevamente para renovarlo.</div>
+
+    <div class="note">📌 Al tocar <strong>✕ Cancelar</strong> en el modal de "Gasto detectado" o "Pago de servicio fijo", el mail <strong>no</strong> se marca como procesado — va a volver a aparecer en el próximo chequeo. Útil por ejemplo si cancelás porque el nombre del comercio de un fijo no coincidía, corregís el fijo, y querés que la app te lo vuelva a ofrecer.</div>
   </section>
 
   <!-- CARPETA -->
@@ -1005,6 +1013,14 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
         <div class="section-title">Historial de cambios</div>
         <div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div>
       </div>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.48</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo botón 🔍 Pendientes: revisa manualmente si hay mails de pagos pendientes de procesar, usando la sesión ya activa (sin forzar relogin) — a diferencia de 📧 Gmail, funciona también en mobile</li>
+        <li>Fix: al cancelar el modal de "Gasto detectado" o "Pago de servicio fijo", el mail ya no se marca como procesado — vuelve a aparecer en el próximo chequeo (ej. tras corregir el nombre del comercio en un fijo)</li>
+      </ul>
     </div>
 
     <div class="changelog-entry">
