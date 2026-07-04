@@ -144,7 +144,7 @@
             <div style="margin-top:22px;font-family:'Dancing Script',cursive;font-size:17px;color:#7dd3c0;">Development by Guillermo</div>
             <div style="margin-top:32px;display:flex;align-items:center;gap:8px;opacity:0.85;animation:cf-splash-pulse 1.8s ease-in-out infinite;">
                 <span style="border:1.2px solid #334155;border-radius:5px;padding:3px 9px;font-size:10.5px;color:#cbd5e1;font-weight:600;">ENTER</span>
-                <span style="font-size:11.5px;color:#64748b;">para continuar</span>
+                <span style="font-size:11.5px;color:#64748b;">o tocá la pantalla para continuar</span>
             </div>
         </div>
     </div>
@@ -161,7 +161,7 @@
 (function(){
     const vEl = document.getElementById('cf-splash-version');
     const dEl = document.getElementById('cf-splash-datetime');
-    if(vEl) vEl.textContent = 'v3.7.52';
+    if(vEl) vEl.textContent = 'v3.7.53';
 
     function tickReloj(){
         const dt = new Date();
@@ -177,6 +177,7 @@
         if(!splash) return;
         clearInterval(cfSplashReloj);
         document.removeEventListener('keydown', onKeydown);
+        splash.removeEventListener('click', cerrarSplash);
         splash.style.opacity='0';
         setTimeout(()=>{ if(splash.parentNode) splash.parentNode.removeChild(splash); },300);
     }
@@ -184,6 +185,8 @@
         if(e.key === 'Enter') cerrarSplash();
     }
     document.addEventListener('keydown', onKeydown);
+    const splashEl = document.getElementById('cf-splash');
+    if (splashEl) splashEl.addEventListener('click', cerrarSplash);
 })();
 </script>
 
