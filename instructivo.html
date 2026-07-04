@@ -436,17 +436,12 @@
     <h2>Botones del header</h2>
     <table>
       <tr><th>Botón</th><th>Función</th></tr>
-      <tr><td>📊 Informe Semanal</td><td>Muestra un resumen de los gastos de la semana actual</td></tr>
-      <tr><td>🔄 Abrir Nuevo Mes</td><td>Cierra el período actual y abre uno nuevo</td></tr>
-      <tr><td>💾 Exportar</td><td>Descarga un backup JSON de todos los datos</td></tr>
-      <tr><td>📥 Importar</td><td>Restaura datos desde un archivo JSON previamente exportado</td></tr>
-      <tr><td>🖨️ PDF</td><td>Imprime la vista actual o la exporta como PDF</td></tr>
-      <tr><td>📂 Carpeta</td><td>Vincula una carpeta local para backup automático</td></tr>
-      <tr><td>☁️ Drive</td><td>Sube un backup manual a Google Drive</td></tr>
-      <tr><td>📂 Drive (bajar)</td><td>Lista y restaura backups guardados en Google Drive</td></tr>
-      <tr><td>📧 Gmail</td><td>Login + lee mails de Santander y MercadoPago y detecta gastos automáticamente (solo PC)</td></tr>
-      <tr><td>🔍 Pendientes</td><td>Revisa manualmente si hay mails de pagos pendientes de procesar, usando la sesión ya activa (funciona también en mobile)</td></tr>
+      <tr><td>🔄 Abrir Nuevo Mes</td><td>Cierra el período actual y abre uno nuevo (visible siempre en Mes Actual)</td></tr>
+      <tr><td>⋯ Más (Mes Actual)</td><td>Agrupa: Informe Semanal, Exportar, Importar, PDF, Carpeta local</td></tr>
+      <tr><td>⋯ Más (header)</td><td>Agrupa: Drive (subir/restaurar), Gmail, Pendientes, Snapshots locales, Limpiar caché, Ayuda, Consultar con IA</td></tr>
+      <tr><td>📅 Meses cerrados</td><td>Desplegable con todos los meses cerrados (solo lectura)</td></tr>
     </table>
+    <div class="note">📌 Desde v3.7.52 el header solo muestra 3 elementos a la derecha: ⋯ Más, 📅 Meses cerrados y 🚪 Salir. En la página Mes Actual queda visible solo 🔄 Abrir Nuevo Mes junto a su propio ⋯ Más.</div>
   </section>
 
   <!-- BANCOS -->
@@ -1013,6 +1008,33 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
         <div class="section-title">Historial de cambios</div>
         <div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div>
       </div>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.52</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Header: los 7 botones sueltos (Drive, Gmail, Pendientes, Ayuda, Local, IA, Cache) se consolidaron en un único dropdown <strong>⋯ Más</strong>, con secciones "Backup y datos" y "Otros"</li>
+        <li>Quedan visibles solo 3 elementos a la derecha: ⋯ Más, 📅 Meses cerrados y 🚪 Salir</li>
+        <li>Mes Actual: los 5 botones de acción (Informe Semanal, Exportar, Importar, PDF, Carpeta) se agruparon en un dropdown ⋯ Más propio de esa pantalla; queda visible solo 🔄 Abrir Nuevo Mes junto al dropdown</li>
+        <li>Pantalla de inicio (splash) nueva: paleta navy oscuro + teal, con reloj en vivo, que permanece visible hasta presionar Enter</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.51</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Se agregó <code>navigator.storage.persist()</code> al abrir la app, para reducir que el navegador evicte el handle de la carpeta local guardado en IndexedDB</li>
+        <li>Cuando el permiso de la carpeta local vence, ya no se intenta renovar en silencio (la API lo rechaza sin gesto del usuario) — ahora aparece un banner "🔒 Reautorizar" que renueva el permiso con un solo click</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.50</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Los meses cerrados ya no ocupan una tab cada uno en el header — ahora se accede a ellos desde un único botón 📅 Meses cerrados con un desplegable</li>
+        <li>El desplegable muestra el más reciente arriba, con la misma opción de eliminar (✕) que tenían las tabs individuales</li>
+        <li>Al abrir un mes cerrado aparece un indicador junto al botón con su nombre; tocarlo reabre el desplegable, y su ✕ vuelve a Mes Actual</li>
+      </ul>
     </div>
 
     <div class="changelog-entry">
