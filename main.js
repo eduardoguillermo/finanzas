@@ -501,6 +501,11 @@ function renderTabs() {
     gmailEl.innerText='📧 Gmail'; gmailEl.title='Leer mails de Santander y MercadoPago';
     gmailEl.onclick=cfGmailLoginYChequear;
     bar.appendChild(gmailEl);
+    const revisarEl = document.createElement('button'); revisarEl.id='btn-revisar-pendientes';
+    revisarEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    revisarEl.innerText='🔍 Pendientes'; revisarEl.title='Revisar si hay mails de pagos pendientes de procesar';
+    revisarEl.onclick=cfRevisarPendientes;
+    bar.appendChild(revisarEl);
     const ayudaEl = document.createElement('button'); ayudaEl.id='btn-ayuda';
     ayudaEl.style.cssText='background:#6366f1;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
     ayudaEl.innerText='❓ Ayuda';
@@ -2790,7 +2795,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.47';
+const APP_VERSION = 'v3.7.48';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -4020,7 +4025,7 @@ function cfGmailLoginYChequear() {
             callback: resp => {
                 if (resp.error) { alert('Error Google: ' + resp.error); return; }
                 gTokenGuardar(resp.access_token, resp.expires_in);
-                cfGmailChequear();
+                cfGmailChequear(true);
             }
         });
         client.requestAccessToken({ prompt: 'consent' });
@@ -4028,7 +4033,7 @@ function cfGmailLoginYChequear() {
 }
 
 async function cfGmailChequear(manual = false) {
-    if (cfEsMovil()) return;
+    if (cfEsMovil() && !manual) return; // en mobile solo corre si es chequeo manual (ej. tras login desde 🔍 Pendientes)
     if (manual) cfGmailToast('🔄 Revisando mails...');
     if (!gTokenCargarLocal()) {
         // Token vencido o ausente: intentar renovar en silencio (sin popup) si hay sesión Google activa
@@ -4058,6 +4063,36 @@ async function cfGmailChequear(manual = false) {
     } catch(e) {
         console.error('[CF Gmail] Error:', e.message);
         if (manual) cfGmailToast('❌ Error al revisar mails.', true);
+    }
+}
+
+// Botón "🔍 Pendientes" — chequeo manual, habilitado también en mobile.
+// Usa el token existente sin forzar relogin; si no hay token válido, pide login (una vez).
+async function cfRevisarPendientes() {
+    cfGmailToast('🔄 Revisando mails pendientes...');
+    if (!gTokenCargarLocal()) {
+        const renovado = await new Promise(resolve => {
+            driveGetToken(t => resolve(!!t));
+            setTimeout(() => resolve(false), 8000);
+        });
+        if (!renovado) {
+            cfGmailLoginYChequear();
+            return;
+        }
+    }
+    try {
+        const gastos = await cfGmailBuscarGastos(gToken);
+        if (!gastos.length) {
+            cfGmailToast('✅ Sin mails pendientes.');
+            return;
+        }
+        cfGmailToast(`📬 ${gastos.length} gasto(s) pendiente(s) encontrado(s).`);
+        cfGmailQueue = gastos;
+        cfGmailIdx   = 0;
+        setTimeout(cfGmailMostrarSiguiente, 800);
+    } catch(e) {
+        console.error('[CF Revisar Pendientes] Error:', e.message);
+        cfGmailToast('❌ Error al revisar mails.', true);
     }
 }
 
@@ -4143,8 +4178,8 @@ function cfModalPagoACorriente() {
 }
 
 function cfCerrarModalGasto() {
-    const datos = cfGmailQueue[cfGmailIdx];
-    if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
+    // No marcamos como procesado: al cancelar, el mail debe poder reaparecer
+    // en el próximo chequeo (ej. tras corregir el nombre del comercio en un fijo).
     const ov = document.getElementById('cf-gmail-overlay');
     if (ov) ov.remove();
     cfGmailIdx++;
