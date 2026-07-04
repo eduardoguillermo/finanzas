@@ -377,6 +377,13 @@ async function cfVerificarPermiso(handle) {
     } catch(e) { return false; }
 }
 
+// Solo consulta el permiso (queryPermission) sin pedirlo — no requiere gesto del usuario,
+// así que es seguro llamarla en automático al abrir la app.
+async function cfPermisoOtorgado(handle) {
+    try { return (await handle.queryPermission({ mode: 'readwrite' })) === 'granted'; }
+    catch(e) { return false; }
+}
+
 async function cfSeleccionarCarpeta() {
     if (!('showDirectoryPicker' in window)) {
         alert('Tu navegador no soporta la selección de carpeta local. Usá Chrome o Brave.');
@@ -433,15 +440,168 @@ async function cfRestaurarCarpeta() {
     try {
         const handle = await cfLeerHandle();
         if (!handle) return;
-        const ok = await cfVerificarPermiso(handle);
-        if (!ok) return;
+        window._cfFolderHandlePendiente = handle; // por si hace falta reautorizar
+        const ok = await cfPermisoOtorgado(handle);
+        if (!ok) { cfMostrarBannerReauthCarpeta(handle); return; }
         window._cfFolderHandle = handle;
         cfActualizarEstadoCarpeta(handle.name);
     } catch(e) { console.warn('cfRestaurarCarpeta:', e); }
 }
 
+// Banner discreto: el permiso de la carpeta venció y necesita un click real del usuario
+// (la API no permite renovarlo en automático — requiere gesto del usuario).
+function cfMostrarBannerReauthCarpeta(handle) {
+    if (document.getElementById('cf-reauth-carpeta')) return;
+    const b = document.createElement('div');
+    b.id = 'cf-reauth-carpeta';
+    b.style.cssText = 'position:fixed;bottom:16px;left:16px;background:#1e293b;color:#f1f5f9;padding:10px 14px;border-radius:8px;z-index:9998;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:12.5px;max-width:320px;';
+    b.innerHTML = '🔒 La carpeta local (' + handle.name + ') necesita que confirmes el acceso de nuevo.'
+        + '<button id="cf-reauth-btn" style="background:#0f766e;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Reautorizar</button>'
+        + '<span id="cf-reauth-x" style="cursor:pointer;color:#94a3b8;padding:0 2px;">✕</span>';
+    document.body.appendChild(b);
+    document.getElementById('cf-reauth-x').onclick = () => b.remove();
+    document.getElementById('cf-reauth-btn').onclick = async () => {
+        try {
+            const granted = await handle.requestPermission({ mode: 'readwrite' }) === 'granted';
+            if (granted) {
+                window._cfFolderHandle = handle;
+                cfActualizarEstadoCarpeta(handle.name);
+                b.remove();
+            } else {
+                alert('No se otorgó el permiso. Podés vincular la carpeta de nuevo con el botón 📂 Carpeta.');
+            }
+        } catch(e) { alert('Error al reautorizar: ' + e.message); }
+    };
+}
+
+function cfToggleMesesMenu() {
+    const existente = document.getElementById('meses-menu');
+    if (existente) { existente.remove(); return; }
+    const btn = document.getElementById('btn-meses-cerrados');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const m = document.createElement('div'); m.id='meses-menu';
+    m.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+Math.max(4,rect.right-260)+'px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:3000;overflow:hidden;min-width:260px;max-height:360px;overflow-y:auto;';
+    const lista = [...historicoMeses].reverse();
+    if (!lista.length) {
+        const vacio = document.createElement('div');
+        vacio.innerText = 'Todavía no hay meses cerrados';
+        vacio.style.cssText = 'padding:14px;font-size:12px;color:#94a3b8;text-align:center;';
+        m.appendChild(vacio);
+    } else {
+        lista.forEach((mes, i) => {
+            const o = document.createElement('div');
+            o.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;font-size:13px;cursor:pointer;color:#1e293b;' + (i>0 ? 'border-top:1px solid #f1f5f9;' : '') + (tabActivo===mes.id ? 'background:#f0fdfa;font-weight:700;' : '');
+            o.onmouseover = () => { if (tabActivo!==mes.id) o.style.background = '#f8fafc'; };
+            o.onmouseout  = () => { if (tabActivo!==mes.id) o.style.background = ''; };
+            const nombreSpan = document.createElement('span');
+            nombreSpan.innerText = '🗂 ' + mes.nombre;
+            nombreSpan.onclick = () => { m.remove(); tabActivo = mes.id; renderTabs(); renderContenido(); };
+            nombreSpan.style.flex = '1';
+            const xSpan = document.createElement('span');
+            xSpan.innerText = '✕'; xSpan.style.cssText = 'color:#94a3b8;font-size:11px;padding-left:10px;';
+            xSpan.onclick = () => {
+                if (confirm('¿Eliminar "' + mes.nombre + '"?')) {
+                    historicoMeses = historicoMeses.filter(x=>x.id!==mes.id);
+                    if (tabActivo===mes.id) tabActivo = null;
+                    guardar(); m.remove(); renderTabs(); renderContenido();
+                }
+            };
+            o.appendChild(nombreSpan); o.appendChild(xSpan);
+            m.appendChild(o);
+        });
+    }
+    document.body.appendChild(m);
+    setTimeout(() => document.addEventListener('click', function cerrar(){ document.getElementById('meses-menu')?.remove(); document.removeEventListener('click', cerrar); }, {once:true}), 0);
+}
+
+function cfToggleMenuMas() {
+    const existente = document.getElementById('mas-menu');
+    if (existente) { existente.remove(); return; }
+    const btn = document.getElementById('btn-mas');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const m = document.createElement('div'); m.id='mas-menu';
+    m.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;right:'+Math.max(4, window.innerWidth-rect.right)+'px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:3000;overflow:hidden;min-width:230px;';
+
+    const mkLabel = (texto) => {
+        const l = document.createElement('div');
+        l.innerText = texto;
+        l.style.cssText = 'padding:8px 14px 4px;font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;';
+        return l;
+    };
+    const mkOpt = (label, fn, borde) => {
+        const o = document.createElement('div');
+        o.innerText = label;
+        o.style.cssText = 'padding:10px 14px;font-size:12px;cursor:pointer;color:#1e293b;' + (borde ? 'border-top:1px solid #e2e8f0;' : '');
+        o.onmouseover = () => o.style.background = '#f1f5f9';
+        o.onmouseout  = () => o.style.background = '';
+        o.onclick = () => { m.remove(); fn(); };
+        return o;
+    };
+
+    // Estado de Drive calculado al vuelo (mismo criterio que syncSetBadge)
+    let estadoDrive = '⏳ Drive: sin sincronizar';
+    if (!gTokenCargarLocal() && !gToken) estadoDrive = '☁️ Drive: sin conectar';
+    else if (_syncActivo) estadoDrive = '☁️ Drive: sincronizando...';
+    else if (!_syncPendiente) estadoDrive = '✅ Drive: sincronizado';
+    const estadoEl = document.createElement('div');
+    estadoEl.innerText = estadoDrive;
+    estadoEl.style.cssText = 'padding:8px 14px;font-size:11px;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0;';
+
+    m.appendChild(mkLabel('Backup y datos'));
+    m.appendChild(estadoEl);
+    m.appendChild(mkOpt('☁️ Subir backup a Drive', driveSubir, false));
+    m.appendChild(mkOpt('📂 Restaurar backup de Drive', driveRestaurar, false));
+    if (!cfEsMovil()) m.appendChild(mkOpt('📧 Gmail: login + chequear', cfGmailLoginYChequear, false));
+    m.appendChild(mkOpt('🔍 Revisar pendientes', cfRevisarPendientes, false));
+    m.appendChild(mkOpt('💾 Snapshots locales', cfMostrarSnapshots, false));
+    m.appendChild(mkOpt('🗑️ Limpiar caché y recargar', limpiarCache, false));
+
+    m.appendChild(mkLabel('Otros'));
+    m.appendChild(mkOpt('❓ Ayuda', () => window.open('./instructivo.html','_blank','width=1100,height=750,resizable=yes,scrollbars=yes'), false));
+    m.appendChild(mkOpt('🤖 Consultar con IA', toggleAIPanel, false));
+
+    document.body.appendChild(m);
+    setTimeout(() => document.addEventListener('click', function cerrar(){ document.getElementById('mas-menu')?.remove(); document.removeEventListener('click', cerrar); }, {once:true}), 0);
+}
+
+function cfToggleMenuMasMes() {
+    const existente = document.getElementById('mas-mes-menu');
+    if (existente) { existente.remove(); return; }
+    const btn = document.getElementById('btn-mas-mes');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const m = document.createElement('div'); m.id='mas-mes-menu';
+    m.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:3000;overflow:hidden;min-width:220px;';
+    const mkOpt = (label, fn, borde) => {
+        const o = document.createElement('div');
+        o.innerText = label;
+        o.style.cssText = 'padding:10px 14px;font-size:12px;cursor:pointer;color:#1e293b;' + (borde ? 'border-top:1px solid #e2e8f0;' : '');
+        o.onmouseover = () => o.style.background = '#f1f5f9';
+        o.onmouseout  = () => o.style.background = '';
+        o.onclick = () => { m.remove(); fn(); };
+        return o;
+    };
+    m.appendChild(mkOpt('📊 Informe Semanal', mostrarInformeSemanal, false));
+    m.appendChild(mkOpt('💾 Exportar', exportar, false));
+    m.appendChild(mkOpt('📥 Importar', () => document.getElementById('input-backup')?.click(), false));
+    m.appendChild(mkOpt('🖨️ PDF', () => window.print(), false));
+    m.appendChild(mkOpt('📂 Carpeta local', cfSeleccionarCarpeta, true));
+    document.body.appendChild(m);
+    setTimeout(() => document.addEventListener('click', function cerrar(){ document.getElementById('mas-mes-menu')?.remove(); document.removeEventListener('click', cerrar); }, {once:true}), 0);
+}
+
+
+
+
 document.addEventListener('DOMContentLoaded', () => {
     document.title = 'Control Financiero ' + APP_VERSION;
+    // Pedir almacenamiento persistente: evita que el navegador evicte IndexedDB
+    // (y con eso el handle de la carpeta local) por presión de espacio o inactividad.
+    if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(()=>{});
+    }
     // Snapshot local al cerrar con X (beforeunload — síncrono, siempre funciona)
     window.addEventListener('beforeunload', () => { cfHacerSnapshot(false); });
     // Snapshot + intento Drive al ocultar pestaña
@@ -482,72 +642,39 @@ function renderTabs() {
     // Badge sync + botón Salir — siempre visible en la tab bar
     const spacer = document.createElement('div'); spacer.style.cssText='flex:1;';
     bar.appendChild(spacer);
-    const badgeEl = document.createElement('span'); badgeEl.id='sync-badge';
-    badgeEl.style.cssText='font-size:11px;font-weight:bold;padding:4px 10px;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer;align-self:center;white-space:nowrap;';
-    badgeEl.innerText='☁️ Drive'; badgeEl.onclick=syncAlSalir;
-    bar.appendChild(badgeEl);
-    const backupEl = document.createElement('button'); backupEl.id='btn-backup-global';
-    backupEl.style.cssText='background:#4285f4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
-    backupEl.innerText='☁️ BK'; backupEl.title='Subir backup ahora';
-    backupEl.onclick=driveSubir;
-    bar.appendChild(backupEl);
-    const restoreEl = document.createElement('button'); restoreEl.id='btn-restore-global';
-    restoreEl.style.cssText='background:#4285f4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    restoreEl.innerText='📂 BK'; restoreEl.title='Restaurar backup';
-    restoreEl.onclick=driveRestaurar;
-    bar.appendChild(restoreEl);
-    const gmailEl = document.createElement('button'); gmailEl.id='btn-gmail-santander';
-    gmailEl.style.cssText='background:#ea4335;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;' + (cfEsMovil() ? 'display:none;' : '');
-    gmailEl.innerText='📧 Gmail'; gmailEl.title='Leer mails de Santander y MercadoPago';
-    gmailEl.onclick=cfGmailLoginYChequear;
-    bar.appendChild(gmailEl);
-    const revisarEl = document.createElement('button'); revisarEl.id='btn-revisar-pendientes';
-    revisarEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    revisarEl.innerText='🔍 Pendientes'; revisarEl.title='Revisar si hay mails de pagos pendientes de procesar';
-    revisarEl.onclick=cfRevisarPendientes;
-    bar.appendChild(revisarEl);
-    const ayudaEl = document.createElement('button'); ayudaEl.id='btn-ayuda';
-    ayudaEl.style.cssText='background:#6366f1;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    ayudaEl.innerText='❓ Ayuda';
-    ayudaEl.onclick=()=>window.open('./instructivo.html','_blank','width=1100,height=750,resizable=yes,scrollbars=yes');
-    bar.appendChild(ayudaEl);
-    const snapshotEl = document.createElement('button'); snapshotEl.id='btn-snapshot-local';
-    snapshotEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    snapshotEl.innerText='💾 Local'; snapshotEl.title='Ver/restaurar snapshots locales';
-    snapshotEl.onclick=cfMostrarSnapshots;
-    bar.appendChild(snapshotEl);
-    const aiEl = document.createElement('button'); aiEl.id='btn-ai-panel';
-    aiEl.style.cssText='background:#4f46e5;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    aiEl.innerText='\uD83E\uDD16 IA'; aiEl.title='Consultar datos con IA';
-    aiEl.onclick=toggleAIPanel;
-    bar.appendChild(aiEl);
-    const cacheEl = document.createElement('button'); cacheEl.id='btn-clear-cache';
-    cacheEl.style.cssText='background:#475569;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
-    cacheEl.innerText='🗑️ Cache'; cacheEl.title='Limpiar caché y recargar';
-    cacheEl.onclick=limpiarCache;
-    bar.appendChild(cacheEl);
+    // Elemento oculto: mantiene compatibilidad con syncSetBadge() (usado por el resto del código)
+    // sin mostrar un botón propio — el estado de Drive se muestra dentro del dropdown "Más".
+    const syncBadgeOculto = document.createElement('span'); syncBadgeOculto.id='sync-badge';
+    syncBadgeOculto.style.cssText='display:none;';
+    bar.appendChild(syncBadgeOculto);
+
+    const masEl = document.createElement('button'); masEl.id='btn-mas';
+    masEl.style.cssText='background:#475569;color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:4px;align-self:center;white-space:nowrap;';
+    masEl.innerText='⋯ Más';
+    masEl.onclick=(e)=>{ e.stopPropagation(); cfToggleMenuMas(); };
+    bar.appendChild(masEl);
+
     const salirEl = document.createElement('button'); salirEl.id='btn-salir';
     salirEl.style.cssText='background:#334155;color:white;border:none;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;';
     salirEl.innerText='🚪 Salir'; salirEl.onclick=syncAlSalir;
     bar.appendChild(salirEl);
 
-    [...historicoMeses].reverse().forEach(mes => {
-        const t = document.createElement('div');
-        t.className = 'tab historico' + (tabActivo===mes.id ? ' activo' : '');
-        t.innerHTML = `<span>🗂 ${mes.nombre}</span><span class="tab-x">✕</span>`;
-        t.onclick = e => {
-            if (e.target.classList.contains('tab-x')) {
-                if (confirm(`¿Eliminar "${mes.nombre}"?`)) {
-                    historicoMeses = historicoMeses.filter(m=>m.id!==mes.id);
-                    if (tabActivo===mes.id) tabActivo = null;
-                    guardar(); renderTabs(); renderContenido();
-                }
-                return;
-            }
-            tabActivo = mes.id; renderTabs(); renderContenido();
+    const mesesEl = document.createElement('button'); mesesEl.id='btn-meses-cerrados';
+    mesesEl.style.cssText='background:#0f766e;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:12px;font-weight:bold;cursor:pointer;margin-left:6px;align-self:center;white-space:nowrap;display:flex;align-items:center;gap:4px;';
+    mesesEl.innerHTML = '📅 Meses cerrados' + (historicoMeses.length ? ' <span style="background:rgba(255,255,255,0.25);border-radius:10px;padding:0 6px;font-size:10px;">' + historicoMeses.length + '</span>' : '');
+    mesesEl.onclick = (e) => { e.stopPropagation(); cfToggleMesesMenu(); };
+    bar.appendChild(mesesEl);
+    if (tabActivo && historicoMeses.some(m => m.id === tabActivo)) {
+        const mesActivo = historicoMeses.find(m => m.id === tabActivo);
+        const badgeMes = document.createElement('div');
+        badgeMes.className = 'tab activo';
+        badgeMes.innerHTML = '<span>🗂 ' + mesActivo.nombre + '</span><span class="tab-x">✕</span>';
+        badgeMes.onclick = (e) => {
+            if (e.target.classList.contains('tab-x')) { tabActivo = null; renderTabs(); renderContenido(); return; }
+            cfToggleMesesMenu();
         };
-        bar.appendChild(t);
-    });
+        bar.appendChild(badgeMes);
+    }
 }
 
 function renderContenido() {
@@ -643,13 +770,9 @@ function buildMesActual() {
           <h2 style="margin:0;font-size:20px;">Gestión Financiera y Control de Gastos <span id="app-version-tag" style="font-size:13px;color:#4f46e5;font-weight:bold;">${APP_VERSION}</span></h2>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn" onclick="mostrarInformeSemanal()" style="background:#7c3aed;color:white;font-size:12px;padding:7px 12px;">📊 Informe Semanal</button>
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
-          <button class="btn btn-blue"  id="btn-exportar">💾 Exportar</button>
-          <button class="btn btn-green" id="btn-importar-trigger">📥 Importar</button>
+          <button class="btn" id="btn-mas-mes" style="background:#475569;color:white;font-size:12px;padding:7px 12px;">⋯ Más</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
-          <button class="btn btn-dark"  onclick="window.print()">🖨️ PDF</button>
-          <button class="btn" id="btn-cf-carpeta" onclick="cfSeleccionarCarpeta()" title="Vincular carpeta para backup automático" style="background:#0f766e;color:white;font-size:12px;padding:7px 12px;">📂 Carpeta</button>
           <span id="cf-carpeta-status" style="display:none;font-size:10px;color:#34d399;font-weight:700;"></span>
 
         </div>
@@ -858,9 +981,8 @@ function bindMesActual() {
     g('form-cuota')?.addEventListener('submit', altaCuota);
     g('form-rubro')?.addEventListener('submit', altaRubro);
     g('input-backup')?.addEventListener('change', importar);
-    g('btn-exportar')?.addEventListener('click', exportar);
-    g('btn-importar-trigger')?.addEventListener('click', ()=>g('input-backup')?.click());
     g('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
+    g('btn-mas-mes')?.addEventListener('click', (e)=>{ e.stopPropagation(); cfToggleMenuMasMes(); });
     g('cuota-total')?.addEventListener('input', previewCuota);
     g('cuota-cant')?.addEventListener('input', previewCuota);
 }
@@ -2795,7 +2917,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.48';
+const APP_VERSION = 'v3.7.52';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
