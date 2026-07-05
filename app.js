@@ -575,8 +575,10 @@ function cfToggleMenuMasMes() {
     const btn = document.getElementById('btn-mas-mes');
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
+    const anchoMenu = 220;
+    const left = Math.max(4, Math.min(rect.left, window.innerWidth - anchoMenu - 8));
     const m = document.createElement('div'); m.id='mas-mes-menu';
-    m.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:3000;overflow:hidden;min-width:220px;';
+    m.style.cssText='position:fixed;top:'+(rect.bottom+4)+'px;left:'+left+'px;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:3000;overflow:hidden;min-width:'+anchoMenu+'px;';
     const mkOpt = (label, fn, borde) => {
         const o = document.createElement('div');
         o.innerText = label;
@@ -2940,7 +2942,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.60';
+const APP_VERSION = 'v3.7.61';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
