@@ -1229,7 +1229,7 @@ function renderPresupRubros() {
 }
 function actualizarPresupRubro(inp) {
     const r = inp.getAttribute('data-rubro');
-    const v = parseFloat(inp.value)||0;
+    const v = parseFloat(inp.value.replace(/\./g,''))||0;
     if(v>0) listaPresupRubros[r]=v; else delete listaPresupRubros[r];
     guardar(); renderPresupRubros();
     if(tabActivo==='presupuesto') renderContenido();
@@ -2097,8 +2097,9 @@ function buildPresupuesto() {
         const safeR = r.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
         card += '<div style="display:flex;align-items:center;gap:6px;">';
         card += '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;">Límite $</span>';
-        card += '<input type="number" min="0" step="1" value="'+(pres||'')+'" placeholder="Sin límite" ';
+        card += '<input type="text" inputmode="numeric" value="'+(pres?pres.toLocaleString('es-AR'):'')+'" placeholder="Sin límite" ';
         card += 'style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:white;color:#1e293b;" ';
+        card += 'oninput="this.value=this.value.replace(/\\D/g,\'\').replace(/\\B(?=(\\d{3})+(?!\\d))/g,\'.\')" ';
         card += 'data-rubro="'+safeR+'" onchange="actualizarPresupRubro(this)" onblur="actualizarPresupRubro(this)">';
         card += '</div>';
         card += '</div>';
@@ -2917,7 +2918,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.54';
+const APP_VERSION = 'v3.7.55';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
