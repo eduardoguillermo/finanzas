@@ -10,7 +10,8 @@ const K = {
     tipoCambio:'f_tipoCambio_v3',
     instrumentos:'f_instrumentos_v1',
     acciones:'f_acciones_v1',
-    ingresos:'f_ingresos_v1'
+    ingresos:'f_ingresos_v1',
+    pagosTarjeta:'f_pagosTarjeta_v1'
 };
 let listaRubros        = leer(K.rubros)        || ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
 let listaBancos        = leer(K.bancos)        || [];
@@ -28,6 +29,7 @@ let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
 let listaIngresos      = leer(K.ingresos)      || [];
+let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
@@ -172,6 +174,7 @@ function guardar() {
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
+        localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -867,7 +870,8 @@ function buildMesActual() {
                 <button type="submit" class="btn btn-add btn-purple">Registrar Tarjeta</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:55%">Tarjeta</th><th style="width:35%" class="tr">Consumo ($)</th><th style="width:10%" class="no-print"></th></tr></thead><tbody id="t-tarjetas"></tbody></table>
+            <table><thead><tr><th style="width:45%">Tarjeta</th><th style="width:30%" class="tr">Consumo ($)</th><th style="width:15%" class="no-print"></th><th style="width:10%" class="no-print"></th></tr></thead><tbody id="t-tarjetas"></tbody></table>
+            <div id="wrap-pagos-tarjeta"></div>
           </div>
           <div class="panel panel-transf no-print">
             <h3 class="panel-title" style="display:flex;align-items:center;">↔️ Transferencias entre Cuentas ${btnAyuda('transferencias')}</h3>
@@ -1045,9 +1049,27 @@ function render() {
     listaTarjetas.forEach(t=>{
         const inp=inpNum(t.saldo,v=>{ t.saldo=v; guardar(); calcDash(); }); inp.id='saldo-t-'+t.id;
         const tdS=el('td','tr'); tdS.appendChild(inp);
-        tT.appendChild(fila([tdHTML(`<b>${t.nombre}</b>`),tdS,tdBtn('✕',()=>elimTarjeta(t.id))]));
+        const tdPagar=el('td','tc no-print'); const bPagar=el('button','btn-secondary btn-sm'); bPagar.innerText='💳 Pagar'; bPagar.style.cssText='font-size:11px;padding:4px 8px;'; bPagar.onclick=()=>abrirModalPagoTarjeta(t.id); tdPagar.appendChild(bPagar);
+        tT.appendChild(fila([tdHTML(`<b>${t.nombre}</b>`),tdS,tdPagar,tdBtn('✕',()=>elimTarjeta(t.id))]));
     });
-    if(!listaTarjetas.length) tT.innerHTML='<tr><td colspan="3" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas.</td></tr>';
+    if(!listaTarjetas.length) tT.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas.</td></tr>';
+    const wPT = document.getElementById('wrap-pagos-tarjeta');
+    if (wPT) {
+        const ultimosPagos = [...listaPagosTarjeta].reverse().slice(0, 5);
+        if (!ultimosPagos.length) { wPT.innerHTML = ''; }
+        else {
+            wPT.innerHTML = '<div style="font-size:11px;font-weight:bold;color:#94a3b8;text-transform:uppercase;margin:10px 0 4px;">Últimos pagos de tarjeta</div>'
+                + ultimosPagos.map(p => {
+                    const [y,m,d] = (p.fecha||'').split('-');
+                    const fechaCorta = (d&&m) ? d+'/'+m : (p.fecha||'');
+                    const tit = 'Pagado desde ' + p.bancoNombre + ' el ' + p.fecha;
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12px;padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+                    <span title="${tit}" style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">✅ ${fechaCorta} ${p.tarjetaNombre}</span>
+                    <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><b style="color:#a855f7;">-${fmt(p.monto)}</b><button onclick="elimPagoTarjeta('${p.id}')" style="border:none;background:none;color:#cbd5e1;cursor:pointer;font-size:13px;">✕</button></span>
+                </div>`;
+                }).join('');
+        }
+    }
     // Transferencias
     if(!listaTransferencias.length) { tTr.innerHTML='<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin transferencias.</td></tr>'; }
     else { [...listaTransferencias].reverse().forEach(t=>{
@@ -2918,7 +2940,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.55';
+const APP_VERSION = 'v3.7.60';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -4237,6 +4259,85 @@ setInterval(() => {
     driveGetToken(() => {});
 }, 50 * 60 * 1000);
 
+function abrirModalPagoTarjeta(tarjetaId) {
+    const t = listaTarjetas.find(x => x.id === tarjetaId);
+    if (!t) return;
+    const prev = document.getElementById('cf-gmail-overlay');
+    if (prev) prev.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'cf-gmail-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+    const fechaHoy = cfFechaLocal();
+    const opsBancos = listaBancos.map(b => `<option value="${b.id}">🏦 ${b.nombre} (${fmt(b.saldo)})</option>`).join('');
+
+    overlay.innerHTML = `
+    <div style="background:#1e293b;border-radius:14px;width:100%;max-width:420px;padding:20px 18px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
+            <span style="font-size:24px;">💳</span>
+            <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Pagar tarjeta</h3>
+        </div>
+        <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #a855f7;">
+            <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${t.nombre}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Deuda actual: $${(t.saldo||0).toLocaleString('es-AR')}</div>
+        </div>
+        ${!listaBancos.length ? '<div style="font-size:12px;color:#fca5a5;margin-bottom:14px;">No hay bancos cargados. Registrá un banco primero.</div>' : `
+        <div style="margin-bottom:11px;">
+            <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Sale del banco</label>
+            <select id="cf-pt-banco" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">${opsBancos}</select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;">
+                <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto</label>
+                <input type="number" id="cf-pt-monto" step="1" value="${Math.round(t.saldo||0)}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha</label>
+                <input type="date" id="cf-pt-fecha" value="${fechaHoy}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onclick="confirmarPagoTarjeta('${t.id}')" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;background:#a855f7;color:white;cursor:pointer;">✓ Confirmar pago</button>
+        </div>`}
+        <div style="display:flex;gap:8px;">
+            <button onclick="cfCerrarModalGasto()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">✕ Cancelar</button>
+        </div>
+    </div>`;
+
+    document.body.appendChild(overlay);
+}
+function confirmarPagoTarjeta(tarjetaId) {
+    const t = listaTarjetas.find(x => x.id === tarjetaId);
+    if (!t) return;
+    const bancoId = vGet('cf-pt-banco');
+    const monto = parseFloat(document.getElementById('cf-pt-monto').value) || 0;
+    const fecha = document.getElementById('cf-pt-fecha').value || cfFechaLocal();
+    if (!bancoId) { alert('Elegí un banco de origen.'); return; }
+    if (monto <= 0) { alert('El monto no es válido.'); return; }
+    const banco = listaBancos.find(b => b.id === bancoId);
+    if (!banco) { alert('Banco no encontrado.'); return; }
+
+    banco.saldo -= monto;
+    t.saldo -= monto;
+    listaPagosTarjeta.push({ id: 'pt_' + Date.now(), tarjetaId: t.id, tarjetaNombre: t.nombre, bancoId, bancoNombre: banco.nombre, monto, fecha });
+
+    guardar();
+    cfCerrarModalGasto();
+    render();
+    cfGmailToast('✅ ' + t.nombre + ' -' + fmt(monto));
+}
+function elimPagoTarjeta(id) {
+    const p = listaPagosTarjeta.find(x => x.id === id);
+    if (!p) return;
+    if (!confirm('¿Deshacer este pago? Se revierte el monto al banco y a la tarjeta.')) return;
+    const banco = listaBancos.find(b => b.id === p.bancoId);
+    const tarjeta = listaTarjetas.find(t => t.id === p.tarjetaId);
+    if (banco) banco.saldo += p.monto;
+    if (tarjeta) tarjeta.saldo += p.monto;
+    listaPagosTarjeta = listaPagosTarjeta.filter(x => x.id !== id);
+    guardar(); render();
+}
 function cfAbrirModalPagoServicio(datos, servicio) {
     const prev = document.getElementById('cf-gmail-overlay');
     if (prev) prev.remove();
