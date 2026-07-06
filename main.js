@@ -2942,7 +2942,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.61';
+const APP_VERSION = 'v3.7.62';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -4373,6 +4373,7 @@ function cfAbrirModalPagoServicio(datos, servicio) {
             <button onclick="cfModalPagoACorriente()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">↩ Registrar como gasto corriente</button>
             <button onclick="cfCerrarModalGasto()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">✕ Cancelar</button>
         </div>
+        <button onclick="cfDescartarDefinitivo()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;font-size:11.5px;font-weight:600;border:1px dashed #64748b;background:transparent;color:#94a3b8;cursor:pointer;">🚫 Descartar definitivamente (no volver a mostrar este mail)</button>
     </div>`;
     document.body.appendChild(overlay);
 }
@@ -4406,6 +4407,17 @@ function cfModalPagoACorriente() {
 function cfCerrarModalGasto() {
     // No marcamos como procesado: al cancelar, el mail debe poder reaparecer
     // en el próximo chequeo (ej. tras corregir el nombre del comercio en un fijo).
+    const ov = document.getElementById('cf-gmail-overlay');
+    if (ov) ov.remove();
+    cfGmailIdx++;
+    if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 400);
+}
+
+function cfDescartarDefinitivo() {
+    // A diferencia de Cancelar: acá sí marcamos el mail como procesado,
+    // para que este mail puntual no vuelva a aparecer nunca más.
+    const datos = cfGmailQueue[cfGmailIdx];
+    if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
     const ov = document.getElementById('cf-gmail-overlay');
     if (ov) ov.remove();
     cfGmailIdx++;
@@ -4474,6 +4486,7 @@ function cfAbrirModalGasto(datos) {
             <button onclick="cfCerrarModalGasto()" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:1.5px solid #334155;background:#0f172a;color:#f1f5f9;cursor:pointer;">✕ Cancelar</button>
             <button onclick="cfConfirmarGasto()" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;background:#4f46e5;color:white;cursor:pointer;">✓ Registrar gasto</button>
         </div>
+        <button onclick="cfDescartarDefinitivo()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;font-size:11.5px;font-weight:600;border:1px dashed #64748b;background:transparent;color:#94a3b8;cursor:pointer;">🚫 Descartar definitivamente (no volver a mostrar este mail)</button>
     </div>`;
     document.body.appendChild(overlay);
 }
