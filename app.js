@@ -242,9 +242,12 @@ async function syncSilencioso() {
         const groqKey = localStorage.getItem('groq_api_key')||'';
         const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,groqKey});
 
-        // Si no tenemos el ID del archivo, buscarlo en Drive
+        const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
+
+        // Si no tenemos el ID del archivo, buscarlo en la carpeta visible
         if(!_driveFileId) {
-            const listR = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=name%3D%22backup_autosync.json%22',
+            const q = encodeURIComponent(`name='backup_autosync.json' and '${folderId}' in parents and trashed=false`);
+            const listR = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
                 {headers:{Authorization:'Bearer '+gToken}});
             if(listR.ok) {
                 const listD = await listR.json();
@@ -258,8 +261,8 @@ async function syncSilencioso() {
             resp = await fetch('https://www.googleapis.com/upload/drive/v3/files/'+_driveFileId+'?uploadType=media',
                 {method:'PATCH', headers:{Authorization:'Bearer '+gToken,'Content-Type':'application/json'}, body:data});
         } else {
-            // Crear archivo nuevo con nombre fijo
-            const meta = JSON.stringify({name:'backup_autosync.json',parents:['appDataFolder']});
+            // Crear archivo nuevo con nombre fijo, dentro de la carpeta visible
+            const meta = JSON.stringify({name:'backup_autosync.json',parents:[folderId]});
             const form = new FormData();
             form.append('metadata', new Blob([meta],{type:'application/json'}));
             form.append('file', new Blob([data],{type:'application/json'}));
@@ -2966,32 +2969,51 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.63';
+const APP_VERSION = 'v3.7.64';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
-const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
+const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
+const CF_DRIVE_FOLDER = 'ControlFinanciero';
+let _cfFolderId = null;
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
 const GTOKEN_KEY='cf_gtoken';
 const GTOKEN_EXP_KEY='cf_gtoken_exp';
+const GTOKEN_SCOPE_KEY='cf_gtoken_scope_v';
+const GTOKEN_SCOPE_VERSION='2'; // v2: carpeta visible "ControlFinanciero" (drive.file) en vez de appDataFolder oculta
 let gToken=null;
 let _alertasMostradas=false;
 
 // Persistencia de token en localStorage con expiración
 function gTokenGuardar(token, expiresInSec) {
     const exp = Date.now() + (expiresInSec||3500)*1000;
-    try { localStorage.setItem(GTOKEN_KEY, token); localStorage.setItem(GTOKEN_EXP_KEY, String(exp)); } catch(e){}
+    try { localStorage.setItem(GTOKEN_KEY, token); localStorage.setItem(GTOKEN_EXP_KEY, String(exp)); localStorage.setItem(GTOKEN_SCOPE_KEY, GTOKEN_SCOPE_VERSION); } catch(e){}
     gToken = token;
 }
 function gTokenCargarLocal() {
     try {
         const t = localStorage.getItem(GTOKEN_KEY);
         const exp = parseInt(localStorage.getItem(GTOKEN_EXP_KEY)||'0');
-        if(t && exp && Date.now() < exp - 60000) { gToken = t; return true; }
+        const scopeV = localStorage.getItem(GTOKEN_SCOPE_KEY);
+        // Token viejo (scope appDataFolder) no sirve para la carpeta visible: se descarta y se re-pide consentimiento
+        if(t && exp && Date.now() < exp - 60000 && scopeV === GTOKEN_SCOPE_VERSION) { gToken = t; return true; }
     } catch(e){}
     return false;
 }
 function gTokenLimpiar() {
     gToken = null;
-    try { localStorage.removeItem(GTOKEN_KEY); localStorage.removeItem(GTOKEN_EXP_KEY); } catch(e){}
+    try { localStorage.removeItem(GTOKEN_KEY); localStorage.removeItem(GTOKEN_EXP_KEY); localStorage.removeItem(GTOKEN_SCOPE_KEY); } catch(e){}
+}
+
+// Busca (o crea) la carpeta visible "ControlFinanciero" en el Drive del usuario
+function driveEnsureFolder(token, cb) {
+    if(_cfFolderId){ cb(_cfFolderId); return; }
+    const q = encodeURIComponent(`name='${CF_DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,{headers:{Authorization:'Bearer '+token}})
+    .then(r=>r.json()).then(data=>{
+        if(data.files && data.files.length){ _cfFolderId = data.files[0].id; cb(_cfFolderId); return; }
+        fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:CF_DRIVE_FOLDER,mimeType:'application/vnd.google-apps.folder'})})
+        .then(r=>r.json()).then(f=>{ _cfFolderId=f.id; cb(_cfFolderId); })
+        .catch(()=>{ syncSetBadge('err'); });
+    }).catch(()=>{ syncSetBadge('err'); });
 }
 
 function driveCargarGoogle(cb) {
@@ -3023,26 +3045,31 @@ function driveGetToken(cb) {
 }
 function driveSubir() {
     driveGetToken(token=>{
-        const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-        const nombre='backup_finanzas_'+ts+'.json';
-        const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
-        const meta=JSON.stringify({name:nombre,parents:['appDataFolder']});
-        const form=new FormData();
-        form.append('metadata',new Blob([meta],{type:'application/json'}));
-        form.append('file',new Blob([data],{type:'application/json'}));
-        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token},body:form})
-        .then(r=>r.json()).then(f=>{ if(f.id){ _syncPendiente=false; syncSetBadge('ok'); alert('Backup guardado en Drive: '+nombre); } else{alert('Error al subir: '+JSON.stringify(f));gTokenLimpiar();} })
-        .catch(e=>{alert('Error: '+e.message);gTokenLimpiar();});
+        driveEnsureFolder(token, folderId=>{
+            const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
+            const nombre='backup_finanzas_'+ts+'.json';
+            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
+            const meta=JSON.stringify({name:nombre,parents:[folderId]});
+            const form=new FormData();
+            form.append('metadata',new Blob([meta],{type:'application/json'}));
+            form.append('file',new Blob([data],{type:'application/json'}));
+            fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+token},body:form})
+            .then(r=>r.json()).then(f=>{ if(f.id){ _syncPendiente=false; syncSetBadge('ok'); alert('Backup guardado en Drive: '+nombre); } else{alert('Error al subir: '+JSON.stringify(f));gTokenLimpiar();} })
+            .catch(e=>{alert('Error: '+e.message);gTokenLimpiar();});
+        });
     });
 }
 function driveRestaurar() {
     driveGetToken(token=>{
-        fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=50',{headers:{Authorization:'Bearer '+token}})
-        .then(r=>r.json()).then(data=>{
-            // Listar todos los backups: manuales + autosync
-            const arch=(data.files||[]).filter(f=>f.name.startsWith('backup_'));
-            mostrarModalDrive(arch,token);
-        }).catch(e=>{alert('Error al listar Drive: '+e.message);gTokenLimpiar();});
+        driveEnsureFolder(token, folderId=>{
+            const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+            fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=50`,{headers:{Authorization:'Bearer '+token}})
+            .then(r=>r.json()).then(data=>{
+                // Listar todos los backups: manuales + autosync
+                const arch=(data.files||[]).filter(f=>f.name.startsWith('backup_'));
+                mostrarModalDrive(arch,token);
+            }).catch(e=>{alert('Error al listar Drive: '+e.message);gTokenLimpiar();});
+        });
     });
 }
 function mostrarModalDrive(arch,token) {
