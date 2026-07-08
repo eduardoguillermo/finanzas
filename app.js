@@ -11,7 +11,8 @@ const K = {
     instrumentos:'f_instrumentos_v1',
     acciones:'f_acciones_v1',
     ingresos:'f_ingresos_v1',
-    pagosTarjeta:'f_pagosTarjeta_v1'
+    pagosTarjeta:'f_pagosTarjeta_v1',
+    pagosTarjetaUSD:'f_pagosTarjetaUSD_v1'
 };
 let listaRubros        = leer(K.rubros)        || ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
 let listaBancos        = leer(K.bancos)        || [];
@@ -30,6 +31,7 @@ let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
 let listaIngresos      = leer(K.ingresos)      || [];
 let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
+let listaPagosTarjetaUSD = leer(K.pagosTarjetaUSD) || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
@@ -175,6 +177,7 @@ function guardar() {
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
         localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
+        localStorage.setItem(K.pagosTarjetaUSD,JSON.stringify(listaPagosTarjetaUSD));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -1674,6 +1677,7 @@ function buildDolares() {
               </form>
             </div>
             <div id="t-tusd"></div>
+            <div id="wrap-pagos-tarjeta-usd"></div>
           </div>
         </div>
         <div>
@@ -1861,8 +1865,11 @@ function renderDolares() {
             const card=el('div'); card.style.cssText='border:1px solid #e2e8f0;border-left:4px solid #a855f7;border-radius:6px;padding:12px;margin-bottom:8px;background:white;';
             const row1=el('div'); row1.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
             const nom=el('span'); nom.style.cssText='font-weight:bold;color:#1e293b;font-size:14px;'; nom.innerText=t.nombre;
+            const btnsWrap=el('div'); btnsWrap.style.cssText='display:flex;align-items:center;gap:6px;';
+            const btnPagar=el('button','btn-secondary btn-sm'); btnPagar.innerText='💳 Pagar'; btnPagar.style.cssText='font-size:11px;padding:4px 8px;'; btnPagar.onclick=function(){ abrirModalPagoTarjetaUSD(t.id); };
             const btnX=el('button','btn-del'); btnX.innerText='\u2715'; btnX.onclick=function(){ elimTarjetaUSD(t.id); };
-            row1.appendChild(nom); row1.appendChild(btnX);
+            btnsWrap.appendChild(btnPagar); btnsWrap.appendChild(btnX);
+            row1.appendChild(nom); row1.appendChild(btnsWrap);
             const mkC=function(label,node,color){ const c=el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 10px;'; const l=el('div'); l.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; l.innerText=label; const v=el('div'); v.style.cssText='font-size:15px;font-weight:bold;color:'+(color||'#1e293b')+';'; if(typeof node==='string') v.innerText=node; else v.appendChild(node); c.appendChild(l); c.appendChild(v); return c; };
             const inp=inpNumUSD(t.saldo,function(v){ t.saldo=v; guardar(); calcDashUSD(); });
             inp.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 8px;font-size:15px;font-weight:bold;color:#a855f7;background:white;text-align:right;';
@@ -1875,6 +1882,23 @@ function renderDolares() {
         const tot=el('div'); tot.style.cssText='background:#f8fafc;border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;';
         tot.innerHTML='<span style="font-weight:bold;color:#1e293b;">Total</span><div style="text-align:right;"><div style="font-weight:bold;color:#a855f7;font-size:15px;">'+fmtUSD(totTU)+'</div><div style="font-size:13px;color:#0284c7;">'+fmt(totTU*tipoCambio)+'</div></div>';
         tTU.appendChild(tot);
+    }
+    const wPTU = document.getElementById('wrap-pagos-tarjeta-usd');
+    if (wPTU) {
+        const ultimosPagosU = [...listaPagosTarjetaUSD].reverse().slice(0, 5);
+        if (!ultimosPagosU.length) { wPTU.innerHTML = ''; }
+        else {
+            wPTU.innerHTML = '<div style="font-size:11px;font-weight:bold;color:#94a3b8;text-transform:uppercase;margin:10px 0 4px;">Últimos pagos de tarjeta USD</div>'
+                + ultimosPagosU.map(p => {
+                    const [y,m,d] = (p.fecha||'').split('-');
+                    const fechaCorta = (d&&m) ? d+'/'+m : (p.fecha||'');
+                    const tit = 'Pagado desde ' + p.cuentaNombre + ' el ' + p.fecha;
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12px;padding:5px 8px;border-bottom:1px solid #f1f5f9;">
+                    <span title="${tit}" style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">✅ ${fechaCorta} ${p.tarjetaNombre}</span>
+                    <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><b style="color:#a855f7;">-${fmtUSD(p.monto)}</b><button onclick="elimPagoTarjetaUSD('${p.id}')" style="border:none;background:none;color:#cbd5e1;cursor:pointer;font-size:13px;">✕</button></span>
+                </div>`;
+                }).join('');
+        }
     }
     // Servicios USD
     [...listaServiciosUSD].sort((a,b)=>{ const est=s=>s.pagado>=s.presupuesto&&s.presupuesto>0?2:s.pagado>0?1:0; return est(a)!==est(b)?est(a)-est(b):a.nombre.localeCompare(b.nombre,'es'); }).forEach(s=>{
@@ -2942,7 +2966,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.62';
+const APP_VERSION = 'v3.7.63';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/gmail.readonly';
 const CF_GMAIL_PROCESSED_KEY = 'cf_gmail_processed';
@@ -4339,6 +4363,85 @@ function elimPagoTarjeta(id) {
     if (tarjeta) tarjeta.saldo += p.monto;
     listaPagosTarjeta = listaPagosTarjeta.filter(x => x.id !== id);
     guardar(); render();
+}
+function abrirModalPagoTarjetaUSD(tarjetaId) {
+    const t = listaTarjetasUSD.find(x => x.id === tarjetaId);
+    if (!t) return;
+    const prev = document.getElementById('cf-gmail-overlay');
+    if (prev) prev.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'cf-gmail-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+    const fechaHoy = cfFechaLocal();
+    const opsCuentas = listaCuentasUSD.map(c => `<option value="${c.id}">🏦 ${c.nombre} (${fmtUSD(c.saldo)})</option>`).join('');
+
+    overlay.innerHTML = `
+    <div style="background:#1e293b;border-radius:14px;width:100%;max-width:420px;padding:20px 18px 24px;box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;border-bottom:1px solid #334155;padding-bottom:12px;">
+            <span style="font-size:24px;">💳</span>
+            <h3 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:0;flex:1;">Pagar tarjeta USD</h3>
+        </div>
+        <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #a855f7;">
+            <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${t.nombre}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Deuda actual: ${fmtUSD(t.saldo||0)}</div>
+        </div>
+        ${!listaCuentasUSD.length ? '<div style="font-size:12px;color:#fca5a5;margin-bottom:14px;">No hay cuentas USD cargadas. Registrá una cuenta USD primero.</div>' : `
+        <div style="margin-bottom:11px;">
+            <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Sale de la cuenta</label>
+            <select id="cf-ptu-cuenta" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">${opsCuentas}</select>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;">
+                <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto (USD)</label>
+                <input type="number" id="cf-ptu-monto" step="0.01" value="${Math.round((t.saldo||0)*100)/100}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha</label>
+                <input type="date" id="cf-ptu-fecha" value="${fechaHoy}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onclick="confirmarPagoTarjetaUSD('${t.id}')" style="flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;background:#a855f7;color:white;cursor:pointer;">✓ Confirmar pago</button>
+        </div>`}
+        <div style="display:flex;gap:8px;">
+            <button onclick="cfCerrarModalGasto()" style="flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;border:1.5px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer;">✕ Cancelar</button>
+        </div>
+    </div>`;
+
+    document.body.appendChild(overlay);
+}
+function confirmarPagoTarjetaUSD(tarjetaId) {
+    const t = listaTarjetasUSD.find(x => x.id === tarjetaId);
+    if (!t) return;
+    const cuentaId = vGet('cf-ptu-cuenta');
+    const monto = parseFloat(document.getElementById('cf-ptu-monto').value) || 0;
+    const fecha = document.getElementById('cf-ptu-fecha').value || cfFechaLocal();
+    if (!cuentaId) { alert('Elegí una cuenta USD de origen.'); return; }
+    if (monto <= 0) { alert('El monto no es válido.'); return; }
+    const cuenta = listaCuentasUSD.find(c => c.id === cuentaId);
+    if (!cuenta) { alert('Cuenta USD no encontrada.'); return; }
+
+    cuenta.saldo -= monto;
+    t.saldo -= monto;
+    listaPagosTarjetaUSD.push({ id: 'ptu_' + Date.now(), tarjetaId: t.id, tarjetaNombre: t.nombre, cuentaId, cuentaNombre: cuenta.nombre, monto, fecha });
+
+    guardar();
+    cfCerrarModalGasto();
+    renderDolares();
+    cfGmailToast('✅ ' + t.nombre + ' -' + fmtUSD(monto));
+}
+function elimPagoTarjetaUSD(id) {
+    const p = listaPagosTarjetaUSD.find(x => x.id === id);
+    if (!p) return;
+    if (!confirm('¿Deshacer este pago? Se revierte el monto a la cuenta USD y a la tarjeta.')) return;
+    const cuenta = listaCuentasUSD.find(c => c.id === p.cuentaId);
+    const tarjeta = listaTarjetasUSD.find(t => t.id === p.tarjetaId);
+    if (cuenta) cuenta.saldo += p.monto;
+    if (tarjeta) tarjeta.saldo += p.monto;
+    listaPagosTarjetaUSD = listaPagosTarjetaUSD.filter(x => x.id !== id);
+    guardar(); renderDolares();
 }
 function cfAbrirModalPagoServicio(datos, servicio) {
     const prev = document.getElementById('cf-gmail-overlay');
