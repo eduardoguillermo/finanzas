@@ -161,12 +161,12 @@
 (function(){
     const vEl = document.getElementById('cf-splash-version');
     const dEl = document.getElementById('cf-splash-datetime');
-    if(vEl) vEl.textContent = 'v3.7.66';
+    if(vEl) vEl.textContent = 'v3.7.67';
 
     function tickReloj(){
         const dt = new Date();
         const fecha = dt.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-        const hora  = dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const hora  = dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
         if(dEl) dEl.textContent = fecha + ' · ' + hora;
     }
     tickReloj();
