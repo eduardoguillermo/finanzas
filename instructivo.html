@@ -819,6 +819,11 @@
     </div>
 
     <div class="card" style="border-left: 4px solid #0f766e;">
+      <div class="card-title">📧 Botón "Chequear mails" — ahora visible en el header</div>
+      <div class="card-body">Antes el chequeo manual estaba escondido dentro de "⋯ Más". Ahora hay un botón directo <strong>📧 Chequear mails</strong> junto a "Abrir Nuevo Mes", visible también en mobile. Hace lo mismo que 🔍 Pendientes: usa la sesión activa sin forzar login nuevo.</div>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #0f766e;">
       <div class="card-title">🔍 Botón "Pendientes" — chequeo manual (también en mobile)</div>
       <div class="card-body">A diferencia del botón 📧 Gmail (que siempre fuerza un login nuevo), el botón <strong>🔍 Pendientes</strong> usa la sesión ya activa sin pedir login de nuevo, y está disponible tanto en PC como en mobile. Muestra un toast con el resultado: "✅ Sin mails pendientes" o "📬 X gasto(s) pendiente(s) encontrado(s)". Si no hay sesión activa, recién ahí dispara el login (una sola vez).</div>
     </div>
@@ -900,6 +905,14 @@
     <p>Además de las compras con tarjeta, el módulo detecta los mails "Ya enviamos tu transferencia..." de MercadoPago (transferencias a beneficiarios). Estos se registran como gasto corriente con el rubro <strong>preseleccionado automáticamente</strong> según una tabla interna que asocia cada nombre de beneficiario a un rubro fijo — solo hay que confirmar el modal.</p>
     <div class="note">📌 Tabla actual de nombre → rubro: Carlos Alfredo Irrera → Sodero · Miguel Angel Torres → Jardinero · Edgardo Sebastian Soria → Delivery · Elvira Reina Tito → Carnicería / Verdulería. Para agregar nuevos beneficiarios hay que actualizar la tabla en el código (<code>CF_MP_TRANSFER_RUBROS</code>).</div>
 
+    <h2>Comprobantes de MercadoPago reenviados como adjunto</h2>
+    <p>Cuando MercadoPago no manda el mail de transferencia con texto parseable (por ejemplo, transferencias desde otra cuenta que solo se pueden compartir como comprobante), se puede reenviar el comprobante (imagen o PDF) desde <code>eduardo.bodega@gmail.com</code> hacia la casilla monitoreada. La app detecta el reenvío, descarga el adjunto y lo muestra directamente arriba del modal de "Gasto detectado" para que completes monto y rubro a mano mirando el comprobante.</p>
+    <div class="note">📌 Este flujo es semi-automático a propósito: como el dato viene en una imagen/PDF, la app no puede leer el monto solo — hay que confirmarlo vos.</div>
+
+    <h2>Medio de pago: bancos y tarjetas</h2>
+    <p>El campo "Medio de pago" del modal de gasto detectado lista tanto bancos/cuentas (🏦) como tarjetas (💳). Para transferencias y comprobantes de MercadoPago, si existe un banco cargado con el nombre "Mercado Pago", se preselecciona automáticamente. El saldo del banco/cuenta elegido se descuenta al confirmar el gasto.</p>
+    <div class="note">📌 Para que el descuento de saldo funcione, el banco tiene que tener tildado "auto descontar" en la tabla de Bancos.</div>
+
     <h2>Comandos útiles (consola del navegador)</h2>
     <pre>// Buscar mails manualmente
 cfGmailChequear()
@@ -910,6 +923,8 @@ localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
     <div class="note">📌 El token de Gmail dura aproximadamente 1 hora. Después de ese tiempo es necesario hacer clic en 📧 Gmail nuevamente para renovarlo.</div>
 
     <div class="note">📌 Al tocar <strong>✕ Cancelar</strong> en el modal de "Gasto detectado" o "Pago de servicio fijo", el mail <strong>no</strong> se marca como procesado — va a volver a aparecer en el próximo chequeo. Útil por ejemplo si cancelás porque el nombre del comercio de un fijo no coincidía, corregís el fijo, y querés que la app te lo vuelva a ofrecer.</div>
+
+    <div class="note">📌 El botón <strong>🚫 Descartar definitivamente</strong> (abajo de cada modal) sí marca el mail como procesado — no se vuelve a mostrar nunca más. Usalo para mails que no vas a procesar (ej. gastos que no querés registrar en la app).</div>
   </section>
 
   <!-- CARPETA -->
