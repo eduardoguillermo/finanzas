@@ -2035,14 +2035,18 @@ function dibujarTorta(canvasId, leyId, items, fmtVal, coloresFijos) {
     const total = items.reduce(function(a,i){ return a+i.valor; }, 0);
     if (!total) return;
     const paleta = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
-    // Si hay colores fijos, no ordenar (mantener orden del caller); si no, ordenar por valor desc
-    const itemsOrd = coloresFijos ? items : items.slice().sort(function(a,b){ return b.valor-a.valor; });
+    // Emparejar cada item con su color (fijo o de paleta) ANTES de ordenar, para no perder la correspondencia
+    const itemsConColor = items.map(function(it,i){ return { item: it, color: coloresFijos ? coloresFijos[i] : paleta[i%paleta.length] }; });
+    // Ordenar torta y leyenda por monto, de mayor a menor
+    itemsConColor.sort(function(a,b){ return b.item.valor - a.item.valor; });
+    const itemsOrd = itemsConColor.map(function(x){ return x.item; });
+    const coloresOrd = itemsConColor.map(function(x){ return x.color; });
     setTimeout(function(){
         const tw = document.getElementById(canvasId); if(!tw) return;
         const cv = el('canvas'); cv.width=300; cv.height=300; tw.appendChild(cv);
         const ctx = cv.getContext('2d'); const cx=150,cy=150,r=120,ri=60; let ang=-Math.PI/2;
         itemsOrd.forEach(function(it,i){
-            const pct=it.valor/total, a2=ang+pct*2*Math.PI, col=coloresFijos?coloresFijos[i]:paleta[i%paleta.length];
+            const pct=it.valor/total, a2=ang+pct*2*Math.PI, col=coloresOrd[i];
             ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,ang,a2); ctx.closePath();
             ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke();
             if(pct>0.05){ const ma=ang+(a2-ang)/2;
@@ -2056,7 +2060,7 @@ function dibujarTorta(canvasId, leyId, items, fmtVal, coloresFijos) {
         const ley = document.getElementById(leyId);
         if(ley){ ley.innerHTML=''; itemsOrd.forEach(function(it,i){
             const d=el('div'); d.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;';
-            d.innerHTML='<div style="width:12px;height:12px;border-radius:3px;background:'+(coloresFijos?coloresFijos[i]:paleta[i%paleta.length])+';flex-shrink:0;"></div>';
+            d.innerHTML='<div style="width:12px;height:12px;border-radius:3px;background:'+coloresOrd[i]+';flex-shrink:0;"></div>';
             const span1=el('span'); span1.style.cssText='font-size:12px;font-weight:bold;color:#1e293b;'; span1.innerText=it.label;
             const span2=el('span'); span2.style.cssText='font-size:11px;color:#64748b;'; span2.innerText=fmtVal(it.valor)+' · '+(it.valor/total*100).toFixed(1)+'%';
             d.appendChild(span1); d.appendChild(span2); ley.appendChild(d);
@@ -3023,7 +3027,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.69';
+const APP_VERSION = 'v3.7.70';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
