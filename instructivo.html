@@ -350,7 +350,7 @@
     <table>
       <tr><th>Pestaña</th><th>Contenido</th></tr>
       <tr><td>📊 Mes Actual</td><td>Vista principal con todos los paneles del período en curso</td></tr>
-      <tr><td>🎯 Presupuesto</td><td>Límites de gasto por rubro y seguimiento de cumplimiento</td></tr>
+      <tr><td>🎯 Presupuesto</td><td>Límites de gasto por rubro, ingresos del mes y balance superávit/déficit</td></tr>
       <tr><td>💵 Dólares</td><td>Cuentas, tarjetas, servicios y gastos en USD</td></tr>
       <tr><td>📈 Reportes</td><td>Gráficos y resúmenes del período actual</td></tr>
       <tr><td>📊 Inversiones</td><td>Portfolio de acciones e instrumentos financieros</td></tr>
@@ -686,6 +686,16 @@
       <li><span class="badge badge-amber">Amarillo</span> — Cerca del límite (>80%)</li>
       <li><span class="badge badge-red">Rojo</span> — Presupuesto superado</li>
     </ul>
+
+    <h2>Ingresos del mes <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Arriba de todo en la pestaña Presupuesto hay una tarjeta compacta que muestra el total de ingresos cargados este mes. Es solo informativa: <b>no toca saldos de cuentas ni transacciones</b>, es un registro aparte de "Ingresar fondos" (que sí mueve plata en Bancos).</p>
+    <p>Al tocar la tarjeta se abre un modal con:</p>
+    <ul>
+      <li>El <b>balance del mes</b>: ingresos cargados vs. el "Presupuesto total" de tus rubros, con la etiqueta <span class="badge badge-green">SUPERÁVIT</span> o <span class="badge badge-red">DÉFICIT</span> según corresponda.</li>
+      <li>La <b>lista de conceptos</b> cargados (con fecha, tipo Fijo/Variable y monto), cada uno con un botón ✕ para eliminarlo.</li>
+      <li>Un <b>formulario para agregar</b> (Concepto, Monto, Fecha, Tipo). Se puede cargar más de un ingreso seguido: el modal no se cierra al guardar, solo se actualiza la lista y los totales.</li>
+    </ul>
+    <p>Tope de <b>4 registros por mes</b>. Al llegar al límite, el botón "＋ Agregar" queda deshabilitado hasta el próximo mes.</p>
   </section>
 
   <!-- REPORTES -->
