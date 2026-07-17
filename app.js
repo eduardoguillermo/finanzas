@@ -12,6 +12,7 @@ const K = {
     instrumentos:'f_instrumentos_v1',
     acciones:'f_acciones_v1',
     ingresos:'f_ingresos_v1',
+    ingresosPresup:'f_ingresosPresup_v1',
     pagosTarjeta:'f_pagosTarjeta_v1',
     pagosTarjetaUSD:'f_pagosTarjetaUSD_v1'
 };
@@ -32,6 +33,7 @@ let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
 let listaIngresos      = leer(K.ingresos)      || [];
+let listaIngresosPresup = leer(K.ingresosPresup) || [];
 let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
 let listaPagosTarjetaUSD = leer(K.pagosTarjetaUSD) || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
@@ -58,7 +60,7 @@ function cfSnapshotData() {
     return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
         listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
-        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
+        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup});
 }
 function cfHacerSnapshot(manual=false) {
     try {
@@ -180,6 +182,7 @@ function guardar() {
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
+        localStorage.setItem(K.ingresosPresup, JSON.stringify(listaIngresosPresup));
         localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
         localStorage.setItem(K.pagosTarjetaUSD,JSON.stringify(listaPagosTarjetaUSD));
         syncDebounce();
@@ -244,7 +247,7 @@ async function syncSilencioso() {
     syncSetBadge('sync');
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,groqKey});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,groqKey});
 
         const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
 
@@ -431,7 +434,7 @@ async function cfBackupEnCarpeta(handle) {
                         listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,
                         listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,
                         listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,
-                        listaRubrosUSD,listaIngresos};
+                        listaRubrosUSD,listaIngresos,listaIngresosPresup};
         const fileHandle = await handle.getFileHandle(nombre, { create: true });
         const writable   = await fileHandle.createWritable();
         await writable.write(JSON.stringify(data, null, 2));
@@ -1419,6 +1422,87 @@ function elimIngreso(id) {
     guardar();
     render();
 }
+
+// ── Ingresos informativos de Presupuesto (no tocan cuentas bancarias) ──
+function calcTotalPresupuestoPesos() {
+    return Object.values(listaPresupRubros).reduce((a,b)=>a+b,0);
+}
+function abrirModalIngresoPresup() {
+    document.getElementById('ip-concepto').value = '';
+    document.getElementById('ip-monto').value = '';
+    document.getElementById('ip-fecha').value = cfFechaLocal();
+    document.getElementById('ip-tipo').value = 'Fijo';
+    document.getElementById('modal-ingreso-presup').style.display = 'flex';
+}
+function cerrarModalIngresoPresup() {
+    document.getElementById('modal-ingreso-presup').style.display = 'none';
+}
+function confirmarIngresoPresup() {
+    const mesActual = cfFechaLocal().slice(0,7);
+    const delMes = listaIngresosPresup.filter(i=>(i.fecha||'').slice(0,7)===mesActual);
+    if(delMes.length>=4){ alert('Ya cargaste el máximo de 4 ingresos para este mes.'); return; }
+    const concepto = (document.getElementById('ip-concepto').value||'').trim();
+    const monto = parseFloat(document.getElementById('ip-monto').value)||0;
+    const fecha = document.getElementById('ip-fecha').value||cfFechaLocal();
+    const tipo = document.getElementById('ip-tipo').value||'Fijo';
+    if(!concepto){ alert('Ingresá un concepto.'); return; }
+    if(monto<=0){ alert('Ingresá un monto mayor a cero.'); return; }
+    listaIngresosPresup.push({id:'ip_'+Date.now(), concepto, monto, fecha, tipo});
+    guardar();
+    document.getElementById('ip-concepto').value = '';
+    document.getElementById('ip-monto').value = '';
+    document.getElementById('ip-fecha').value = cfFechaLocal();
+    document.getElementById('ip-tipo').value = 'Fijo';
+    refrescarIngresosPresupUI();
+}
+function elimIngresoPresup(id) {
+    if(!confirm('¿Eliminar este ingreso?')) return;
+    listaIngresosPresup = listaIngresosPresup.filter(i=>i.id!==id);
+    guardar();
+    refrescarIngresosPresupUI();
+}
+function refrescarIngresosPresupUI() {
+    const mesActual = cfFechaLocal().slice(0,7);
+    const items = listaIngresosPresup.filter(i=>(i.fecha||'').slice(0,7)===mesActual).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    const total = items.reduce((a,i)=>a+i.monto,0);
+    const totalPresup = calcTotalPresupuestoPesos();
+    const balance = total - totalPresup;
+    const esSuperavit = balance>=0;
+    const color = esSuperavit ? '#16a34a' : '#ef4444';
+    const bg = esSuperavit ? '#f0fdf4' : '#fef2f2';
+    const border = esSuperavit ? '#bbf7d0' : '#fecaca';
+    const lleno = items.length>=4;
+
+    const card = document.getElementById('ip-card');
+    if(card){ card.style.background = bg; card.style.borderColor = border; }
+    const cardTotal = document.getElementById('ip-card-total'); if(cardTotal) cardTotal.textContent = fmt(total);
+    const cardCount = document.getElementById('ip-card-count'); if(cardCount) cardCount.textContent = items.length+' de 4 registros · tocá para ver detalle';
+    const cardBadge = document.getElementById('ip-card-badge'); if(cardBadge){ cardBadge.textContent = esSuperavit?'SUPERÁVIT':'DÉFICIT'; cardBadge.style.background = color+'22'; cardBadge.style.color = color; }
+    const cardBal = document.getElementById('ip-card-balance'); if(cardBal){ cardBal.textContent = (esSuperavit?'+ ':'− ')+fmt(Math.abs(balance)); cardBal.style.color = color; }
+
+    const modalTotal = document.getElementById('ip-modal-total'); if(modalTotal) modalTotal.textContent = fmt(total);
+    const modalBadge = document.getElementById('ip-modal-badge'); if(modalBadge){ modalBadge.textContent = esSuperavit?'SUPERÁVIT':'DÉFICIT'; modalBadge.style.background = color+'22'; modalBadge.style.color = color; }
+    const modalBalance = document.getElementById('ip-modal-balance'); if(modalBalance){ modalBalance.textContent = (esSuperavit?'+ ':'− ')+fmt(Math.abs(balance)); modalBalance.style.color = color; }
+
+    const lista = document.getElementById('ip-lista');
+    if(lista){
+        if(items.length){
+            lista.innerHTML = items.map(i=>{
+                const fechaCorta = i.fecha ? i.fecha.slice(8,10)+'/'+i.fecha.slice(5,7) : '—';
+                const tipoColor = i.tipo==='Variable' ? '#a855f7' : '#0284c7';
+                return '<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #f1f5f9;border-radius:8px;padding:8px 12px;">'
+                    +'<div><b style="font-size:13px;color:#1e293b;">'+i.concepto+'</b>'
+                    +'<div style="font-size:11px;color:#94a3b8;margin-top:2px;">'+fechaCorta+' · <span style="color:'+tipoColor+';font-weight:bold;">'+(i.tipo||'Fijo')+'</span></div></div>'
+                    +'<div style="display:flex;align-items:center;gap:10px;"><b style="font-size:14px;color:#0284c7;">'+fmt(i.monto)+'</b>'
+                    +'<button onclick="elimIngresoPresup(\''+i.id+'\')" style="border:none;background:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button></div></div>';
+            }).join('');
+        } else {
+            lista.innerHTML = '<div style="text-align:center;padding:12px;color:#94a3b8;font-size:12px;">Sin ingresos cargados este mes.</div>';
+        }
+    }
+    const addBtn = document.getElementById('ip-add-btn');
+    if(addBtn){ addBtn.disabled = lleno; addBtn.style.cursor = lleno?'not-allowed':'pointer'; addBtn.style.opacity = lleno?'0.5':'1'; }
+}
 function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.now(),nombre:vGet('tarjeta-nombre'),saldo:nGet('tarjeta-saldo')}); guardar(); e.target.reset(); render(); }
 function altaServicio(e) {
     e.preventDefault();
@@ -1561,7 +1645,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1586,6 +1670,7 @@ function cargarDatos(res) {
     if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
     if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
+    if(res.listaIngresosPresup)  listaIngresosPresup  = res.listaIngresosPresup;
     if(res.groqKey)            localStorage.setItem('groq_api_key', res.groqKey);
 }
 function importar(event) {
@@ -2127,6 +2212,78 @@ function buildPresupuesto() {
     const totalPct    = totalPresup>0 ? Math.min(100,Math.round(totalGast/totalPresup*100)) : 0;
     const totalLib    = Math.max(0, totalPresup - totalGast);
     const totalExc    = totalGast > totalPresup && totalPresup>0 ? totalGast - totalPresup : 0;
+
+    // ── Ingresos del mes (informativo) vs Presupuesto — tarjeta compacta + modal ──
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const ingresosDelMes = listaIngresosPresup.filter(i=>(i.fecha||'').slice(0,7)===mesActualYM).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    const totalIngresosPresup = ingresosDelMes.reduce((a,i)=>a+i.monto,0);
+    const balanceMes = totalIngresosPresup - totalPresup;
+    const esSuperavit = balanceMes >= 0;
+    const balColor = esSuperavit ? '#16a34a' : '#ef4444';
+    const balBg = esSuperavit ? '#f0fdf4' : '#fef2f2';
+    const balBorder = esSuperavit ? '#bbf7d0' : '#fecaca';
+    const lleno = ingresosDelMes.length>=4;
+
+    // Tarjeta compacta clickeable
+    let ingCard = '<div id="ip-card" onclick="abrirModalIngresoPresup()" style="cursor:pointer;background:'+balBg+';border:1px solid '+balBorder+';border-radius:10px;padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">';
+    ingCard += '<div><span style="font-size:11px;font-weight:bold;color:#6d28d9;text-transform:uppercase;letter-spacing:.05em;">💵 Ingresos del mes</span>';
+    ingCard += '<div id="ip-card-total" style="font-size:24px;font-weight:bold;color:#1e293b;margin-top:4px;">'+fmt(totalIngresosPresup)+'</div>';
+    ingCard += '<span id="ip-card-count" style="font-size:11px;color:#94a3b8;">'+ingresosDelMes.length+' de 4 registros · tocá para ver detalle</span></div>';
+    ingCard += '<div style="text-align:right;"><span id="ip-card-badge" style="font-size:10px;font-weight:bold;padding:3px 9px;border-radius:4px;background:'+balColor+'22;color:'+balColor+';">'+(esSuperavit?'SUPERÁVIT':'DÉFICIT')+'</span>';
+    ingCard += '<div id="ip-card-balance" style="font-size:14px;font-weight:bold;color:'+balColor+';margin-top:4px;">'+(esSuperavit?'+ ':'− ')+fmt(Math.abs(balanceMes))+'</div></div>';
+    ingCard += '</div>';
+    wrap.insertAdjacentHTML('beforeend', ingCard);
+
+    // Modal: detalle + alta de ingresos (no cierra al agregar/borrar, se refresca in-place)
+    let ingModal = '<div id="modal-ingreso-presup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this) cerrarModalIngresoPresup()">';
+    ingModal += '<div style="background:white;border-radius:12px;padding:24px;width:380px;max-width:90vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">';
+    ingModal += '<h3 style="margin:0 0 4px;color:#6d28d9;font-size:16px;">💵 Ingresos del mes</h3>';
+    ingModal += '<div style="font-size:11px;color:#94a3b8;margin-bottom:14px;">Informativo · no afecta cuentas bancarias</div>';
+
+    // Resumen balance dentro del modal
+    ingModal += '<div style="background:'+balBg+';border:1px solid '+balBorder+';border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+    ingModal += '<div><span style="font-size:10px;font-weight:bold;color:'+balColor+';text-transform:uppercase;">Balance vs. presupuesto</span>';
+    ingModal += '<div style="font-size:11px;color:#64748b;margin-top:2px;">Ingresos <b id="ip-modal-total">'+fmt(totalIngresosPresup)+'</b> · Presupuesto '+fmt(totalPresup)+'</div></div>';
+    ingModal += '<div style="text-align:right;"><div id="ip-modal-balance" style="font-size:18px;font-weight:bold;color:'+balColor+';">'+(esSuperavit?'+ ':'− ')+fmt(Math.abs(balanceMes))+'</div>';
+    ingModal += '<span id="ip-modal-badge" style="font-size:10px;font-weight:bold;padding:2px 8px;border-radius:4px;background:'+balColor+'22;color:'+balColor+';">'+(esSuperavit?'SUPERÁVIT':'DÉFICIT')+'</span></div>';
+    ingModal += '</div>';
+
+    // Lista de conceptos
+    ingModal += '<div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Conceptos cargados</div>';
+    ingModal += '<div id="ip-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">';
+    if(ingresosDelMes.length) {
+        ingresosDelMes.forEach(i=>{
+            const fechaCorta = i.fecha ? i.fecha.slice(8,10)+'/'+i.fecha.slice(5,7) : '—';
+            const tipoColor = i.tipo==='Variable' ? '#a855f7' : '#0284c7';
+            ingModal += '<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #f1f5f9;border-radius:8px;padding:8px 12px;">';
+            ingModal += '<div><b style="font-size:13px;color:#1e293b;">'+i.concepto+'</b>';
+            ingModal += '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">'+fechaCorta+' · <span style="color:'+tipoColor+';font-weight:bold;">'+(i.tipo||'Fijo')+'</span></div></div>';
+            ingModal += '<div style="display:flex;align-items:center;gap:10px;">';
+            ingModal += '<b style="font-size:14px;color:#0284c7;">'+fmt(i.monto)+'</b>';
+            ingModal += '<button onclick="elimIngresoPresup(\''+i.id+'\')" style="border:none;background:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button>';
+            ingModal += '</div></div>';
+        });
+    } else {
+        ingModal += '<div style="text-align:center;padding:12px;color:#94a3b8;font-size:12px;">Sin ingresos cargados este mes.</div>';
+    }
+    ingModal += '</div>';
+
+    // Form de alta
+    ingModal += '<div style="border-top:1px dashed #e2e8f0;padding-top:14px;">';
+    ingModal += '<div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Agregar ingreso</div>';
+    ingModal += '<div style="margin-bottom:10px;"><input type="text" id="ip-concepto" placeholder="Concepto (Ej. Sueldo, VSS, clases...)" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>';
+    ingModal += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+    ingModal += '<input type="number" id="ip-monto" min="0" step="1" placeholder="Monto $" style="flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;">';
+    ingModal += '<input type="date" id="ip-fecha" style="flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;">';
+    ingModal += '</div>';
+    ingModal += '<div style="margin-bottom:14px;"><select id="ip-tipo" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"><option value="Fijo">Fijo</option><option value="Variable">Variable</option></select></div>';
+    ingModal += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+    ingModal += '<button onclick="cerrarModalIngresoPresup()" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:14px;">Cerrar</button>';
+    ingModal += '<button id="ip-add-btn" onclick="confirmarIngresoPresup()" '+(lleno?'disabled':'')+' style="padding:8px 20px;border:none;border-radius:6px;background:#6d28d9;color:white;cursor:'+(lleno?'not-allowed':'pointer')+';font-size:14px;font-weight:bold;opacity:'+(lleno?'0.5':'1')+';">＋ Agregar</button>';
+    ingModal += '</div></div>';
+
+    ingModal += '</div></div>';
+    wrap.insertAdjacentHTML('beforeend', ingModal);
 
     // ── Cards resumen ──
     const cardStyle = 'border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:4px;';
@@ -3027,7 +3184,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.70';
+const APP_VERSION = 'v3.7.71';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3106,7 +3263,7 @@ function driveSubir() {
         driveEnsureFolder(token, folderId=>{
             const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
             const nombre='backup_finanzas_'+ts+'.json';
-            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos});
+            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup});
             const meta=JSON.stringify({name:nombre,parents:[folderId]});
             const form=new FormData();
             form.append('metadata',new Blob([meta],{type:'application/json'}));
