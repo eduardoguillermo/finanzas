@@ -3213,7 +3213,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.73';
+const APP_VERSION = 'v3.7.74';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4502,6 +4502,7 @@ function cfBuscarServicioMatch(comercio, esUSD) {
 
 let cfGmailQueue = [];
 let cfGmailIdx   = 0;
+let cfGmailDatosActual = null; // mail atado al modal actualmente abierto (no depende del índice de la cola)
 
 function cfGmailMostrarSiguiente() {
     if (cfGmailIdx >= cfGmailQueue.length) return;
@@ -4537,6 +4538,7 @@ function cfGmailLoginYChequear() {
 }
 
 async function cfGmailChequear(manual = false) {
+    if (document.getElementById('cf-gmail-overlay')) return; // no pisar la cola mientras hay un modal abierto
     if (cfEsMovil() && !manual) return; // en mobile solo corre si es chequeo manual (ej. tras login desde 🔍 Pendientes)
     if (manual) cfGmailToast('🔄 Revisando mails...');
     if (!gTokenCargarLocal()) {
@@ -4573,6 +4575,7 @@ async function cfGmailChequear(manual = false) {
 // Botón "🔍 Pendientes" — chequeo manual, habilitado también en mobile.
 // Usa el token existente sin forzar relogin; si no hay token válido, pide login (una vez).
 async function cfRevisarPendientes() {
+    if (document.getElementById('cf-gmail-overlay')) { cfGmailToast('⏳ Terminá de revisar el mail actual primero.'); return; }
     cfGmailToast('🔄 Revisando mails pendientes...');
     if (!gTokenCargarLocal()) {
         const renovado = await new Promise(resolve => {
@@ -4777,6 +4780,7 @@ function elimPagoTarjetaUSD(id) {
     guardar(); renderDolares();
 }
 function cfAbrirModalPagoServicio(datos, servicio) {
+    cfGmailDatosActual = datos;
     const prev = document.getElementById('cf-gmail-overlay');
     if (prev) prev.remove();
     const overlay = document.createElement('div');
@@ -4827,7 +4831,7 @@ function cfConfirmarPagoServicio(servicioId) {
     guardar();
     if (esUSD) { if (typeof renderDolares === 'function') renderDolares(); }
     else { render(); }
-    const datos = cfGmailQueue[cfGmailIdx];
+    const datos = cfGmailDatosActual;
     if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
     const ov = document.getElementById('cf-gmail-overlay');
     if (ov) ov.remove();
@@ -4836,7 +4840,7 @@ function cfConfirmarPagoServicio(servicioId) {
 }
 
 function cfModalPagoACorriente() {
-    const datos = cfGmailQueue[cfGmailIdx];
+    const datos = cfGmailDatosActual;
     cfAbrirModalGasto(datos);
 }
 
@@ -4852,7 +4856,7 @@ function cfCerrarModalGasto() {
 function cfDescartarDefinitivo() {
     // A diferencia de Cancelar: acá sí marcamos el mail como procesado,
     // para que este mail puntual no vuelva a aparecer nunca más.
-    const datos = cfGmailQueue[cfGmailIdx];
+    const datos = cfGmailDatosActual;
     if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
     const ov = document.getElementById('cf-gmail-overlay');
     if (ov) ov.remove();
@@ -4861,6 +4865,7 @@ function cfDescartarDefinitivo() {
 }
 
 function cfAbrirModalGasto(datos) {
+    cfGmailDatosActual = datos;
     const prev = document.getElementById('cf-gmail-overlay');
     if (prev) prev.remove();
     const esUSD = datos.moneda === 'USD';
@@ -4973,7 +4978,7 @@ function cfConfirmarGasto() {
     guardar();
     if (moneda === 'USD') { if (typeof renderDolares === 'function') renderDolares(); }
     else { render(); }
-    const datos = cfGmailQueue[cfGmailIdx];
+    const datos = cfGmailDatosActual;
     if (datos && datos._gmailId) cfGmailMarkProcessed(datos._gmailId);
     const ov = document.getElementById('cf-gmail-overlay');
     if (ov) ov.remove();
