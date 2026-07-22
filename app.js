@@ -247,7 +247,8 @@ async function syncSilencioso() {
     syncSetBadge('sync');
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,groqKey});
+        const gmailProcessed = cfGmailGetProcessed();
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,groqKey,gmailProcessed});
 
         const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
 
@@ -752,6 +753,23 @@ function inpNum(val, onChange) {
     inp._setVal=v=>{ last=Math.round(v); if(document.activeElement!==inp) inp.value=fmtN(last); };
     return inp;
 }
+function inpNumPagado(val, onChange) {
+    const inp=el('input'); inp.type='text'; inp.className='inp tr'; inp.placeholder='0';
+    let last=Math.round(val);
+    inp.value = last===0 ? '' : fmtN(last);
+    inp.addEventListener('focus', ()=>{ inp.value = last===0 ? '' : last; });
+    inp.addEventListener('change', e=>{
+        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        last=v; onChange(v); inp.value = v===0 ? '' : fmtN(v);
+    });
+    inp.addEventListener('blur', e=>{
+        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        if(v!==last){ last=v; onChange(v); }
+        inp.value = last===0 ? '' : fmtN(last);
+    });
+    inp._setVal=v=>{ last=Math.round(v); if(document.activeElement!==inp) inp.value = last===0 ? '' : fmtN(last); };
+    return inp;
+}
 function inpNumUSD(val, onChange) {
     const inp=el('input'); inp.type='text'; inp.className='inp tr';
     let last=Math.round(val*100)/100;
@@ -1111,7 +1129,7 @@ function render() {
         const estSpan=el('span'); estSpan.id='est-'+s.id; estSpan.style.cssText='font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;';
         const tdEst=el('td','tc'); tdEst.appendChild(estSpan);
         const tdPag=el('td','tr');
-        const inpPag=inpNum(s.pagado, v=>{
+        const inpPag=inpNumPagado(s.pagado, v=>{
             const diff=v-s.pagado;
             if(diff!==0){
                 const bk=listaBancos.find(b=>b.id===s.medioPagoId);
@@ -1645,7 +1663,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,gmailProcessed:cfGmailGetProcessed()};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1672,6 +1690,17 @@ function cargarDatos(res) {
     if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
     if(res.listaIngresosPresup)  listaIngresosPresup  = res.listaIngresosPresup;
     if(res.groqKey)            localStorage.setItem('groq_api_key', res.groqKey);
+    if(res.gmailProcessed && Array.isArray(res.gmailProcessed)) {
+        // Unión con lo que ya tiene este dispositivo (no pisar, sumar) para no hacer
+        // reaparecer mails que este dispositivo ya había tratado.
+        const propios = cfGmailGetProcessed();
+        const mapa = new Map(propios.map(x => [x.id, x.ts]));
+        res.gmailProcessed.forEach(x => {
+            if (x && x.id) mapa.set(x.id, Math.max(mapa.get(x.id) || 0, x.ts || Date.now()));
+        });
+        const fusionado = Array.from(mapa, ([id, ts]) => ({ id, ts }));
+        try { localStorage.setItem(CF_GMAIL_PROCESSED_KEY, JSON.stringify(fusionado)); } catch(e) {}
+    }
 }
 function importar(event) {
     const file=event.target.files[0]; if(!file) return;
@@ -3184,7 +3213,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.72';
+const APP_VERSION = 'v3.7.73';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4246,20 +4275,29 @@ function cfEsMovil() {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
 }
 
+// Los IDs se guardan con timestamp para podar por antigüedad en vez de por cantidad fija:
+// así nunca se "cae" del registro un ID que todavía podría reaparecer en la búsqueda de
+// Gmail (que mira los últimos 30 días) y el mail no vuelve a mostrarse como si fuera nuevo.
+const CF_GMAIL_PROCESSED_DIAS = 45; // > 30 días de la query, con margen
+
 function cfGmailGetProcessed() {
-    try { return JSON.parse(localStorage.getItem(CF_GMAIL_PROCESSED_KEY)) || []; } catch(e) { return []; }
+    let lista;
+    try { lista = JSON.parse(localStorage.getItem(CF_GMAIL_PROCESSED_KEY)) || []; } catch(e) { return []; }
+    const ahora = Date.now();
+    lista = lista.map(x => typeof x === 'string' ? { id: x, ts: ahora } : x); // migración formato viejo
+    const limite = ahora - CF_GMAIL_PROCESSED_DIAS * 86400000;
+    return lista.filter(x => x.ts >= limite);
 }
 
 function cfGmailMarkProcessed(id) {
     const lista = cfGmailGetProcessed();
-    if (!lista.includes(id)) {
-        lista.push(id);
-        if (lista.length > 100) lista.splice(0, lista.length - 100);
+    if (!lista.some(x => x.id === id)) {
+        lista.push({ id, ts: Date.now() });
         try { localStorage.setItem(CF_GMAIL_PROCESSED_KEY, JSON.stringify(lista)); } catch(e) {}
     }
 }
 
-function cfGmailIsProcessed(id) { return cfGmailGetProcessed().includes(id); }
+function cfGmailIsProcessed(id) { return cfGmailGetProcessed().some(x => x.id === id); }
 
 function cfGmailDecodeBody(encoded) {
     try {
