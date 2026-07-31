@@ -3213,7 +3213,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.74';
+const APP_VERSION = 'v3.7.75';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3853,12 +3853,8 @@ function buildAnual() {
             else if(col==='deudaTarj') color = '#a855f7';
             else if(col==='ingresos') color = '#0284c7';
             else if(col==='egresado') color = '#f59e0b';
-            // mini barra inline
-            const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
-            const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):(col==='deudaTarj'?'#a855f7':col==='ingresos'?'#0284c7':col==='egresado'?'#f59e0b':'#1d4ed8');
             tbl += `<td style="padding:7px 8px;text-align:right;">
 <div style="font-weight:bold;color:${color};font-size:10px;">${fmt(v)}</div>
-<div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:${barColor};height:3px;border-radius:2px;width:${pct}%;"></div></div>
 </td>`;
         });
         tbl += `</tr>`;
@@ -4003,9 +3999,7 @@ function buildAnual() {
                 else if(col==='egresado') color = '#f59e0b';
                 else if(col==='ingresos') color = '#0284c7';
                 else if(col==='cuentas') color = '#16a34a';
-                const pct = maxAbs>0?Math.round(Math.abs(v)/maxAbs*60):0;
-                const barColor = col==='balance'?(v>=0?'#10b981':'#ef4444'):col==='egresado'?'#f59e0b':col==='ingresos'?'#0284c7':'#16a34a';
-                tUSD += '<td style="padding:7px 8px;text-align:right;"><div style="font-weight:bold;color:'+color+';font-size:10px;">'+fmtUSD(v)+'</div><div style="background:#e2e8f0;border-radius:2px;height:3px;margin-top:3px;"><div style="background:'+barColor+';height:3px;border-radius:2px;width:'+pct+'%;"></div></div></td>';
+                tUSD += '<td style="padding:7px 8px;text-align:right;"><div style="font-weight:bold;color:'+color+';font-size:10px;">'+fmtUSD(v)+'</div></td>';
             });
             tUSD += '</tr>';
         });
