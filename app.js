@@ -513,7 +513,7 @@ function cfToggleMesesMenu() {
             o.onmouseout  = () => { if (tabActivo!==mes.id) o.style.background = ''; };
             const nombreSpan = document.createElement('span');
             nombreSpan.innerText = '🗂 ' + mes.nombre;
-            nombreSpan.onclick = () => { m.remove(); tabActivo = mes.id; renderTabs(); renderContenido(); };
+            nombreSpan.onclick = () => { m.remove(); tabActivo = mes.id; renderTabs(); renderContenido(); window.scrollTo(0, 0); };
             nombreSpan.style.flex = '1';
             const xSpan = document.createElement('span');
             xSpan.innerText = '✕'; xSpan.style.cssText = 'color:#94a3b8;font-size:11px;padding-left:10px;';
@@ -653,7 +653,7 @@ function renderTabs() {
         t.className = 'tab' + (activo ? ' activo' : '');
         if (activo && estilo) t.style.cssText = estilo;
         t.innerHTML = label;
-        t.onclick = onclick;
+        t.onclick = () => { onclick(); window.scrollTo(0, 0); };
         bar.appendChild(t);
     };
     mkTab('<span>📊 Mes Actual</span>',  tabActivo===null,       ()=>{ tabActivo=null;       renderTabs(); renderContenido(); });
@@ -693,7 +693,7 @@ function renderTabs() {
         badgeMes.className = 'tab activo';
         badgeMes.innerHTML = '<span>🗂 ' + mesActivo.nombre + '</span><span class="tab-x">✕</span>';
         badgeMes.onclick = (e) => {
-            if (e.target.classList.contains('tab-x')) { tabActivo = null; renderTabs(); renderContenido(); return; }
+            if (e.target.classList.contains('tab-x')) { tabActivo = null; renderTabs(); renderContenido(); window.scrollTo(0, 0); return; }
             cfToggleMesesMenu();
         };
         bar.appendChild(badgeMes);
@@ -3213,7 +3213,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.75';
+const APP_VERSION = 'v3.7.78';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
