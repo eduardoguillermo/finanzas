@@ -23,7 +23,7 @@
         .container { max-width: 1600px; margin: 0 auto; padding: 10px; }
 
         /* TABS */
-        .tabs-bar { display: flex; align-items: flex-end; background: #1e293b; padding: 0 16px; overflow-x: auto; min-height: 44px; }
+        .tabs-bar { display: flex; align-items: flex-end; background: #1e293b; padding: 0 16px; overflow-x: auto; min-height: 44px; position: sticky; top: 0; z-index: 100; }
         .tab { display: flex; align-items: center; gap: 6px; padding: 10px 16px 8px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 6px 6px 0 0; border: 1px solid transparent; border-bottom: none; white-space: nowrap; color: #94a3b8; background: transparent; margin-top: 4px; user-select: none; }
         .tab:hover { background: #334155; color: #e2e8f0; }
         .tab.activo { background: #0f172a; color: #e2e8f0; border-color: #475569; }
@@ -161,7 +161,7 @@
 (function(){
     const vEl = document.getElementById('cf-splash-version');
     const dEl = document.getElementById('cf-splash-datetime');
-    if(vEl) vEl.textContent = 'v3.7.75';
+    if(vEl) vEl.textContent = 'v3.7.78';
 
     function tickReloj(){
         const dt = new Date();
