@@ -2796,6 +2796,7 @@ function roCorrientes(db) {
 // ═══════════════════════════════════════════
 let _cotizaciones = {};
 let _dolarOficial = 0;
+let _ypfCache = null; // {precioARS, dolar, horaStr, fuera} del último fetch exitoso
 
 function buildInversiones() {
     const d = document.createElement('div');
@@ -2992,7 +2993,13 @@ function renderAcciones() {
         const lCant = el('div'); lCant.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;'; lCant.innerText='Cantidad';
         const inpCant = el('input'); inpCant.type='number'; inpCant.value=a.cant; inpCant.min='1';
         inpCant.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;font-size:14px;font-weight:bold;color:#1e293b;background:white;text-align:center;';
-        inpCant.onchange = function(e){ a.cant=parseInt(e.target.value)||1; guardar(); renderAcciones(); calcDashInv(); };
+        inpCant.onchange = function(e){
+            a.cant=parseInt(e.target.value)||1;
+            guardar(); renderAcciones(); calcDashInv();
+            if(a.ticker && a.ticker.toUpperCase().includes('YPF') && _ypfCache){
+                _ypfSetUI(_ypfCache.precioARS, _ypfCache.dolar, _ypfCache.horaStr, _ypfCache.fuera, a.cant);
+            }
+        };
         celdaCant.appendChild(lCant); celdaCant.appendChild(inpCant);
 
         const celdaVar = el('div'); celdaVar.style.cssText='background:'+varBg+';border-radius:4px;padding:6px 8px;';
@@ -3247,7 +3254,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.83';
+const APP_VERSION = 'v3.7.84';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3427,8 +3434,9 @@ function toggleProyectado() {
 // ═══════════════════════════════════════════
 let _ypfTimer = null;
 
-function _ypfSetUI(precioARS, dolar, horaStr, fuera) {
-    const cant = 442;
+function _ypfSetUI(precioARS, dolar, horaStr, fuera, cantParam) {
+    const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
+    const cant = cantParam || (ypfAcc ? ypfAcc.cant : 442);
     const totalARS = precioARS * cant;
     const totalUSD = dolar > 0 ? totalARS / dolar : 0;
     const txtUSD = 'USD ' + totalUSD.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -3474,7 +3482,8 @@ async function actualizarYPF() {
         }
 
         const horaStr = ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-        _ypfSetUI(precioARS, dolar, horaStr, !esHorario);
+        _ypfCache = {precioARS, dolar, horaStr, fuera: !esHorario};
+        _ypfSetUI(precioARS, dolar, horaStr, !esHorario, ypfAcc ? ypfAcc.cant : undefined);
     } catch(e) {
         [['ypf-usd'],['ypf-usd-inv']].forEach(function(ids){
             const u=document.getElementById(ids[0]); if(u) u.innerText='Error ↺';
