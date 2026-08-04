@@ -1677,8 +1677,15 @@ function nuevoMes() {
     listaCorrientes=listaCorrientes.filter(c=>!c.fechaPago);
     listaTransferencias=[];
     // Generar cuotas
-    listaCuotas.forEach(c=>{ if(c.cuotaActual<c.totalCuotas){ c.cuotaActual++; listaServicios.push({id:'s_cuota_'+c.id+'_'+c.cuotaActual,nombre:c.descripcion+' ('+c.cuotaActual+'/'+c.totalCuotas+')',presupuesto:c.montoCuota,pagado:0,fVto:'',fPago:'',medioPagoId:c.medioPagoId,clase:'M',esCuota:true,cuotaId:c.id}); } });
-    listaCuotas=listaCuotas.filter(c=>c.cuotaActual<c.totalCuotas);
+    listaCuotas.forEach(c=>{
+        if(c.cuotaActual<c.totalCuotas){
+            c.cuotaActual++;
+            listaServicios.push({id:'s_cuota_'+c.id+'_'+c.cuotaActual,nombre:c.descripcion+' ('+c.cuotaActual+'/'+c.totalCuotas+')',presupuesto:c.montoCuota,pagado:0,fVto:'',fPago:'',medioPagoId:c.medioPagoId,clase:'M',esCuota:true,cuotaId:c.id});
+        } else {
+            c._archivar = true; // ya se generó y (se espera) pagó la última cuota el mes anterior
+        }
+    });
+    listaCuotas = listaCuotas.filter(c=>!c._archivar);
     // Ajustar tarjetas USD
     const mDU={}; listaTarjetasUSD.forEach(t=>mDU[t.id]=0);
     listaServiciosUSD.forEach(s=>{ if(s.pagado>0&&mDU[s.medioPagoId]!==undefined) mDU[s.medioPagoId]+=s.pagado; });
@@ -3254,7 +3261,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.85';
+const APP_VERSION = 'v3.7.86';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
