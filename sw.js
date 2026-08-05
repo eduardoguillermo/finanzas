@@ -1,4 +1,4 @@
-const CACHE = 'finanzas-v3.7.89';
+const CACHE = 'finanzas-v3.7.90';
 const ASSETS = ['./control_financiero_v3.html', './app.js', './main.js', './manifest.json', './xlsx.full.min.js', './instructivo.html'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(a => fetch(a + '?v=' + Date.now(), {cache:'no-store'}).then(r => { if(r.ok) c.put(a, r); }).catch(()=>{}))))); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -11,3 +11,4 @@ self.addEventListener('fetch', e => {
   const req = new Request(urlBustada.toString(), {method:'GET', headers:e.request.headers, mode: e.request.mode==='navigate'?'same-origin':e.request.mode, credentials:e.request.credentials, redirect:e.request.redirect, cache:'no-store'});
   e.respondWith(fetch(req).then(res => { if(res.status === 200) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); } return res; }).catch(() => caches.match(e.request)));
 });
+
