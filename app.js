@@ -60,7 +60,8 @@ function cfSnapshotData() {
     return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
         listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
-        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup});
+        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,
+        listaPagosTarjeta,listaPagosTarjetaUSD});
 }
 function cfHacerSnapshot(manual=false) {
     try {
@@ -110,6 +111,10 @@ function cfRestaurarSnapshot(ts) {
         if(d.listaPresupRubros)  listaPresupRubros  = d.listaPresupRubros;
         if(d.listaPresupRubrosUSD) listaPresupRubrosUSD = d.listaPresupRubrosUSD;
         if(d.listaRubrosUSD)     listaRubrosUSD     = d.listaRubrosUSD;
+        if(d.listaIngresos)      listaIngresos      = d.listaIngresos;
+        if(d.listaIngresosPresup) listaIngresosPresup = d.listaIngresosPresup;
+        if(d.listaPagosTarjeta)  listaPagosTarjeta  = d.listaPagosTarjeta;
+        if(d.listaPagosTarjetaUSD) listaPagosTarjetaUSD = d.listaPagosTarjetaUSD;
         guardar();
         document.getElementById('modal-cf-snapshots')?.remove();
         renderTabs(); renderContenido();
@@ -202,7 +207,6 @@ function fmt(n) { return '$ ' + Math.round(n).toLocaleString('es-AR',{maximumFra
 function cfFechaLocal(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function fmtN(n)   { return Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmt(n) { return '$ '   + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function clon(x)   { return JSON.parse(JSON.stringify(x)); }
 const PALETA_RUBROS = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
 function colorRubro(r) { const i = listaRubros.indexOf(r); return i>=0 ? PALETA_RUBROS[i % PALETA_RUBROS.length] : '#94a3b8'; }
@@ -248,7 +252,7 @@ async function syncSilencioso() {
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
         const gmailProcessed = cfGmailGetProcessed();
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,groqKey,gmailProcessed});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,groqKey,gmailProcessed});
 
         const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
 
@@ -1700,7 +1704,7 @@ function nuevoMes() {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,gmailProcessed:cfGmailGetProcessed()};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1726,6 +1730,8 @@ function cargarDatos(res) {
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
     if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
     if(res.listaIngresosPresup)  listaIngresosPresup  = res.listaIngresosPresup;
+    if(res.listaPagosTarjeta)    listaPagosTarjeta    = res.listaPagosTarjeta;
+    if(res.listaPagosTarjetaUSD) listaPagosTarjetaUSD = res.listaPagosTarjetaUSD;
     if(res.groqKey)            localStorage.setItem('groq_api_key', res.groqKey);
     if(res.gmailProcessed && Array.isArray(res.gmailProcessed)) {
         // Unión con lo que ya tiene este dispositivo (no pisar, sumar) para no hacer
@@ -3261,7 +3267,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.90';
+const APP_VERSION = 'v3.7.91';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3340,7 +3346,7 @@ function driveSubir() {
         driveEnsureFolder(token, folderId=>{
             const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
             const nombre='backup_finanzas_'+ts+'.json';
-            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup});
+            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD});
             const meta=JSON.stringify({name:nombre,parents:[folderId]});
             const form=new FormData();
             form.append('metadata',new Blob([meta],{type:'application/json'}));
