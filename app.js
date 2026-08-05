@@ -916,10 +916,11 @@ function buildMesActual() {
               <form id="form-tarjeta">
                 <div class="form-group"><label>Nombre</label><input type="text" id="tarjeta-nombre" required placeholder="Ej. Visa Galicia"></div>
                 <div class="form-group"><label>Saldo base ($)</label><input type="number" id="tarjeta-saldo" required value="0" step="1"></div>
+                <div class="form-group"><label>Vencimiento actual ($)</label><input type="number" id="tarjeta-vencimiento" value="0" step="1"></div>
                 <button type="submit" class="btn btn-add btn-purple">Registrar Tarjeta</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:45%">Tarjeta</th><th style="width:30%" class="tr">Consumo ($)</th><th style="width:15%" class="no-print"></th><th style="width:10%" class="no-print"></th></tr></thead><tbody id="t-tarjetas"></tbody></table>
+            <table><thead><tr><th style="width:32%">Tarjeta</th><th style="width:24%" class="tr">Saldo total ($)</th><th style="width:24%" class="tr">Vencimiento ($)</th><th style="width:12%" class="no-print"></th><th style="width:8%" class="no-print"></th></tr></thead><tbody id="t-tarjetas"></tbody></table>
             <div id="wrap-pagos-tarjeta"></div>
           </div>
           <div class="panel panel-transf no-print">
@@ -1096,10 +1097,12 @@ function render() {
     listaTarjetas.forEach(t=>{
         const inp=inpNum(t.saldo,v=>{ t.saldo=v; guardar(); calcDash(); }); inp.id='saldo-t-'+t.id;
         const tdS=el('td','tr'); tdS.appendChild(inp);
+        const inpV=inpNum(t.vencimiento||0,v=>{ t.vencimiento=v; guardar(); }); inpV.id='venc-t-'+t.id;
+        const tdV=el('td','tr'); tdV.appendChild(inpV);
         const tdPagar=el('td','tc no-print'); const bPagar=el('button','btn-secondary btn-sm'); bPagar.innerText='💳 Pagar'; bPagar.style.cssText='font-size:11px;padding:4px 8px;'; bPagar.onclick=()=>abrirModalPagoTarjeta(t.id); tdPagar.appendChild(bPagar);
-        tT.appendChild(fila([tdHTML(`<b>${t.nombre}</b>`),tdS,tdPagar,tdBtn('✕',()=>elimTarjeta(t.id))]));
+        tT.appendChild(fila([tdHTML(`<b>${t.nombre}</b>`),tdS,tdV,tdPagar,tdBtn('✕',()=>elimTarjeta(t.id))]));
     });
-    if(!listaTarjetas.length) tT.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas.</td></tr>';
+    if(!listaTarjetas.length) tT.innerHTML='<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin tarjetas.</td></tr>';
     const wPT = document.getElementById('wrap-pagos-tarjeta');
     if (wPT) {
         const ultimosPagos = [...listaPagosTarjeta].reverse().slice(0, 5);
@@ -1555,7 +1558,7 @@ function refrescarIngresosPresupUI() {
     const addBtn = document.getElementById('ip-add-btn');
     if(addBtn){ addBtn.disabled = lleno; addBtn.style.cursor = lleno?'not-allowed':'pointer'; addBtn.style.opacity = lleno?'0.5':'1'; }
 }
-function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.now(),nombre:vGet('tarjeta-nombre'),saldo:nGet('tarjeta-saldo')}); guardar(); e.target.reset(); render(); }
+function altaTarjeta(e) { e.preventDefault(); listaTarjetas.push({id:'t_'+Date.now(),nombre:vGet('tarjeta-nombre'),saldo:nGet('tarjeta-saldo'),vencimiento:nGet('tarjeta-vencimiento')}); guardar(); e.target.reset(); render(); }
 function altaServicio(e) {
     e.preventDefault();
     const medioId=(listaTarjetas[0]?.id)||(listaBancos.find(b=>!b.autoDescontar)?.id)||(listaBancos[0]?.id)||'';
@@ -1836,6 +1839,7 @@ function buildDolares() {
               <form id="form-tusd">
                 <div class="form-group"><label>Nombre</label><input type="text" id="tusd-nombre" required placeholder="Ej. Visa Santander USD"></div>
                 <div class="form-group"><label>Saldo base (USD)</label><input type="number" id="tusd-saldo" required value="0" step="0.01"></div>
+                <div class="form-group"><label>Vencimiento actual (USD)</label><input type="number" id="tusd-vencimiento" value="0" step="0.01"></div>
                 <button type="submit" class="btn btn-add" style="background:#a855f7;">Registrar Tarjeta USD</button>
               </form>
             </div>
@@ -2061,8 +2065,11 @@ function renderDolares() {
             const mkC=function(label,node,color){ const c=el('div'); c.style.cssText='background:#f8fafc;border-radius:4px;padding:6px 10px;'; const l=el('div'); l.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; l.innerText=label; const v=el('div'); v.style.cssText='font-size:15px;font-weight:bold;color:'+(color||'#1e293b')+';'; if(typeof node==='string') v.innerText=node; else v.appendChild(node); c.appendChild(l); c.appendChild(v); return c; };
             const inp=inpNumUSD(t.saldo,function(v){ t.saldo=v; guardar(); calcDashUSD(); });
             inp.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 8px;font-size:15px;font-weight:bold;color:#a855f7;background:white;text-align:right;';
-            const row2=el('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;';
+            const inpV=inpNumUSD(t.vencimiento||0,function(v){ t.vencimiento=v; guardar(); });
+            inpV.style.cssText='width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:3px 8px;font-size:15px;font-weight:bold;color:#ea580c;background:white;text-align:right;';
+            const row2=el('div'); row2.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;';
             row2.appendChild(mkC('Saldo Base',inp,'#a855f7'));
+            row2.appendChild(mkC('Vencimiento',inpV,'#ea580c'));
             row2.appendChild(mkC('Consumo Mes',consumo>0?fmtUSD(consumo):'\u2014','#6366f1'));
             const cP=el('div'); cP.style.cssText='background:#f0f9ff;border-radius:4px;padding:6px 10px;'; const lP=el('div'); lP.style.cssText='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px;'; lP.innerText='En Pesos'; const vP=el('div'); vP.style.cssText='font-size:15px;font-weight:bold;color:#0284c7;'; vP.innerText=fmt(total*tipoCambio); cP.appendChild(lP); cP.appendChild(vP);
             card.appendChild(row1); card.appendChild(row2); card.appendChild(cP); tTU.appendChild(card);
@@ -2145,7 +2152,7 @@ function renderDolares() {
 
 // ALTAS USD
 function altaCuentaUSD(e)    { e.preventDefault(); listaCuentasUSD.push({id:'cu_'+Date.now(),nombre:vGet('cusd-nombre'),saldo:parseFloat(document.getElementById('cusd-saldo').value)||0}); guardar(); e.target.reset(); renderDolares(); }
-function altaTarjetaUSD(e)   { e.preventDefault(); listaTarjetasUSD.push({id:'tu_'+Date.now(),nombre:vGet('tusd-nombre'),saldo:parseFloat(document.getElementById('tusd-saldo').value)||0}); guardar(); e.target.reset(); renderDolares(); }
+function altaTarjetaUSD(e)   { e.preventDefault(); listaTarjetasUSD.push({id:'tu_'+Date.now(),nombre:vGet('tusd-nombre'),saldo:parseFloat(document.getElementById('tusd-saldo').value)||0,vencimiento:parseFloat(document.getElementById('tusd-vencimiento').value)||0}); guardar(); e.target.reset(); renderDolares(); }
 function altaServicioUSD(e)  { e.preventDefault(); const mId=listaTarjetasUSD[0]?.id||listaCuentasUSD[0]?.id||''; listaServiciosUSD.push({id:'su_'+Date.now(),nombre:vGet('susd-nombre'),presupuesto:parseFloat(document.getElementById('susd-presupuesto').value)||0,pagado:0,fVto:vGet('susd-vto'),fPago:'',medioPagoId:mId}); guardar(); e.target.reset(); renderDolares(); }
 function altaCorrienteUSD(e) {
     e.preventDefault();
@@ -3254,7 +3261,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.89';
+const APP_VERSION = 'v3.7.90';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4679,7 +4686,7 @@ function abrirModalPagoTarjeta(tarjetaId) {
         </div>
         <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #a855f7;">
             <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${t.nombre}</div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px;">Deuda actual: $${(t.saldo||0).toLocaleString('es-AR')}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Saldo total: $${(t.saldo||0).toLocaleString('es-AR')} · Vence ahora: $${(t.vencimiento||0).toLocaleString('es-AR')}</div>
         </div>
         ${!listaBancos.length ? '<div style="font-size:12px;color:#fca5a5;margin-bottom:14px;">No hay bancos cargados. Registrá un banco primero.</div>' : `
         <div style="margin-bottom:11px;">
@@ -4689,7 +4696,7 @@ function abrirModalPagoTarjeta(tarjetaId) {
         <div style="display:flex;gap:8px;margin-bottom:14px;">
             <div style="flex:1;">
                 <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto</label>
-                <input type="number" id="cf-pt-monto" step="1" value="${Math.round(t.saldo||0)}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+                <input type="number" id="cf-pt-monto" step="1" value="${Math.round(t.vencimiento||0)}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
             </div>
             <div style="flex:1;">
                 <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha</label>
@@ -4719,6 +4726,7 @@ function confirmarPagoTarjeta(tarjetaId) {
 
     banco.saldo -= monto;
     t.saldo -= monto;
+    t.vencimiento = Math.max(0, (t.vencimiento||0) - monto);
     listaPagosTarjeta.push({ id: 'pt_' + Date.now(), tarjetaId: t.id, tarjetaNombre: t.nombre, bancoId, bancoNombre: banco.nombre, monto, fecha });
 
     guardar();
@@ -4733,7 +4741,7 @@ function elimPagoTarjeta(id) {
     const banco = listaBancos.find(b => b.id === p.bancoId);
     const tarjeta = listaTarjetas.find(t => t.id === p.tarjetaId);
     if (banco) banco.saldo += p.monto;
-    if (tarjeta) tarjeta.saldo += p.monto;
+    if (tarjeta) { tarjeta.saldo += p.monto; tarjeta.vencimiento = (tarjeta.vencimiento||0) + p.monto; }
     listaPagosTarjeta = listaPagosTarjeta.filter(x => x.id !== id);
     guardar(); render();
 }
@@ -4758,7 +4766,7 @@ function abrirModalPagoTarjetaUSD(tarjetaId) {
         </div>
         <div style="background:#0f172a;border-radius:8px;padding:10px 12px;margin-bottom:14px;border-left:3px solid #a855f7;">
             <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${t.nombre}</div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px;">Deuda actual: ${fmtUSD(t.saldo||0)}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Saldo total: ${fmtUSD(t.saldo||0)} · Vence ahora: ${fmtUSD(t.vencimiento||0)}</div>
         </div>
         ${!listaCuentasUSD.length ? '<div style="font-size:12px;color:#fca5a5;margin-bottom:14px;">No hay cuentas USD cargadas. Registrá una cuenta USD primero.</div>' : `
         <div style="margin-bottom:11px;">
@@ -4768,7 +4776,7 @@ function abrirModalPagoTarjetaUSD(tarjetaId) {
         <div style="display:flex;gap:8px;margin-bottom:14px;">
             <div style="flex:1;">
                 <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Monto (USD)</label>
-                <input type="number" id="cf-ptu-monto" step="0.01" value="${Math.round((t.saldo||0)*100)/100}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
+                <input type="number" id="cf-ptu-monto" step="0.01" value="${Math.round((t.vencimiento||0)*100)/100}" style="width:100%;padding:9px 11px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:14px;box-sizing:border-box;">
             </div>
             <div style="flex:1;">
                 <label style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;display:block;margin-bottom:4px;">Fecha</label>
@@ -4798,6 +4806,7 @@ function confirmarPagoTarjetaUSD(tarjetaId) {
 
     cuenta.saldo -= monto;
     t.saldo -= monto;
+    t.vencimiento = Math.max(0, (t.vencimiento||0) - monto);
     listaPagosTarjetaUSD.push({ id: 'ptu_' + Date.now(), tarjetaId: t.id, tarjetaNombre: t.nombre, cuentaId, cuentaNombre: cuenta.nombre, monto, fecha });
 
     guardar();
@@ -4812,7 +4821,7 @@ function elimPagoTarjetaUSD(id) {
     const cuenta = listaCuentasUSD.find(c => c.id === p.cuentaId);
     const tarjeta = listaTarjetasUSD.find(t => t.id === p.tarjetaId);
     if (cuenta) cuenta.saldo += p.monto;
-    if (tarjeta) tarjeta.saldo += p.monto;
+    if (tarjeta) { tarjeta.saldo += p.monto; tarjeta.vencimiento = (tarjeta.vencimiento||0) + p.monto; }
     listaPagosTarjetaUSD = listaPagosTarjetaUSD.filter(x => x.id !== id);
     guardar(); renderDolares();
 }
@@ -5022,3 +5031,4 @@ function cfConfirmarGasto() {
     cfGmailIdx++;
     if (cfGmailIdx < cfGmailQueue.length) setTimeout(cfGmailMostrarSiguiente, 600);
 }
+
