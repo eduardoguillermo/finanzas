@@ -480,29 +480,33 @@
         <div class="section-subtitle">Control de deuda en tarjetas en pesos</div>
       </div>
     </div>
-    <p>Panel para registrar el saldo adeudado en cada tarjeta de crédito en pesos. El saldo representa la deuda acumulada de consumos del período.</p>
+    <p>Panel para registrar el saldo adeudado en cada tarjeta de crédito en pesos. El saldo total representa la deuda acumulada de consumos del período, incluyendo cargos que todavía no vencieron.</p>
 
     <h2>Cómo agregar una tarjeta</h2>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div class="step-body">Ingresar el nombre de la tarjeta (ej. "Visa Santander", "American Santander").</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el saldo actual adeudado.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body">Hacer clic en "+ Agregar".</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el saldo total adeudado.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar el vencimiento actual (el importe del próximo resumen, si ya lo sabés).</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body">Hacer clic en "+ Agregar".</div></div>
     </div>
 
     <div class="tip">💡 El nombre de la tarjeta es importante para el módulo Gmail. El sistema auto-detecta la tarjeta del mail de Santander buscando "Visa" o "Amex" en el nombre de la tarjeta.</div>
 
-    <h2>Actualizar saldo</h2>
-    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline.</p>
+    <h2>Saldo total vs. Vencimiento</h2>
+    <p>Como el cierre de la tarjeta opera antes de fin de mes, el <b>Saldo total</b> incluye consumos que todavía no entraron al resumen actual. El campo <b>Vencimiento</b> es el importe puntual que hay que pagar ahora (el del resumen), y se actualiza a mano cada vez que llega un resumen nuevo.</p>
+
+    <h2>Actualizar saldo o vencimiento</h2>
+    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline, tanto en la columna Saldo total como en Vencimiento.</p>
 
     <h2>Pagar tarjeta (descontar de un banco)</h2>
-    <p>El botón <b>💳 Pagar</b> de cada tarjeta abre un modal para registrar el pago de la tarjeta en un solo paso: elegís el banco de origen, el monto (precarga la deuda actual) y la fecha. Al confirmar, se descuenta ese monto del banco elegido y se descuenta la misma cifra de la deuda de la tarjeta — es una operación atómica, no genera un gasto ni entra en los filtros de rubros.</p>
+    <p>El botón <b>💳 Pagar</b> de cada tarjeta abre un modal para registrar el pago de la tarjeta en un solo paso: elegís el banco de origen, el monto (precarga el <b>Vencimiento</b>, no el saldo total) y la fecha. Al confirmar, se descuenta ese monto del banco elegido, del saldo total de la tarjeta y del vencimiento (nunca queda negativo) — es una operación atómica, no genera un gasto ni entra en los filtros de rubros.</p>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div class="step-body">Clic en "💳 Pagar" en la fila de la tarjeta que querés pagar.</div></div>
       <div class="step"><div class="step-num">2</div><div class="step-body">Elegir el banco de origen del pago.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body">Confirmar el monto (por defecto trae la deuda actual) y la fecha.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Confirmar el monto (por defecto trae el vencimiento actual) y la fecha.</div></div>
       <div class="step"><div class="step-num">4</div><div class="step-body">Clic en "✓ Confirmar pago".</div></div>
     </div>
-    <p>Debajo de la tabla queda un historial de los últimos 5 pagos, con opción de deshacer (✕) — revierte el monto tanto en el banco como en la tarjeta.</p>
+    <p>Debajo de la tabla queda un historial de los últimos 5 pagos, con opción de deshacer (✕) — revierte el monto en el banco, el saldo total y el vencimiento de la tarjeta.</p>
     <div class="tip">💡 Si te equivocaste de banco o monto, usá el ✕ del historial para deshacer el pago y volvé a registrarlo bien. No hace falta editar el saldo de la tarjeta ni del banco a mano.</div>
   </section>
 
