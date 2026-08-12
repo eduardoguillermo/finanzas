@@ -1820,7 +1820,7 @@ function computeMovimientosBanco(bancoId) {
 function buildMovimientos() {
     const wrap = el('div', 'container'); wrap.style.paddingTop = '20px';
     const hdr = el('div'); hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #0284c7;';
-    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🏦 Movimientos Bancarios</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Saldo al inicio del mes y movimientos diarios por cuenta</p></div>';
+    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🏦 Movimientos Bancarios' + btnAyuda('movimientos') + '</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Saldo al inicio del mes y movimientos diarios por cuenta</p></div>';
     wrap.appendChild(hdr);
 
     if (!listaBancos.length) {
