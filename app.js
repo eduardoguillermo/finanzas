@@ -41,6 +41,7 @@ let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
 let movBancoSelId = null; // cuenta bancaria seleccionada en la pestaña Movimientos
+let movMesSelYM = null; // mes (YYYY-MM) seleccionado en la pestaña Movimientos
 let filtroCorrientes = '';
 let filtroClase = '';
 let _syncTimer = null;
@@ -1800,16 +1801,47 @@ function modalVencimientos() {
 // Junta, para una cuenta bancaria dada, todos los eventos del mes en curso que impactan
 // su saldo: ingresos directos, corrientes/servicios pagados (solo si la cuenta es líquida,
 // mismo criterio que usa el resto de la app vía esCuentaLiq) y transferencias propias.
-function computeMovimientosBanco(bancoId) {
+function mesNombreToYM(nombre) {
+    if (!nombre) return null;
+    const meses = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+    const m = nombre.toLowerCase().match(/^(\w+) de (\d{4})/);
+    if (!m || !meses[m[1]]) return null;
+    return m[2] + '-' + meses[m[1]];
+}
+function historicoMesPorYM(ym) {
+    const cerrados = historicoMeses.filter(m => mesNombreToYM(m.nombre) === ym);
+    return cerrados.length ? cerrados[cerrados.length - 1] : null;
+}
+function getSaldoBancoMes(bancoId, mesYM) {
     const mesActualYM = cfFechaLocal().slice(0,7);
-    const esDelMes = fecha => (fecha || '').slice(0,7) === mesActualYM;
+    if (!mesYM || mesYM === mesActualYM) {
+        const b = listaBancos.find(x => x.id === bancoId);
+        return b ? b.saldo : 0;
+    }
+    const entry = historicoMesPorYM(mesYM);
+    if (!entry) return null;
+    const b = (entry.datos.listaBancos || []).find(x => x.id === bancoId);
+    return b ? b.saldo : null;
+}
+function computeMovimientosBanco(bancoId, mesYM) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const targetYM = mesYM || mesActualYM;
+    const esDelMes = fecha => (fecha || '').slice(0,7) === targetYM;
+    const esMesActual = targetYM === mesActualYM;
+    let fCorrientes = listaCorrientes, fServicios = listaServicios, fTransferencias = listaTransferencias;
+    if (!esMesActual) {
+        const entry = historicoMesPorYM(targetYM);
+        fCorrientes = (entry && entry.datos.listaCorrientes) || [];
+        fServicios = (entry && entry.datos.listaServicios) || [];
+        fTransferencias = (entry && entry.datos.listaTransferencias) || [];
+    }
     const mov = [];
     listaIngresos.forEach(i => { if (i.bancoId === bancoId && esDelMes(i.fecha)) mov.push({ fecha: i.fecha || '', detalle: '💰 ' + (i.descripcion || 'Ingreso'), monto: i.monto, orden: 0 }); });
     if (esCuentaLiq(bancoId)) {
-        listaCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? c.monto : -c.monto, orden: 1 }); });
-        listaServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: -s.pagado, orden: 1 }); });
+        fCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? c.monto : -c.monto, orden: 1 }); });
+        fServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: -s.pagado, orden: 1 }); });
     }
-    listaTransferencias.forEach(t => {
+    fTransferencias.forEach(t => {
         if (t.origenId === bancoId && esDelMes(t.fecha))  mov.push({ fecha: t.fecha || '', detalle: '↗ Transferencia a ' + (t.destinoNombre || '?'), monto: -t.monto, orden: 2 });
         if (t.destinoId === bancoId && esDelMes(t.fecha)) mov.push({ fecha: t.fecha || '', detalle: '↙ Transferencia de ' + (t.origenNombre || '?'), monto: t.monto, orden: 2 });
     });
@@ -1830,12 +1862,26 @@ function buildMovimientos() {
         return wrap;
     }
     if (!movBancoSelId || !listaBancos.some(b => b.id === movBancoSelId)) movBancoSelId = listaBancos[0].id;
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    if (!movMesSelYM) movMesSelYM = mesActualYM;
 
-    const selRow = el('div'); selRow.style.cssText = 'margin-bottom:16px;';
+    const selRow = el('div'); selRow.style.cssText = 'margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;';
     const sel = el('select'); sel.id = 'mov-banco-sel'; sel.className = 'inp'; sel.style.cssText = 'max-width:280px;font-size:13px;padding:8px 10px;';
     listaBancos.forEach(b => addOpt(sel, b.id, '🏦 ' + b.nombre, b.id === movBancoSelId));
     sel.onchange = e => { movBancoSelId = e.target.value; renderMovimientosDetalle(); };
     selRow.appendChild(sel);
+
+    const selMes = el('select'); selMes.id = 'mov-mes-sel'; selMes.className = 'inp'; selMes.style.cssText = 'max-width:220px;font-size:13px;padding:8px 10px;';
+    addOpt(selMes, mesActualYM, '📅 Mes actual', movMesSelYM === mesActualYM);
+    const vistos = new Set([mesActualYM]);
+    for (let i = historicoMeses.length - 1; i >= 0; i--) {
+        const ym = mesNombreToYM(historicoMeses[i].nombre);
+        if (!ym || vistos.has(ym)) continue;
+        vistos.add(ym);
+        addOpt(selMes, ym, '📅 ' + historicoMeses[i].nombre, movMesSelYM === ym);
+    }
+    selMes.onchange = e => { movMesSelYM = e.target.value; renderMovimientosDetalle(); };
+    selRow.appendChild(selMes);
     wrap.appendChild(selRow);
 
     const det = el('div'); det.id = 'mov-detalle';
@@ -1850,17 +1896,28 @@ function renderMovimientosDetalle() {
     const banco = listaBancos.find(b => b.id === movBancoSelId);
     if (!banco) { det.innerHTML = ''; return; }
 
-    const mov = computeMovimientosBanco(banco.id);
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const targetYM = movMesSelYM || mesActualYM;
+    const esMesActual = targetYM === mesActualYM;
+    const saldoRef = getSaldoBancoMes(banco.id, targetYM);
+
+    if (saldoRef === null) {
+        det.innerHTML = '<div style="background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:13px;">No hay datos archivados para esta cuenta en el mes seleccionado.</div>';
+        return;
+    }
+
+    const mov = computeMovimientosBanco(banco.id, targetYM);
     const totalMov = mov.reduce((a, m) => a + m.monto, 0);
-    const saldoInicio = Math.round(banco.saldo - totalMov);
+    const saldoInicio = Math.round(saldoRef - totalMov);
     const totalIngresos = mov.filter(m => m.monto > 0).reduce((a, m) => a + m.monto, 0);
     const totalEgresos = mov.filter(m => m.monto < 0).reduce((a, m) => a + m.monto, 0);
+    const lblSaldoActual = esMesActual ? 'Saldo actual' : 'Saldo al cierre';
 
     let cards = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
     cards += '<div style="background:white;border:1px solid #cbd5e1;border-top:4px solid #64748b;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Saldo inicio de mes</span><br><span style="font-size:20px;font-weight:bold;color:#1e293b;">' + fmt(saldoInicio) + '</span></div>';
     cards += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-top:4px solid #16a34a;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Ingresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#16a34a;">+' + fmt(totalIngresos) + '</span></div>';
     cards += '<div style="background:#fef2f2;border:1px solid #fecaca;border-top:4px solid #dc2626;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#dc2626;text-transform:uppercase;">Egresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#dc2626;">' + fmt(totalEgresos) + '</span></div>';
-    cards += '<div style="background:#f0f9ff;border:1px solid #7dd3fc;border-top:4px solid #0284c7;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#0284c7;text-transform:uppercase;">Saldo actual</span><br><span style="font-size:20px;font-weight:bold;color:#0284c7;">' + fmt(banco.saldo) + '</span></div>';
+    cards += '<div style="background:#f0f9ff;border:1px solid #7dd3fc;border-top:4px solid #0284c7;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#0284c7;text-transform:uppercase;">' + lblSaldoActual + '</span><br><span style="font-size:20px;font-weight:bold;color:#0284c7;">' + fmt(saldoRef) + '</span></div>';
     cards += '</div>';
 
     let tablaHtml;
@@ -1887,7 +1944,7 @@ function renderMovimientosDetalle() {
                 '<td style="padding:5px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + colorMonto + ';">' + signo + fmt(m.monto) + '</td>' +
                 '<td style="padding:5px 10px;text-align:right;font-size:12px;color:#64748b;">' + fmt(running) + '</td></tr>';
         });
-        filas += '<tr style="background:#f0f9ff;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">Saldo actual</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">' + fmt(banco.saldo) + '</td></tr>';
+        filas += '<tr style="background:#f0f9ff;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">' + lblSaldoActual + '</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">' + fmt(saldoRef) + '</td></tr>';
         tablaHtml = '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><tbody>' + filas + '</tbody></table></div>';
     }
 
@@ -3370,7 +3427,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.92';
+const APP_VERSION = 'v3.7.93';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
