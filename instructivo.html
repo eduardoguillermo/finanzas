@@ -487,10 +487,10 @@
         <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta <span class="badge badge-purple">Nuevo</span></div>
       </div>
     </div>
-    <p>La pestaña Movimientos muestra, cuenta por cuenta, cómo se fue moviendo el saldo a lo largo del mes en curso: desde qué saldo arrancó el mes hasta el saldo actual, con el detalle día por día de qué lo movió.</p>
+    <p>La pestaña Movimientos muestra, cuenta por cuenta, cómo se fue moviendo el saldo a lo largo de un mes: desde qué saldo arrancó hasta el saldo de cierre (o el actual si es el mes en curso), con el detalle día por día de qué lo movió.</p>
 
     <h2>Cómo se arma</h2>
-    <p>Elegís una cuenta en el selector de arriba. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron este mes:</p>
+    <p>Elegís una cuenta en el primer selector y un mes en el segundo. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron en el mes elegido:</p>
     <ul>
       <li><b>💰 Ingresos</b> — depósitos cargados con el botón "Ingreso"</li>
       <li><b>🛒 / ⬆ Gastos corrientes pagados</b> — solo si la cuenta tiene el auto-descuento activado (cuentas "líquidas")</li>
@@ -498,13 +498,16 @@
       <li><b>↗ / ↙ Transferencias</b> — entre tus propias cuentas, salida en la cuenta origen y entrada en la destino</li>
     </ul>
 
+    <h2>Meses cerrados</h2>
+    <p>El selector de mes incluye el mes actual y todos los meses ya archivados con "🔄 Abrir Nuevo Mes". Para un mes cerrado, la tabla se arma con la foto que quedó guardada al cierre de ese período — no con las listas en vivo — así que el detalle diario y el saldo de cierre siguen disponibles aunque hayan pasado varios meses.</p>
+
     <h2>Saldo al inicio del mes</h2>
-    <p>No es un dato que se guarde aparte: se calcula restándole al saldo actual la suma de todos los movimientos del mes. Por eso siempre es consistente con el saldo que ves en la pestaña Mes Actual, sin importar en qué momento del mes lo consultes.</p>
+    <p>No es un dato que se guarde aparte: se calcula restándole al saldo de referencia del mes (el actual, o el de cierre si es un mes pasado) la suma de todos los movimientos de ese período. Por eso siempre es consistente con el saldo que corresponde a ese mes.</p>
 
     <h2>Lectura de la tabla</h2>
-    <p>Los movimientos están agrupados por día, con el saldo acumulado al lado de cada uno para poder seguir la evolución. Las filas se muestran con fondo alternado para facilitar la lectura en pantallas anchas.</p>
+    <p>Los movimientos están agrupados por día, con el saldo acumulado al lado de cada uno para poder seguir la evolución. Las filas se muestran con fondo alternado para facilitar la lectura en pantallas anchas. En el mes actual la última fila dice "Saldo actual"; en un mes cerrado dice "Saldo al cierre".</p>
 
-    <div class="tip">💡 Esta pestaña solo muestra el mes en curso. Al cerrar el mes con "🔄 Abrir Nuevo Mes", el detalle se reinicia para el nuevo período — no queda un historial de movimientos de meses cerrados.</div>
+    <div class="tip">💡 Si elegís un mes cerrado y la cuenta no existía todavía en ese cierre, la app te avisa que no hay datos archivados para esa combinación en vez de mostrar información incorrecta.</div>
   </section>
 
   <!-- TARJETAS -->
@@ -1088,6 +1091,13 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.93</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>La pestaña 🏦 Movimientos Bancarios ahora permite elegir cualquier mes ya cerrado, no solo el mes en curso: agrega un selector de mes que reconstruye el detalle diario y el saldo de cierre a partir del archivo guardado en cada cierre de mes</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.7.92</span><span class="changelog-tag tag-feature">feature</span></div>
