@@ -1881,7 +1881,7 @@ function renderMovimientosDetalle() {
             }
             const colorMonto = m.monto >= 0 ? '#16a34a' : '#dc2626';
             const signo = m.monto >= 0 ? '+' : '';
-            const bgFila = (filaIdx % 2 === 0) ? '#ffffff' : '#eef2f6';
+            const bgFila = (filaIdx % 2 === 0) ? '#ffffff' : '#cbd5e1';
             filaIdx++;
             filas += '<tr style="background:' + bgFila + ';"><td style="padding:5px 10px 5px 20px;font-size:12px;color:#1e293b;">' + m.detalle + '</td>' +
                 '<td style="padding:5px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + colorMonto + ';">' + signo + fmt(m.monto) + '</td>' +
