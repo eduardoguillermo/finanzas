@@ -232,6 +232,12 @@
   .dash-card h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 6px; }
   .dash-card .value { font-size: 18px; font-weight: 700; }
   .changelog-entry { border-left: 3px solid var(--accent, #6366f1); padding: 4px 0 4px 16px; margin-bottom: 28px; }
+  .changelog-details { margin-top: 4px; }
+  .changelog-summary { cursor: pointer; font-size: 14px; font-weight: 600; color: #6366f1; padding: 8px 0; list-style: none; user-select: none; }
+  .changelog-summary::-webkit-details-marker { display: none; }
+  .changelog-summary::before { content: "▸ "; display: inline-block; transition: transform 0.15s; }
+  .changelog-details[open] .changelog-summary::before { transform: rotate(90deg); }
+  .changelog-details .changelog-entry:first-of-type { margin-top: 16px; }
   .changelog-version { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
   .changelog-version .v-num { font-size: 16px; font-weight: 700; color: var(--text); }
   .changelog-list { margin: 0; padding-left: 20px; font-size: 13.5px; color: #4b5563; line-height: 1.7; }
@@ -1080,7 +1086,10 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
       </div>
     </div>
 
-    <div class="changelog-entry">
+    <details class="changelog-details">
+      <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.7.92</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nueva pestaña 🏦 Movimientos Bancarios: muestra el saldo al inicio del mes y el detalle diario de movimientos (ingresos, gastos, servicios pagados y transferencias) por cuenta, con saldo acumulado y filas con fondo alternado</li>
@@ -1196,7 +1205,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
         <li>Modal de confirmación: verde si matchea servicio fijo existente, azul si es gasto corriente nuevo</li>
       </ul>
     </div>
-
+    </details>
   </section>
 
 </main>
