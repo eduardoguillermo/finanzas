@@ -644,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTabs();
     renderContenido();
     cfRestaurarCarpeta();
+    setTimeout(() => { chequearCierreAutomatico(); }, 1000);
     // Módulo Gmail: chequear mails de Santander automáticamente en PC
     setTimeout(() => { cfGmailChequear(); }, 800);
 });
@@ -1043,7 +1044,7 @@ function bindMesActual() {
     g('form-cuota')?.addEventListener('submit', altaCuota);
     g('form-rubro')?.addEventListener('submit', altaRubro);
     g('input-backup')?.addEventListener('change', importar);
-    g('btn-nuevo-mes')?.addEventListener('click', nuevoMes);
+    g('btn-nuevo-mes')?.addEventListener('click', () => nuevoMes());
     g('btn-mas-mes')?.addEventListener('click', (e)=>{ e.stopPropagation(); cfToggleMenuMasMes(); });
     g('cuota-total')?.addEventListener('input', previewCuota);
     g('cuota-cant')?.addEventListener('input', previewCuota);
@@ -1652,9 +1653,81 @@ function elimTransferencia(id) {
 //  NUEVO MES
 // ═══════════════════════════════════════════
 function nombreMes() { return new Date().toLocaleString('es-AR',{month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase()); }
-function nuevoMes() {
-    const nombre=nombreMes(), sufijo=historicoMeses.some(m=>m.nombre===nombre)?' ('+Date.now()+')':'';
-    if(!confirm(`🔄 ¿Abrir nuevo período mensual?\n→ Se archivará "${nombre+sufijo}"\n→ Bancos/tarjetas se ajustan\n→ Servicios fijos se conservan sin pagos\n→ Caja diaria y transferencias se vacían`)) return;
+// ═══════════════════════════════════════════
+//  CIERRE AUTOMÁTICO DE MES (al abrir la app tras cruzar el 1° del mes)
+// ═══════════════════════════════════════════
+function sumarMesYM(ym, n) {
+    let [y,m] = ym.split('-').map(Number);
+    m += n;
+    while (m > 12) { m -= 12; y++; }
+    while (m < 1)  { m += 12; y--; }
+    return y + '-' + String(m).padStart(2,'0');
+}
+function nombreDesdeYM(ym) {
+    const nombres = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const [y,m] = ym.split('-');
+    const n = nombres[parseInt(m,10)-1] + ' de ' + y;
+    return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function chequearCierreAutomatico() {
+    if (!historicoMeses.length) return; // sin cierres previos, no hay base para detectar mes atrasado
+    let ultimoYM = null;
+    historicoMeses.forEach(m => { const ym = mesNombreToYM(m.nombre); if (ym && (!ultimoYM || ym > ultimoYM)) ultimoYM = ym; });
+    if (!ultimoYM) return;
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const pendientes = [];
+    let cursor = sumarMesYM(ultimoYM, 1);
+    while (cursor < mesActualYM) { pendientes.push(cursor); cursor = sumarMesYM(cursor, 1); }
+    if (pendientes.length) mostrarModalCierreAutomatico(pendientes);
+}
+function previewMovimientosLive(bancoId, ym) {
+    const esDelMes = fecha => (fecha || '').slice(0,7) === ym;
+    const mov = [];
+    listaIngresos.forEach(i => { if (i.bancoId === bancoId && esDelMes(i.fecha)) mov.push({ monto: i.monto }); });
+    if (esCuentaLiq(bancoId)) {
+        listaCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ monto: c.esIngreso ? c.monto : -c.monto }); });
+        listaServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ monto: -s.pagado }); });
+    }
+    listaTransferencias.forEach(t => {
+        if (t.origenId === bancoId && esDelMes(t.fecha))  mov.push({ monto: -t.monto });
+        if (t.destinoId === bancoId && esDelMes(t.fecha)) mov.push({ monto: t.monto });
+    });
+    return mov;
+}
+function mostrarModalCierreAutomatico(pendientes) {
+    if (document.getElementById('modal-cierre-auto')) return;
+    const mesConDatos = pendientes[0]; // el primer mes pendiente es el que tiene los movimientos en vivo
+    let filasSaldos = listaBancos.map(b => '<tr><td style="padding:5px 8px;font-size:13px;">' + b.nombre + '</td><td style="padding:5px 8px;text-align:right;font-size:13px;font-weight:bold;">' + fmt(b.saldo) + '</td></tr>').join('');
+    let totIngresos = 0, totEgresos = 0;
+    listaBancos.forEach(b => { previewMovimientosLive(b.id, mesConDatos).forEach(m => { if (m.monto > 0) totIngresos += m.monto; else totEgresos += m.monto; }); });
+    const listaMesesTxt = pendientes.map(nombreDesdeYM).join(', ');
+    const div = document.createElement('div');
+    div.id = 'modal-cierre-auto';
+    div.style.cssText = 'display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;';
+    div.innerHTML = '<div style="background:white;border-radius:12px;padding:24px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+        '<h3 style="margin:0 0 12px;color:#0f172a;font-size:16px;">🔄 Cierre de mes pendiente</h3>' +
+        '<p style="font-size:13px;color:#64748b;margin:0 0 14px;">Pasaste el 1° del mes sin cerrar el período anterior. Se va a archivar: <b>' + listaMesesTxt + '</b>' + (pendientes.length > 1 ? ' (' + (pendientes.length - 1) + ' de esos meses no tienen movimientos registrados).' : '.') + '</p>' +
+        '<div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:6px;">Saldos que quedarían archivados como cierre de ' + nombreDesdeYM(mesConDatos) + '</div>' +
+        '<table style="width:100%;border-collapse:collapse;margin-bottom:10px;">' + filasSaldos + '</table>' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:16px;"><span>Ingresos del período: <b style="color:#16a34a;">+' + fmt(totIngresos) + '</b></span><span>Egresos: <b style="color:#dc2626;">' + fmt(totEgresos) + '</b></span></div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+        '<button id="btn-cierre-auto-cancelar" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:14px;">Ahora no</button>' +
+        '<button id="btn-cierre-auto-confirmar" style="padding:8px 20px;border:none;border-radius:6px;background:#0284c7;color:white;cursor:pointer;font-size:14px;font-weight:bold;">✓ Cerrar y archivar</button>' +
+        '</div></div>';
+    document.body.appendChild(div);
+    document.getElementById('btn-cierre-auto-cancelar').onclick = () => div.remove();
+    document.getElementById('btn-cierre-auto-confirmar').onclick = () => { div.remove(); ejecutarCierreAutomatico(pendientes); };
+}
+function ejecutarCierreAutomatico(pendientes) {
+    pendientes.forEach(ym => { nuevoMes({auto:true, nombre: nombreDesdeYM(ym)}); });
+    guardar(); renderTabs(); renderContenido();
+    alert('✅ Se archivaron automáticamente ' + pendientes.length + ' mes(es): ' + pendientes.map(nombreDesdeYM).join(', ') + '.');
+}
+function nuevoMes(opts) {
+    opts = opts || {};
+    const auto = !!opts.auto;
+    const nombre = opts.nombre || nombreMes(), sufijo=historicoMeses.some(m=>m.nombre===nombre)?' ('+Date.now()+')':'';
+    if(!auto && !confirm(`🔄 ¿Abrir nuevo período mensual?\n→ Se archivará "${nombre+sufijo}"\n→ Bancos/tarjetas se ajustan\n→ Servicios fijos se conservan sin pagos\n→ Caja diaria y transferencias se vacían`)) return false;
     historicoMeses.push({id:'mes_'+Date.now(),nombre:nombre+sufijo,fechaCierre:new Date().toISOString(),
         datos:{listaBancos:clon(listaBancos),listaTarjetas:clon(listaTarjetas),listaServicios:clon(listaServicios),
                listaCorrientes:clon(listaCorrientes),listaTransferencias:clon(listaTransferencias),
@@ -1700,7 +1773,8 @@ function nuevoMes() {
     listaCorrientesUSD=[];
     listaTransferenciasUSD=[];
     guardar(); renderTabs(); renderContenido();
-    alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
+    if(!auto) alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
+    return true;
 }
 
 // ═══════════════════════════════════════════
@@ -3427,7 +3501,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.93';
+const APP_VERSION = 'v3.7.95';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
