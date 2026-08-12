@@ -1801,15 +1801,17 @@ function modalVencimientos() {
 // su saldo: ingresos directos, corrientes/servicios pagados (solo si la cuenta es líquida,
 // mismo criterio que usa el resto de la app vía esCuentaLiq) y transferencias propias.
 function computeMovimientosBanco(bancoId) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const esDelMes = fecha => (fecha || '').slice(0,7) === mesActualYM;
     const mov = [];
-    listaIngresos.forEach(i => { if (i.bancoId === bancoId) mov.push({ fecha: i.fecha || '', detalle: '💰 ' + (i.descripcion || 'Ingreso'), monto: i.monto, orden: 0 }); });
+    listaIngresos.forEach(i => { if (i.bancoId === bancoId && esDelMes(i.fecha)) mov.push({ fecha: i.fecha || '', detalle: '💰 ' + (i.descripcion || 'Ingreso'), monto: i.monto, orden: 0 }); });
     if (esCuentaLiq(bancoId)) {
-        listaCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? c.monto : -c.monto, orden: 1 }); });
-        listaServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: -s.pagado, orden: 1 }); });
+        listaCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? c.monto : -c.monto, orden: 1 }); });
+        listaServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: -s.pagado, orden: 1 }); });
     }
     listaTransferencias.forEach(t => {
-        if (t.origenId === bancoId)  mov.push({ fecha: t.fecha || '', detalle: '↗ Transferencia a ' + (t.destinoNombre || '?'), monto: -t.monto, orden: 2 });
-        if (t.destinoId === bancoId) mov.push({ fecha: t.fecha || '', detalle: '↙ Transferencia de ' + (t.origenNombre || '?'), monto: t.monto, orden: 2 });
+        if (t.origenId === bancoId && esDelMes(t.fecha))  mov.push({ fecha: t.fecha || '', detalle: '↗ Transferencia a ' + (t.destinoNombre || '?'), monto: -t.monto, orden: 2 });
+        if (t.destinoId === bancoId && esDelMes(t.fecha)) mov.push({ fecha: t.fecha || '', detalle: '↙ Transferencia de ' + (t.origenNombre || '?'), monto: t.monto, orden: 2 });
     });
     mov.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden - b.orden));
     return mov;
