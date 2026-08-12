@@ -268,6 +268,7 @@
 
   <div class="section-label">Secciones principales</div>
   <a href="#mes-actual">📊 Mes Actual</a>
+  <a href="#movimientos">🏦 Movimientos Bancarios</a>
   <a href="#bancos">🏦 Bancos y efectivo</a>
   <a href="#tarjetas">💳 Tarjetas</a>
   <a href="#servicios">📋 Servicios fijos</a>
@@ -469,6 +470,35 @@
     <p>Hacer clic en el botón 🗑 de la fila correspondiente. La app pedirá confirmación.</p>
 
     <div class="note">📌 Los saldos de bancos son la base del cálculo de "Efectivo / Banco Disponible" y "Saldo Proyectado" en el dashboard.</div>
+  </section>
+
+  <!-- MOVIMIENTOS -->
+  <section class="section" id="movimientos">
+    <div class="section-header">
+      <span class="section-icon">🏦</span>
+      <div>
+        <div class="section-title">Movimientos Bancarios</div>
+        <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta <span class="badge badge-purple">Nuevo</span></div>
+      </div>
+    </div>
+    <p>La pestaña Movimientos muestra, cuenta por cuenta, cómo se fue moviendo el saldo a lo largo del mes en curso: desde qué saldo arrancó el mes hasta el saldo actual, con el detalle día por día de qué lo movió.</p>
+
+    <h2>Cómo se arma</h2>
+    <p>Elegís una cuenta en el selector de arriba. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron este mes:</p>
+    <ul>
+      <li><b>💰 Ingresos</b> — depósitos cargados con el botón "Ingreso"</li>
+      <li><b>🛒 / ⬆ Gastos corrientes pagados</b> — solo si la cuenta tiene el auto-descuento activado (cuentas "líquidas")</li>
+      <li><b>📋 Servicios fijos pagados</b> — ídem, solo cuentas líquidas</li>
+      <li><b>↗ / ↙ Transferencias</b> — entre tus propias cuentas, salida en la cuenta origen y entrada en la destino</li>
+    </ul>
+
+    <h2>Saldo al inicio del mes</h2>
+    <p>No es un dato que se guarde aparte: se calcula restándole al saldo actual la suma de todos los movimientos del mes. Por eso siempre es consistente con el saldo que ves en la pestaña Mes Actual, sin importar en qué momento del mes lo consultes.</p>
+
+    <h2>Lectura de la tabla</h2>
+    <p>Los movimientos están agrupados por día, con el saldo acumulado al lado de cada uno para poder seguir la evolución. Las filas se muestran con fondo alternado para facilitar la lectura en pantallas anchas.</p>
+
+    <div class="tip">💡 Esta pestaña solo muestra el mes en curso. Al cerrar el mes con "🔄 Abrir Nuevo Mes", el detalle se reinicia para el nuevo período — no queda un historial de movimientos de meses cerrados.</div>
   </section>
 
   <!-- TARJETAS -->
@@ -1048,6 +1078,13 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
         <div class="section-title">Historial de cambios</div>
         <div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div>
       </div>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.92</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nueva pestaña 🏦 Movimientos Bancarios: muestra el saldo al inicio del mes y el detalle diario de movimientos (ingresos, gastos, servicios pagados y transferencias) por cuenta, con saldo acumulado y filas con fondo alternado</li>
+      </ul>
     </div>
 
     <div class="changelog-entry">
