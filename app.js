@@ -40,6 +40,7 @@ let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
+let movBancoSelId = null; // cuenta bancaria seleccionada en la pestaña Movimientos
 let filtroCorrientes = '';
 let filtroClase = '';
 let _syncTimer = null;
@@ -661,6 +662,7 @@ function renderTabs() {
         bar.appendChild(t);
     };
     mkTab('<span>📊 Mes Actual</span>',  tabActivo===null,       ()=>{ tabActivo=null;       renderTabs(); renderContenido(); });
+    mkTab('<span>🏦 Movimientos</span>', tabActivo==='movimientos', ()=>{ tabActivo='movimientos'; renderTabs(); renderContenido(); }, 'background:#f0f9ff;color:#0284c7;border-color:#7dd3fc;');
     mkTab('<span>🎯 Presupuesto</span>', tabActivo==='presupuesto', ()=>{ tabActivo='presupuesto'; renderTabs(); renderContenido(); }, 'background:#f5f3ff;color:#6d28d9;border-color:#c4b5fd;');
     mkTab('<span>💵 Dólares</span>',     tabActivo==='dolares',  ()=>{ tabActivo='dolares';  renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#15803d;border-color:#86efac;');
     mkTab('<span>📈 Reportes</span>',    tabActivo==='reportes',    ()=>{ tabActivo='reportes';    renderTabs(); renderContenido(); }, 'background:#f0fdf4;color:#166534;border-color:#86efac;');
@@ -709,6 +711,7 @@ function renderContenido() {
     app.innerHTML = '';
     if      (tabActivo===null)       { app.appendChild(buildMesActual()); bindMesActual(); render(); iniciarTimerYPF(); }
     else if (tabActivo==='dolares')  { app.appendChild(buildDolares());   bindDolares();   renderDolares(); actualizarTCDolares(); }
+    else if (tabActivo==='movimientos') { app.appendChild(buildMovimientos()); }
     else if (tabActivo==='presupuesto')  { app.appendChild(buildPresupuesto()); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
     else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); iniciarTimerYPF(); }
@@ -1789,6 +1792,104 @@ function modalVencimientos() {
     const titulo = proximos.length && cuotasTerminando.length ? 'Vencimientos y cuotas próximas' : proximos.length ? 'Vencimientos en los próximos 5 días hábiles' : 'Cuotas por terminar';
     ov.innerHTML='<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">⚠️</span><h3>'+titulo+'</h3></div><div class="modal-body">'+itemsHtml+'</div><div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById(\'modal-vto\').remove()">Entendido</button></div></div>';
     document.body.appendChild(ov);
+}
+
+// ═══════════════════════════════════════════
+//  MOVIMIENTOS BANCARIOS (saldo inicio de mes + detalle diario por cuenta)
+// ═══════════════════════════════════════════
+// Junta, para una cuenta bancaria dada, todos los eventos del mes en curso que impactan
+// su saldo: ingresos directos, corrientes/servicios pagados (solo si la cuenta es líquida,
+// mismo criterio que usa el resto de la app vía esCuentaLiq) y transferencias propias.
+function computeMovimientosBanco(bancoId) {
+    const mov = [];
+    listaIngresos.forEach(i => { if (i.bancoId === bancoId) mov.push({ fecha: i.fecha || '', detalle: '💰 ' + (i.descripcion || 'Ingreso'), monto: i.monto, orden: 0 }); });
+    if (esCuentaLiq(bancoId)) {
+        listaCorrientes.forEach(c => { if (c.medioPagoId === bancoId && c.fechaPago) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? c.monto : -c.monto, orden: 1 }); });
+        listaServicios.forEach(s => { if (s.medioPagoId === bancoId && s.pagado > 0 && s.fPago) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: -s.pagado, orden: 1 }); });
+    }
+    listaTransferencias.forEach(t => {
+        if (t.origenId === bancoId)  mov.push({ fecha: t.fecha || '', detalle: '↗ Transferencia a ' + (t.destinoNombre || '?'), monto: -t.monto, orden: 2 });
+        if (t.destinoId === bancoId) mov.push({ fecha: t.fecha || '', detalle: '↙ Transferencia de ' + (t.origenNombre || '?'), monto: t.monto, orden: 2 });
+    });
+    mov.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden - b.orden));
+    return mov;
+}
+
+function buildMovimientos() {
+    const wrap = el('div', 'container'); wrap.style.paddingTop = '20px';
+    const hdr = el('div'); hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #0284c7;';
+    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🏦 Movimientos Bancarios</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Saldo al inicio del mes y movimientos diarios por cuenta</p></div>';
+    wrap.appendChild(hdr);
+
+    if (!listaBancos.length) {
+        const vacio = el('div'); vacio.style.cssText = 'background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;font-size:13px;';
+        vacio.innerText = 'No hay cuentas bancarias cargadas todavía.';
+        wrap.appendChild(vacio);
+        return wrap;
+    }
+    if (!movBancoSelId || !listaBancos.some(b => b.id === movBancoSelId)) movBancoSelId = listaBancos[0].id;
+
+    const selRow = el('div'); selRow.style.cssText = 'margin-bottom:16px;';
+    const sel = el('select'); sel.id = 'mov-banco-sel'; sel.className = 'inp'; sel.style.cssText = 'max-width:280px;font-size:13px;padding:8px 10px;';
+    listaBancos.forEach(b => addOpt(sel, b.id, '🏦 ' + b.nombre, b.id === movBancoSelId));
+    sel.onchange = e => { movBancoSelId = e.target.value; renderMovimientosDetalle(); };
+    selRow.appendChild(sel);
+    wrap.appendChild(selRow);
+
+    const det = el('div'); det.id = 'mov-detalle';
+    wrap.appendChild(det);
+    setTimeout(renderMovimientosDetalle, 0);
+    return wrap;
+}
+
+function renderMovimientosDetalle() {
+    const det = document.getElementById('mov-detalle');
+    if (!det) return;
+    const banco = listaBancos.find(b => b.id === movBancoSelId);
+    if (!banco) { det.innerHTML = ''; return; }
+
+    const mov = computeMovimientosBanco(banco.id);
+    const totalMov = mov.reduce((a, m) => a + m.monto, 0);
+    const saldoInicio = Math.round(banco.saldo - totalMov);
+    const totalIngresos = mov.filter(m => m.monto > 0).reduce((a, m) => a + m.monto, 0);
+    const totalEgresos = mov.filter(m => m.monto < 0).reduce((a, m) => a + m.monto, 0);
+
+    let cards = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
+    cards += '<div style="background:white;border:1px solid #cbd5e1;border-top:4px solid #64748b;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Saldo inicio de mes</span><br><span style="font-size:20px;font-weight:bold;color:#1e293b;">' + fmt(saldoInicio) + '</span></div>';
+    cards += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-top:4px solid #16a34a;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Ingresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#16a34a;">+' + fmt(totalIngresos) + '</span></div>';
+    cards += '<div style="background:#fef2f2;border:1px solid #fecaca;border-top:4px solid #dc2626;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#dc2626;text-transform:uppercase;">Egresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#dc2626;">' + fmt(totalEgresos) + '</span></div>';
+    cards += '<div style="background:#f0f9ff;border:1px solid #7dd3fc;border-top:4px solid #0284c7;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#0284c7;text-transform:uppercase;">Saldo actual</span><br><span style="font-size:20px;font-weight:bold;color:#0284c7;">' + fmt(banco.saldo) + '</span></div>';
+    cards += '</div>';
+
+    let tablaHtml;
+    if (!mov.length) {
+        tablaHtml = '<div style="background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:13px;">Sin movimientos registrados este mes en esta cuenta.</div>';
+    } else {
+        let filas = '';
+        let running = saldoInicio;
+        let fechaAnterior = null;
+        let filaIdx = 0;
+        filas += '<tr style="background:#f8fafc;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#64748b;">Saldo al inicio del mes</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#1e293b;">' + fmt(saldoInicio) + '</td></tr>';
+        mov.forEach(m => {
+            running += m.monto;
+            const fechaLbl = m.fecha ? m.fecha.split('-').reverse().join('/') : '—';
+            if (m.fecha !== fechaAnterior) {
+                filas += '<tr><td colspan="3" style="padding:10px 4px 2px;font-size:11px;font-weight:bold;color:#0284c7;border-top:1px solid #e2e8f0;">📅 ' + fechaLbl + '</td></tr>';
+                fechaAnterior = m.fecha;
+            }
+            const colorMonto = m.monto >= 0 ? '#16a34a' : '#dc2626';
+            const signo = m.monto >= 0 ? '+' : '';
+            const bgFila = (filaIdx % 2 === 0) ? '#ffffff' : '#eef2f6';
+            filaIdx++;
+            filas += '<tr style="background:' + bgFila + ';"><td style="padding:5px 10px 5px 20px;font-size:12px;color:#1e293b;">' + m.detalle + '</td>' +
+                '<td style="padding:5px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + colorMonto + ';">' + signo + fmt(m.monto) + '</td>' +
+                '<td style="padding:5px 10px;text-align:right;font-size:12px;color:#64748b;">' + fmt(running) + '</td></tr>';
+        });
+        filas += '<tr style="background:#f0f9ff;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">Saldo actual</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#0284c7;border-top:2px solid #7dd3fc;">' + fmt(banco.saldo) + '</td></tr>';
+        tablaHtml = '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><tbody>' + filas + '</tbody></table></div>';
+    }
+
+    det.innerHTML = cards + tablaHtml;
 }
 
 // ═══════════════════════════════════════════
@@ -3267,7 +3368,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.91';
+const APP_VERSION = 'v3.7.92';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
