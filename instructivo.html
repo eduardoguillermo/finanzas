@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.7.80-dev1</p>
+    <p>Manual de usuario · v3.7.102</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.7.80-dev1</span>
+      <span class="badge badge-green">✓ v3.7.102</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -380,9 +380,9 @@
     <p>Todos los datos se guardan en el <strong>localStorage</strong> del navegador. Esto significa que son locales al dispositivo y al navegador que se usa. Si se borra el caché o se cambia de navegador, los datos no estarán disponibles a menos que se haya hecho un backup.</p>
 
     <h2>Métodos de backup</h2>
-    <div class="card" style="border-left: 4px solid #dc2626;">
-      <div class="card-title">☁️ Google Drive — DESHABILITADO en desarrollo</div>
-      <div class="card-body">A propósito, para no mezclar backups con producción (mismo proyecto de Google Cloud). En esta versión solo se usan snapshot local y carpeta local. El botón de Drive no sube nada.</div>
+    <div class="card">
+      <div class="card-title">☁️ Google Drive (automático + manual)</div>
+      <div class="card-body">Con la sesión de Google iniciada, la app sincroniza sola en segundo plano cada vez que hay cambios (con una demora de 30 segundos para agrupar varios cambios seguidos), y también antes de cerrar con 🚪 Salir. Además hay botones para subir o restaurar un backup a mano cuando se quiera.</div>
     </div>
     <div class="card">
       <div class="card-title">📂 Carpeta local (automático)</div>
@@ -394,14 +394,14 @@
     </div>
     <div class="card">
       <div class="card-title">🚪 Salir (backup completo)</div>
-      <div class="card-body">Al tocar el botón 🚪 Salir, la app hace snapshot local y backup en carpeta (si está vinculada), y muestra un cartel con el detalle de cada uno. La línea de Drive figura como deshabilitada, por diseño.</div>
+      <div class="card-body">Al tocar el botón 🚪 Salir, la app hace snapshot local, backup en carpeta (si está vinculada) y sincroniza a Drive (si hay sesión iniciada), y muestra un cartel con el resultado de cada uno.</div>
     </div>
     <div class="card">
       <div class="card-title">💾 Exportar JSON (manual)</div>
       <div class="card-body">El botón "Exportar" descarga un archivo JSON con todos los datos. Puede importarse luego con el botón "Importar".</div>
     </div>
 
-    <div class="warning">⚠️ Se recomienda hacer backup a carpeta local regularmente. Los datos en localStorage pueden perderse si se borra la caché del navegador, y en esta versión de desarrollo no hay respaldo automático en Drive.</div>
+    <div class="warning">⚠️ Si no se inició sesión con Google, el respaldo automático solo cuenta con carpeta local y snapshot en el propio navegador — conviene vincular una carpeta local o iniciar sesión con Google cuanto antes.</div>
   </section>
 
   <!-- MES ACTUAL -->
@@ -448,7 +448,7 @@
       <tr><td>⋯ Más (header)</td><td>Agrupa: Drive (subir/restaurar), Gmail, Pendientes, Snapshots locales, Limpiar caché, Ayuda, Consultar con IA</td></tr>
       <tr><td>📅 Meses cerrados</td><td>Desplegable con todos los meses cerrados (solo lectura)</td></tr>
     </table>
-    <div class="note">📌 Desde v3.7.52-dev2 el header solo muestra 3 elementos a la derecha: ⋯ Más, 📅 Meses cerrados y 🚪 Salir. En la página Mes Actual queda visible solo 🔄 Abrir Nuevo Mes junto a su propio ⋯ Más.</div>
+    <div class="note">📌 Desde v3.7.52 el header solo muestra 3 elementos a la derecha: ⋯ Más, 📅 Meses cerrados y 🚪 Salir. En la página Mes Actual queda visible solo 🔄 Abrir Nuevo Mes junto a su propio ⋯ Más.</div>
   </section>
 
   <!-- BANCOS -->
@@ -1001,8 +1001,7 @@
 cfGmailChequear()
 
 // Resetear historial y buscar todos los mails de 30 días
-// (en DEV la clave lleva el prefijo dev2_)
-localStorage.removeItem('dev2_cf_gmail_processed'); cfGmailChequear()</pre>
+localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
 
     <div class="note">📌 El token de Gmail dura aproximadamente 1 hora, pero la app intenta renovarlo en silencio automáticamente (sin popup) mientras esté abierta, y también al abrirla si venció. Si tu sesión de Google también expiró, vas a ver un cartel abajo a la derecha pidiendo que reautentiques con el botón 📧 Gmail.</div>
 
@@ -1041,18 +1040,22 @@ localStorage.removeItem('dev2_cf_gmail_processed'); cfGmailChequear()</pre>
         <div class="section-subtitle">Backup en la nube con Google</div>
       </div>
     </div>
-    <p>⚠️ <strong>En esta versión de desarrollo, la sincronización con Drive está deshabilitada</strong> a propósito, para no mezclar backups con el archivo de producción (mismo proyecto de Google Cloud, misma carpeta oculta de Drive). El login con Google se sigue usando para el módulo Gmail, pero no sube nada a Drive.</p>
+    <p>Con la sesión de Google iniciada, la app guarda un backup en una carpeta visible de Drive llamada <strong>ControlFinanciero</strong> (dentro de "Mi unidad", no oculta), tanto de forma automática como a pedido.</p>
 
     <h2>Login con Google</h2>
-    <p>Al hacer login (mediante el botón 📧 Gmail), la app obtiene acceso a Gmail para leer mails de gastos. El acceso a Drive queda sin usar.</p>
+    <p>El botón 📧 Gmail (o la línea correspondiente del menú ⋯ Más) pide permisos de Gmail (para leer mails de gastos) y de Drive (para el backup) en el mismo login.</p>
 
-    <h2>Sync automático — deshabilitado</h2>
-    <p>A diferencia de producción, acá la función de sync a Drive está desactivada en el código (<code>syncSilencioso()</code> no hace nada). El botón 🚪 Salir hace snapshot local y backup en carpeta, pero la línea de Drive del cartel siempre figura como deshabilitada.</p>
+    <h2>Sync automático</h2>
+    <p>Cada cambio que se guarda dispara un temporizador de 30 segundos; si no hay más cambios en ese lapso, la app sube en segundo plano un archivo <code>backup_autosync.json</code> a la carpeta ControlFinanciero, sobreescribiendo la versión anterior. El indicador ☁️ del header muestra el estado: sincronizando, al día, sin conectar, o error.</p>
+
+    <h2>Subir backup a mano</h2>
+    <p>Desde el menú ⋯ Más → <strong>☁️ Subir backup a Drive</strong> se sube una copia con nombre y hora (<code>backup_finanzas_AAAAMMDD_HHMM.json</code>), sin pisar el archivo de autosync — queda como un punto de restauración fijo en el tiempo.</p>
 
     <h2>Restaurar desde Drive</h2>
-    <p>El botón 📂 Drive (bajar) lista los backups disponibles en Drive y permite seleccionar uno para restaurar.</p>
+    <p>Desde el menú ⋯ Más → <strong>📂 Restaurar backup de Drive</strong> se abre un listado con todos los backups disponibles en la carpeta (el de autosync más los manuales), ordenados del más reciente al más viejo, con fecha y hora. Tocar uno lo restaura.</p>
 
-    <div class="tip">💡 El archivo de sync automático se llama <code>backup_autosync.json</code> en el appdata de Drive. No ocupa espacio visible en "Mi unidad".</div>
+    <div class="tip">💡 El sync automático y el botón 🚪 Salir usan el mismo archivo <code>backup_autosync.json</code>, por lo que no se acumulan copias de más — solo los backups manuales (☁️ Subir) se guardan como archivos aparte.</div>
+    <div class="note">📌 Si el token de Google vence o la sesión se cierra en otra pestaña, el próximo intento de sync falla silenciosamente y el indicador pasa a "sin conectar"; hace falta volver a iniciar sesión con 📧 Gmail.</div>
   </section>
 
   <!-- IMPRESIÓN -->
@@ -1082,8 +1085,8 @@ localStorage.removeItem('dev2_cf_gmail_processed'); cfGmailChequear()</pre>
     <pre>// Buscar mails nuevos de Santander y MercadoPago
 cfGmailChequear()
 
-// Resetear procesados y buscar todos (clave con prefijo dev2_)
-localStorage.removeItem('dev2_cf_gmail_processed'); cfGmailChequear()
+// Resetear procesados y buscar todos
+localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()
 
 // Ver mails en cola
 console.log(JSON.stringify(cfGmailQueue.map(g=>({comercio:g.comercio,monto:g.monto}))))
@@ -1114,7 +1117,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
       <span class="section-icon">🧾</span>
       <div>
         <div class="section-title">Historial de cambios</div>
-        <div class="section-subtitle">Registro de versiones — de más reciente a más antigua (entorno dev)</div>
+        <div class="section-subtitle">Registro de versiones — de más reciente a más antigua</div>
       </div>
     </div>
 
@@ -1122,7 +1125,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
       <summary class="changelog-summary">Ver historial de versiones</summary>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.102-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.102</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Al eliminar un Servicio Fijo o una Cuota con un monto ya pagado, ahora se revierte correctamente ese monto en la cuenta o tarjeta (antes quedaba descontado/acreditado para siempre)</li>
         <li>Los backups (Drive automático, Drive manual, y carpeta local) ahora incluyen todas las listas de datos sin excepción, incluyendo Compras de Dólares y Pagos de Tarjeta</li>
@@ -1130,14 +1133,14 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.101-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.101</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Gastos Corrientes en USD ahora descuentan/acreditan el saldo de la cuenta (efectivo/banco) al cargarlos, editarlos o eliminarlos — antes solo afectaban a tarjetas</li>
       </ul>
     </div>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.96-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.96</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nuevo panel 💱 Comprar Dólares en la pestaña Dólares: debita una cuenta en pesos, acredita una cuenta en USD, con tipo de cambio ingresado manualmente y vista previa en vivo del monto resultante</li>
         <li>Las compras de dólares quedan registradas en Movimientos Bancarios como salida de la cuenta en pesos</li>
@@ -1145,7 +1148,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.95-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.95</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nuevo aviso de ⏰ Cierre Automático de Mes: si se abre la app después del 1° sin haber cerrado el período anterior, detecta los meses pendientes y ofrece archivarlos mostrando una vista previa de saldos e ingresos/egresos antes de confirmar</li>
         <li>El cierre de mes (manual o automático) ahora también consolida la deuda de tarjetas en USD y fija presupuestos automáticos por rubro (pesos y USD) cuando no hay un límite manual cargado</li>
@@ -1153,78 +1156,63 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.93-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.93</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>La pestaña 🏦 Movimientos Bancarios ahora permite elegir cualquier mes ya cerrado, no solo el mes en curso: agrega un selector de mes que reconstruye el detalle diario y el saldo de cierre a partir del archivo guardado en cada cierre de mes</li>
       </ul>
     </div>
 
 <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.92-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.92</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nueva pestaña 🏦 Movimientos Bancarios: muestra el saldo al inicio del mes y el detalle diario de movimientos (ingresos, gastos, servicios pagados y transferencias) por cuenta, con saldo acumulado y filas con fondo alternado</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.80-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.80</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Ajustes menores de presentación en tablas comparativas de la pestaña Anual</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.78-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.78</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Al cambiar de tab, seleccionar un mes cerrado desde el menú, o cerrarlo con la ✕, la página ahora hace scroll automático a la parte superior en vez de quedarse en la posición de scroll de la tab anterior</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.77-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.77</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>La barra de pestañas de navegación (Mes Actual, Presupuesto, Dólares, Reportes, Inversiones, Anual) ahora queda fija arriba de la pantalla al hacer scroll, para cambiar de tab sin tener que subir primero</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.75-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.75</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Se quitó la mini barra visual comparativa de las tablas de Métricas por Período en Anual (versión en pesos y en dólares) — quedan más compactas mostrando solo el número</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.56-dev2</span><span class="changelog-tag tag-fix">fix</span></div>
-      <ul class="changelog-list">
-        <li>El <code>manifest.json</code> de dev apuntaba a <code>/finanzas/</code> (la ruta de producción) en <code>start_url</code>, <code>scope</code> e <code>id</code> — Chrome rechazaba instalarla como PWA por el desajuste de scope. Corregido a <code>/control-financiero-2/</code></li>
-        <li>Nombre de la app renombrado a "Control Financiero (DEV)" para distinguirla en el listado de apps instaladas</li>
-      </ul>
-    </div>
-
-    <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.55-dev2</span><span class="changelog-tag tag-infra">infra</span></div>
-      <ul class="changelog-list">
-        <li>Logo del entorno de desarrollo diferenciado del de producción: mismo símbolo $ pero en ámbar con cinta "DEV", para no confundir accesos directos del escritorio</li>
-      </ul>
-    </div>
-
-    <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.54-dev2</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.54</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nuevo logo de la app (ícono $ en círculo teal sobre navy) — se ve en el acceso directo del escritorio al instalar la PWA</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.53-dev2</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.53</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>El splash ahora también se cierra tocando la pantalla, no solo con Enter — en mobile no hay tecla Enter visible sin abrir el teclado</li>
       </ul>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.52-dev2</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.52</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Header: los 7 botones sueltos (Drive, Gmail, Pendientes, Ayuda, Local, IA, Cache) se consolidaron en un único dropdown <strong>⋯ Más</strong>, con secciones "Backup y datos" y "Otros"</li>
         <li>Quedan visibles solo 3 elementos a la derecha: ⋯ Más, 📅 Meses cerrados y 🚪 Salir</li>
@@ -1233,7 +1221,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.51-dev2</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.51</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Se pide almacenamiento persistente (<code>navigator.storage.persist()</code>) al abrir la app, para reducir que el navegador evicte el handle de la carpeta local guardado en IndexedDB</li>
         <li>Cuando el permiso de la carpeta local vence, ya no se intenta renovar en silencio (la API lo rechaza sin gesto del usuario) — ahora aparece un banner "🔒 Reautorizar" que renueva el permiso con un solo click</li>
@@ -1241,7 +1229,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.50-dev2</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.50</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Los meses cerrados ya no ocupan una tab cada uno en el header — ahora se accede a ellos desde un único botón 📅 Meses cerrados con un desplegable</li>
         <li>El desplegable muestra el más reciente arriba, con la misma opción de eliminar (✕) que tenían las tabs individuales</li>
@@ -1250,7 +1238,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.49-dev2</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.49</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Rediseño de la pantalla de inicio (splash): paleta corporativa navy oscuro + teal, en vez del gradiente índigo anterior</li>
         <li>El splash ya no desaparece solo — permanece visible hasta que se presiona Enter</li>
@@ -1259,7 +1247,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.48-dev2</span><span class="changelog-tag tag-fix">fix</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.48</span><span class="changelog-tag tag-fix">fix</span></div>
       <ul class="changelog-list">
         <li>Al cancelar el modal de "Gasto detectado" o "Pago de servicio fijo", el mail ya no se marca como procesado — vuelve a aparecer en el próximo chequeo</li>
         <li>Corregida la versión del splash, que había quedado desactualizada respecto a <code>APP_VERSION</code></li>
@@ -1267,7 +1255,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.47-dev2</span><span class="changelog-tag tag-feature">feature</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.47</span><span class="changelog-tag tag-feature">feature</span></div>
       <ul class="changelog-list">
         <li>Nuevo botón 🔍 Pendientes: revisa manualmente si hay mails de pagos pendientes de procesar, usando la sesión ya activa (sin forzar relogin)</li>
         <li>A diferencia de 📧 Gmail, el botón 🔍 Pendientes está habilitado también en mobile</li>
@@ -1275,7 +1263,7 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
     </div>
 
     <div class="changelog-entry">
-      <div class="changelog-version"><span class="v-num">v3.7.46-dev2</span><span class="changelog-tag tag-infra">infra</span></div>
+      <div class="changelog-version"><span class="v-num">v3.7.46</span><span class="changelog-tag tag-infra">infra</span></div>
       <ul class="changelog-list">
         <li>Punto de partida de este historial: integración Gmail/MercadoPago, fixes de zona horaria (UTC → local) y esquema de color fuchsia/violeta en el modal de vencimientos</li>
       </ul>
