@@ -357,6 +357,7 @@
     <table>
       <tr><th>Pestaña</th><th>Contenido</th></tr>
       <tr><td>📊 Mes Actual</td><td>Vista principal con todos los paneles del período en curso</td></tr>
+      <tr><td>🏦 Movimientos</td><td>Detalle diario de movimientos y saldo por cuenta, mes a mes</td></tr>
       <tr><td>🎯 Presupuesto</td><td>Límites de gasto por rubro, ingresos del mes y balance superávit/déficit</td></tr>
       <tr><td>💵 Dólares</td><td>Cuentas, tarjetas, servicios y gastos en USD</td></tr>
       <tr><td>📈 Reportes</td><td>Gráficos y resúmenes del período actual</td></tr>
@@ -624,12 +625,12 @@
     <h2>Cómo registrar una compra en cuotas</h2>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div class="step-body">Ingresar la <strong>descripción</strong> de la compra.</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el <strong>monto por cuota</strong>.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar el <strong>total de cuotas</strong>.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body">Ingresar el <strong>monto total</strong> de la compra (no el de cada cuota).</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body">Ingresar la <strong>cantidad de cuotas</strong> (mínimo 2).</div></div>
       <div class="step"><div class="step-num">4</div><div class="step-body">Seleccionar el <strong>medio de pago</strong>.</div></div>
       <div class="step"><div class="step-num">5</div><div class="step-body">Hacer clic en "+ Agregar cuota".</div></div>
     </div>
-    <p>La primera cuota aparece inmediatamente en el panel de Servicios Fijos. Al abrir cada nuevo mes, la siguiente cuota se genera automáticamente hasta completar el total.</p>
+    <p>El monto de cada cuota se calcula automáticamente (monto total ÷ cantidad de cuotas, redondeado hacia arriba) y se muestra como vista previa antes de confirmar. La primera cuota aparece inmediatamente en el panel de Servicios Fijos. Al abrir cada nuevo mes, la siguiente cuota se genera automáticamente hasta completar el total.</p>
     <div class="note">📌 Si quedan 1 o 2 cuotas pendientes, la app muestra una alerta visual en la sección de próximos vencimientos.</div>
   </section>
 
@@ -670,7 +671,7 @@
     <p>Ingresar el nombre del rubro en el campo de texto y hacer clic en "+ Agregar".</p>
 
     <h2>Eliminar un rubro</h2>
-    <p>Hacer clic en el botón 🗑 junto al rubro. Si hay gastos asociados a ese rubro, quedarán sin categoría.</p>
+    <p>Hacer clic en el botón 🗑 junto al rubro. Si el rubro está en uso por algún gasto corriente o servicio fijo, la app lo bloquea con el aviso "Rubro en uso" — hay que reasignar o eliminar esos gastos/servicios primero.</p>
 
     <div class="note">📌 Los rubros son independientes para pesos y dólares. Cada moneda tiene su propia lista de rubros.</div>
   </section>
@@ -812,7 +813,7 @@
         <div class="section-subtitle">Historial de meses anteriores (solo lectura)</div>
       </div>
     </div>
-    <p>Cada vez que se abre un Nuevo Mes, el período actual se archiva y aparece como una tab adicional. Los períodos cerrados son de solo lectura y muestran el estado exacto al momento del cierre.</p>
+    <p>Cada vez que se abre un Nuevo Mes, el período actual se archiva y queda disponible desde el botón <strong>📅 Meses cerrados</strong> del header (muestra un contador con la cantidad de meses archivados). Al tocarlo se despliega la lista, del más reciente al más viejo; tocar un mes lo abre en modo solo lectura, mostrando el estado exacto al momento del cierre.</p>
 
     <h2>Contenido de un período cerrado</h2>
     <ul>
@@ -824,7 +825,9 @@
     </ul>
 
     <h2>Eliminar un período</h2>
-    <p>Hacer clic en el ✕ de la tab del período. Esta acción es irreversible.</p>
+    <p>Dentro del desplegable "📅 Meses cerrados", tocar la ✕ junto al mes. Pide confirmación. Esta acción es irreversible.</p>
+
+    <div class="note">📌 Mientras un período cerrado está abierto, aparece un indicador junto al botón "📅 Meses cerrados" con el nombre del mes; tocarlo vuelve a abrir el desplegable, y su ✕ vuelve a Mes Actual.</div>
 
     <div class="note">📌 Los períodos cerrados se incluyen en el backup a Drive y en el export JSON.</div>
   </section>
