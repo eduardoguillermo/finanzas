@@ -2108,6 +2108,8 @@ function buildDolares() {
                 <button type="submit" class="btn btn-add btn-amber">Registrar Transferencia USD</button>
               </form>
             </div>
+            <table><thead><tr><th style="width:18%">Fecha</th><th style="width:30%">Origen</th><th style="width:30%">Destino</th><th style="width:17%" class="tr">Monto</th><th style="width:5%" class="no-print"></th></tr></thead><tbody id="t-transf-usd"></tbody></table>
+          </div>
           <div class="panel no-print" style="border-top:4px solid #0ea5e9;">
             <h3 class="panel-title" style="display:flex;align-items:center;">💱 Comprar Dólares ${btnAyuda('dolares')}</h3>
             <div class="form-block">
@@ -2119,8 +2121,6 @@ function buildDolares() {
               </form>
             </div>
             <table><thead><tr><th style="width:14%">Fecha</th><th style="width:20%">Origen</th><th style="width:20%">Destino</th><th style="width:14%" class="tr">Monto $</th><th style="width:10%" class="tr">TC</th><th style="width:14%" class="tr">USD</th><th style="width:5%" class="no-print"></th></tr></thead><tbody id="t-compra-usd"></tbody></table>
-          </div>
-            <table><thead><tr><th style="width:18%">Fecha</th><th style="width:30%">Origen</th><th style="width:30%">Destino</th><th style="width:17%" class="tr">Monto</th><th style="width:5%" class="no-print"></th></tr></thead><tbody id="t-transf-usd"></tbody></table>
           </div>
         </div>
         <div>
@@ -3571,7 +3571,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.97';
+const APP_VERSION = 'v3.7.98';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
