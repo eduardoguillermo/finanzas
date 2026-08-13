@@ -294,6 +294,7 @@
 
   <div class="section-label">Funciones especiales</div>
   <a href="#nuevo-mes">🔄 Nuevo Mes</a>
+  <a href="#cierre-automatico">⏰ Cierre Automático</a>
   <a href="#gmail">📧 Módulo Gmail</a>
   <a href="#carpeta">📂 Backup en carpeta</a>
   <a href="#drive">☁️ Sincronización Drive</a>
@@ -735,6 +736,8 @@
       <li><span class="badge badge-red">Rojo</span> — Presupuesto superado</li>
     </ul>
 
+    <div class="tip">💡 Si un rubro no tiene límite manual cargado, al <a href="#nuevo-mes">cerrar el mes</a> la app le asigna automáticamente como presupuesto lo que efectivamente se gastó ese rubro en el período (en pesos y en USD por separado). Una vez que cargás un límite a mano, ese valor se respeta y no se vuelve a pisar solo. Los rubros con "tarjeta" en el nombre quedan afuera de este cálculo.</div>
+
     <h2>Ingresos del mes <span class="badge badge-purple">Nuevo</span></h2>
     <p>Arriba de todo en la pestaña Presupuesto hay una tarjeta compacta que muestra el total de ingresos cargados este mes. Es solo informativa: <b>no toca saldos de cuentas ni transacciones</b>, es un registro aparte de "Ingresar fondos" (que sí mueve plata en Bancos).</p>
     <p>Al tocar la tarjeta se abre un modal con:</p>
@@ -835,19 +838,54 @@
         <div class="section-subtitle">Proceso de cierre y apertura de período</div>
       </div>
     </div>
-    <p>Al hacer clic en "🔄 Abrir Nuevo Mes", la app realiza las siguientes acciones:</p>
+    <p>Al hacer clic en "🔄 Abrir Nuevo Mes" (pestaña Mes Actual), la app pide confirmación y realiza las siguientes acciones, en este orden:</p>
 
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Archiva el período actual:</strong> guarda una snapshot de todos los datos en el historial.</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Limpia los gastos corrientes:</strong> la lista de gastos del mes se vacía.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Resetea los servicios fijos:</strong> el monto pagado vuelve a 0, la fecha de pago y vencimiento se borran. El nombre, presupuesto y medio de pago se conservan.</div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Avanza las cuotas:</strong> genera la siguiente cuota de cada compra en cuotas activa.</div></div>
-      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Limpia las transferencias:</strong> la lista de transferencias se vacía.</div></div>
+      <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Archiva el período actual:</strong> guarda una fotografía completa de todas las listas (bancos, tarjetas, servicios, gastos corrientes, transferencias, rubros, cuotas, y el equivalente en USD de cada una) en el Historial, con fecha de cierre.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Consolida la deuda de tarjetas (pesos y USD):</strong> suma al saldo base de cada tarjeta los servicios pagados y los gastos corrientes con fecha de pago cargada durante el mes, dejando ese consumo incorporado al saldo antes de vaciar las listas. Así el saldo de la tarjeta arranca el nuevo mes reflejando lo realmente consumido.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Fija presupuestos automáticos por rubro:</strong> para los rubros (pesos y USD) que no tienen un límite de presupuesto cargado a mano, usa el gasto real de ese rubro en el mes que cierra como presupuesto sugerido del nuevo mes (excluye rubros con "tarjeta" en el nombre).</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Limpia los gastos corrientes:</strong> se vacían tanto los gastos corrientes en pesos como en USD.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Resetea los servicios fijos (pesos y USD):</strong> el monto pagado vuelve a 0, la fecha de pago se borra, y el vencimiento se borra salvo que sea una cuota de una compra en cuotas (esas conservan su fecha). Nombre, presupuesto y medio de pago se mantienen.</div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Avanza las cuotas:</strong> por cada compra en cuotas todavía activa, genera el servicio de la siguiente cuota (N/Total) y la agrega a Servicios Fijos.</div></div>
+      <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Limpia transferencias y compras de USD:</strong> se vacían las transferencias en pesos, las transferencias USD y el registro de compras de dólares del período.</div></div>
     </div>
 
     <div class="warning">⚠️ Esta acción no se puede deshacer directamente. Se recomienda exportar un backup JSON antes de ejecutarla.</div>
 
-    <div class="tip">💡 Los saldos de bancos y tarjetas NO se resetean automáticamente. Deben actualizarse manualmente con los saldos reales del nuevo período.</div>
+    <div class="tip">💡 Los saldos de <b>bancos y cuentas USD</b> (dinero en cuenta) NO se resetean ni se recalculan automáticamente — se arrastran tal cual al mes nuevo, porque reflejan plata real disponible. Solo las <b>tarjetas</b> (deuda) se ajustan sumando el consumo del período, ya que ahí sí hace falta consolidar lo gastado en la deuda base.</div>
+  </section>
+
+  <!-- CIERRE AUTOMÁTICO -->
+  <section class="section" id="cierre-automatico">
+    <div class="section-header">
+      <span class="section-icon">⏰</span>
+      <div>
+        <div class="section-title">Cierre Automático de Mes</div>
+        <div class="section-subtitle">Aviso cuando te pasás de fecha sin cerrar el período</div>
+      </div>
+    </div>
+    <p>Si entrás a la app después del 1° del mes y todavía no abriste manualmente el "Nuevo Mes" del período anterior, la app lo detecta sola al cargar y te muestra un modal para resolverlo, en vez de dejar el mes vencido acumulando datos mezclados.</p>
+
+    <h2>Cómo detecta que hay un cierre pendiente</h2>
+    <p>Al abrir la app, mira cuál fue el último mes archivado en el Historial y lo compara con el mes calendario actual. Si hay uno o más meses de diferencia, arma la lista de meses pendientes de cerrar (puede ser más de uno si pasó bastante tiempo sin abrir la app).</p>
+    <div class="note">📌 Si todavía no cerraste ningún mes nunca (Historial vacío), este chequeo no se dispara — no hay una fecha de referencia contra la cual comparar.</div>
+
+    <h2>Qué muestra el modal</h2>
+    <ul>
+      <li>Los nombres de todos los meses que quedaron pendientes de archivar.</li>
+      <li>Los <b>saldos actuales de cada banco</b>, que son los que quedarían archivados como cierre del primer mes pendiente.</li>
+      <li>Un resumen de <b>ingresos y egresos</b> registrados durante ese primer mes pendiente (a partir de la pestaña Movimientos en vivo), para que puedas revisar que el saldo tenga sentido antes de confirmar.</li>
+    </ul>
+    <div class="tip">💡 Solo el primer mes pendiente tiene movimientos "en vivo" para mostrar en la vista previa — si hay varios meses acumulados sin cerrar, los siguientes se archivan igual pero sin datos propios (quedan como meses vacíos en el Historial, ya que nunca se cargó nada en ellos).</div>
+
+    <h2>Qué pasa si confirmás</h2>
+    <p>Se ejecuta el mismo proceso que "Abrir Nuevo Mes" manual (ver sección anterior), una vez por cada mes pendiente, en orden cronológico. Al terminar, un aviso confirma cuántos meses se archivaron.</p>
+
+    <h2>Qué pasa si elegís "Ahora no"</h2>
+    <p>El modal se cierra sin archivar nada. Va a volver a aparecer la próxima vez que abras la app, hasta que confirmes el cierre o registres el/los meses pendientes manualmente desde el Historial.</p>
+
+    <div class="warning">⚠️ Mientras el cierre esté pendiente, los movimientos que sigas cargando se mezclan con los del mes vencido (todo cae en las mismas listas en vivo). Conviene resolver el aviso apenas aparece.</div>
+  </section>
   </section>
 
   <!-- GMAIL -->
@@ -1082,6 +1120,37 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.102-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Al eliminar un Servicio Fijo o una Cuota con un monto ya pagado, ahora se revierte correctamente ese monto en la cuenta o tarjeta (antes quedaba descontado/acreditado para siempre)</li>
+        <li>Los backups (Drive automático, Drive manual, y carpeta local) ahora incluyen todas las listas de datos sin excepción, incluyendo Compras de Dólares y Pagos de Tarjeta</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.101-dev1</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Gastos Corrientes en USD ahora descuentan/acreditan el saldo de la cuenta (efectivo/banco) al cargarlos, editarlos o eliminarlos — antes solo afectaban a tarjetas</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.96-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo panel 💱 Comprar Dólares en la pestaña Dólares: debita una cuenta en pesos, acredita una cuenta en USD, con tipo de cambio ingresado manualmente y vista previa en vivo del monto resultante</li>
+        <li>Las compras de dólares quedan registradas en Movimientos Bancarios como salida de la cuenta en pesos</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.7.95-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo aviso de ⏰ Cierre Automático de Mes: si se abre la app después del 1° sin haber cerrado el período anterior, detecta los meses pendientes y ofrece archivarlos mostrando una vista previa de saldos e ingresos/egresos antes de confirmar</li>
+        <li>El cierre de mes (manual o automático) ahora también consolida la deuda de tarjetas en USD y fija presupuestos automáticos por rubro (pesos y USD) cuando no hay un límite manual cargado</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.7.93-dev1</span><span class="changelog-tag tag-feature">feature</span></div>
