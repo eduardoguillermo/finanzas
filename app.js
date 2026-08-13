@@ -2417,7 +2417,11 @@ function renderDolares() {
             const inpD=el('input'); inpD.type='text'; inpD.className='inp'; inpD.value=c.detalle; inpD.onchange=e=>{ c.detalle=e.target.value.trim(); guardar(); };
             const inpFP=el('input'); inpFP.type='date'; inpFP.className='inp'; inpFP.value=c.fechaPago||'';
             inpFP.onchange=e=>{ c.fechaPago=e.target.value; guardar(); calcDashUSD(); };
-            const inpM=inpNumUSD(c.monto,v=>{ c.monto=v; guardar(); calcDashUSD(); });
+            const inpM=inpNumUSD(c.monto,v=>{
+                const diff=v-c.monto;
+                if(diff!==0){ const cuentaMedio=listaCuentasUSD.find(x=>x.id===c.medioPagoId); if(cuentaMedio) cuentaMedio.saldo += c.esIngreso ? diff : -diff; }
+                c.monto=v; guardar(); calcDashUSD();
+            });
             inpM.style.cssText='font-weight:bold;color:'+(c.esIngreso?'#0284c7':'#10b981')+';';
             const tdR2=el('td'); tdR2.appendChild(selR2);
             const tdD=el('td'); tdD.appendChild(inpD);
@@ -2442,6 +2446,8 @@ function altaCorrienteUSD(e) {
     const medioId=document.getElementById('ccusd-medio').value; if(!medioId){alert('Configure un medio de pago USD.');return;}
     const monto=parseFloat(document.getElementById('ccusd-monto').value)||0, esIngreso=document.getElementById('ccusd-ingreso')?.checked||false;
     listaCorrientesUSD.push({id:'cc_'+Date.now(),rubro:document.getElementById('ccusd-rubro').value,detalle:vGet('ccusd-detalle'),monto,fechaPago:'',medioPagoId:medioId,esIngreso});
+    const cuentaMedio=listaCuentasUSD.find(c=>c.id===medioId);
+    if(cuentaMedio) cuentaMedio.saldo += esIngreso ? monto : -monto;
     const chk=document.getElementById('ccusd-ingreso'); if(chk) chk.checked=false;
     guardar(); e.target.reset(); renderDolares();
 }
@@ -2461,7 +2467,11 @@ function altaTransferenciaUSD(e) {
 function elimCuentaUSD(id)    { if(confirm('¿Remover cuenta USD?'))  { listaCuentasUSD=listaCuentasUSD.filter(c=>c.id!==id);       guardar(); renderDolares(); } }
 function elimTarjetaUSD(id)   { if(confirm('¿Remover tarjeta USD?')) { listaTarjetasUSD=listaTarjetasUSD.filter(t=>t.id!==id);     guardar(); renderDolares(); } }
 function elimServicioUSD(id)  { listaServiciosUSD=listaServiciosUSD.filter(s=>s.id!==id);                                          guardar(); renderDolares(); }
-function elimCorrienteUSD(id) { listaCorrientesUSD=listaCorrientesUSD.filter(x=>x.id!==id);                                       guardar(); renderDolares(); }
+function elimCorrienteUSD(id) {
+    const c=listaCorrientesUSD.find(x=>x.id===id);
+    if(c){ const cuentaMedio=listaCuentasUSD.find(x=>x.id===c.medioPagoId); if(cuentaMedio) cuentaMedio.saldo += c.esIngreso ? -c.monto : c.monto; }
+    listaCorrientesUSD=listaCorrientesUSD.filter(x=>x.id!==id); guardar(); renderDolares();
+}
 function elimTransferenciaUSD(id) {
     const t=listaTransferenciasUSD.find(x=>x.id===id);
     if(t){ const o=listaCuentasUSD.find(c=>String(c.id)===String(t.origenId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.origenId)); const d=listaCuentasUSD.find(c=>String(c.id)===String(t.destinoId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.destinoId)); if(o) o.saldo+=t.monto; if(d) d.saldo-=t.monto; }
@@ -3571,7 +3581,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.100';
+const APP_VERSION = 'v3.7.101';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
