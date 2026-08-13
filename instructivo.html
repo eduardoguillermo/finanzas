@@ -470,7 +470,7 @@
     </div>
 
     <h2>Actualizar un saldo</h2>
-    <p>Hacer clic en el valor del saldo en la tabla. Se convierte en un campo editable. Ingresar el nuevo valor y presionar Enter o hacer clic fuera.</p>
+    <p>Tocar el ✏️ al lado del saldo, en la tabla. Se abre un modal con el nombre de la cuenta y un campo "Nuevo saldo ($)" precargado con el valor actual — se edita ahí y se confirma con "✓ Guardar" (el saldo se redondea al peso).</p>
 
     <h2>Eliminar una cuenta</h2>
     <p>Hacer clic en el botón 🗑 de la fila correspondiente. La app pedirá confirmación.</p>
@@ -559,7 +559,7 @@
       <tr><td>Presupuesto</td><td>Monto estimado que se pagará este mes</td></tr>
       <tr><td>Vencimiento</td><td>Fecha límite de pago (se limpia al abrir nuevo mes)</td></tr>
       <tr><td>Medio de pago</td><td>Tarjeta o cuenta con la que se paga</td></tr>
-      <tr><td>Clase</td><td>M=Mendoza, O=Rosario, X=Otros (para filtrado)</td></tr>
+      <tr><td>Clase</td><td>M=Mío, O=Oma, X=Otros (para filtrado)</td></tr>
       <tr><td>Rubro</td><td>Categoría del gasto</td></tr>
     </table>
 
@@ -602,8 +602,8 @@
     <h2>Clasificación</h2>
     <p>Cada gasto se clasifica opcionalmente con una clase:</p>
     <ul>
-      <li><strong>M</strong> — Mendoza</li>
-      <li><strong>O</strong> — Rosario</li>
+      <li><strong>M</strong> — Mío</li>
+      <li><strong>O</strong> — Oma</li>
       <li><strong>X</strong> — Otros / Extraordinario</li>
     </ul>
 
@@ -652,7 +652,7 @@
       <div class="step"><div class="step-num">4</div><div class="step-body">Ingresar la <strong>fecha</strong>.</div></div>
       <div class="step"><div class="step-num">5</div><div class="step-body">Hacer clic en "+ Registrar".</div></div>
     </div>
-    <div class="info">ℹ️ Las transferencias quedan registradas en el historial del período cerrado, pero no afectan directamente los saldos de bancos (los saldos se actualizan manualmente).</div>
+    <div class="info">ℹ️ Al confirmar, la app descuenta el monto de la cuenta Origen y lo suma a la cuenta Destino automáticamente — no hace falta ajustar los saldos a mano. La transferencia queda registrada en el historial hasta el próximo cierre de mes.</div>
   </section>
 
   <!-- RUBROS -->
@@ -1046,7 +1046,8 @@ localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
     <p>El botón 📧 Gmail (o la línea correspondiente del menú ⋯ Más) pide permisos de Gmail (para leer mails de gastos) y de Drive (para el backup) en el mismo login.</p>
 
     <h2>Sync automático</h2>
-    <p>Cada cambio que se guarda dispara un temporizador de 30 segundos; si no hay más cambios en ese lapso, la app sube en segundo plano un archivo <code>backup_autosync.json</code> a la carpeta ControlFinanciero, sobreescribiendo la versión anterior. El indicador ☁️ del header muestra el estado: sincronizando, al día, sin conectar, o error.</p>
+    <p>Cada cambio que se guarda reinicia un temporizador de 30 segundos (si seguís cargando datos, se pospone); recién cuando pasan 30 segundos sin ningún cambio nuevo, la app sube en segundo plano un archivo <code>backup_autosync.json</code> a la carpeta ControlFinanciero, sobreescribiendo la versión anterior. Al tocar 🚪 Salir la sincronización se fuerza al instante, sin esperar el temporizador.</p>
+    <p>El indicador ☁️ del header refleja el estado: <b>⏳ Sin sincronizar</b> (cambios pendientes, esperando el temporizador), <b>☁️ Sincronizando...</b> (subiendo ahora), <b>✅ Drive sync</b> (al día), <b>⚠️ Error sync</b>, o <b>☁️ Drive</b> (sin sesión iniciada).</p>
 
     <h2>Subir backup a mano</h2>
     <p>Desde el menú ⋯ Más → <strong>☁️ Subir backup a Drive</strong> se sube una copia con nombre y hora (<code>backup_finanzas_AAAAMMDD_HHMM.json</code>), sin pisar el archivo de autosync — queda como un punto de restauración fijo en el tiempo.</p>
