@@ -9,6 +9,7 @@ const K = {
     cuentasUSD:'f_cuentasUSD_v3', tarjetasUSD:'f_tarjetasUSD_v3',
     serviciosUSD:'f_serviciosUSD_v3', corrientesUSD:'f_corrientesUSD_v3',
     tipoCambio:'f_tipoCambio_v3',
+    comprasUSD:CF_NS+'f_comprasUSD_v1',
     instrumentos:'f_instrumentos_v1',
     acciones:'f_acciones_v1',
     ingresos:'f_ingresos_v1',
@@ -26,6 +27,7 @@ let listaTransferenciasUSD = leer(K.transferenciasUSD) || [];
 let listaCuotas        = leer(K.cuotas)        || [];
 let historicoMeses     = leer(K.historico)     || [];
 let listaCuentasUSD    = leer(K.cuentasUSD)    || [];
+let listaComprasUSD    = leer(K.comprasUSD)    || [];
 let listaTarjetasUSD   = leer(K.tarjetasUSD)   || [];
 let listaServiciosUSD  = leer(K.serviciosUSD)  || [];
 let listaCorrientesUSD = leer(K.corrientesUSD) || [];
@@ -60,7 +62,7 @@ function cfGuardarSnapshots(bkups) {
 }
 function cfSnapshotData() {
     return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
-        listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
+        listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
         listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,
         listaPagosTarjeta,listaPagosTarjetaUSD});
@@ -101,6 +103,7 @@ function cfRestaurarSnapshot(ts) {
         if(d.listaRubros)        listaRubros        = d.listaRubros;
         if(d.listaTransferencias)listaTransferencias= d.listaTransferencias;
         if(d.listaTransferenciasUSD)listaTransferenciasUSD= d.listaTransferenciasUSD;
+        if(d.listaComprasUSD)    listaComprasUSD    = d.listaComprasUSD;
         if(d.listaCuotas)        listaCuotas        = d.listaCuotas;
         if(d.historicoMeses)     historicoMeses     = d.historicoMeses;
         if(d.listaCuentasUSD)    listaCuentasUSD    = d.listaCuentasUSD;
@@ -176,6 +179,7 @@ function guardar() {
         localStorage.setItem(K.corrientes,     JSON.stringify(listaCorrientes));
         localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
         localStorage.setItem(K.transferenciasUSD, JSON.stringify(listaTransferenciasUSD));
+        localStorage.setItem(K.comprasUSD,     JSON.stringify(listaComprasUSD));
         localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
         localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
         localStorage.setItem(K.cuentasUSD,     JSON.stringify(listaCuentasUSD));
@@ -438,7 +442,7 @@ async function cfBackupEnCarpeta(handle) {
         const fecha  = cfFechaLocal();
         const nombre = 'cf_backup_' + fecha + '.json';
         const data   = {listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
-                        listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,
+                        listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,
                         listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,
                         listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,
                         listaRubrosUSD,listaIngresos,listaIngresosPresup};
@@ -1692,6 +1696,9 @@ function previewMovimientosLive(bancoId, ym) {
         if (t.origenId === bancoId && esDelMes(t.fecha))  mov.push({ monto: -t.monto });
         if (t.destinoId === bancoId && esDelMes(t.fecha)) mov.push({ monto: t.monto });
     });
+    listaComprasUSD.forEach(c => {
+        if (c.origenId === bancoId && esDelMes(c.fecha)) mov.push({ monto: -c.montoARS });
+    });
     return mov;
 }
 function mostrarModalCierreAutomatico(pendientes) {
@@ -1734,7 +1741,7 @@ function nuevoMes(opts) {
                listaRubros:clon(listaRubros),listaCuotas:clon(listaCuotas),
                listaCuentasUSD:clon(listaCuentasUSD),listaTarjetasUSD:clon(listaTarjetasUSD),
                listaServiciosUSD:clon(listaServiciosUSD),listaCorrientesUSD:clon(listaCorrientesUSD),
-               listaTransferenciasUSD:clon(listaTransferenciasUSD),tipoCambio}});
+               listaTransferenciasUSD:clon(listaTransferenciasUSD),listaComprasUSD:clon(listaComprasUSD),tipoCambio}});
     // Ajustar tarjetas pesos (bancos ya tienen sus saldos actualizados)
     const mDeb={}; listaTarjetas.forEach(t=>mDeb[t.id]=0);
     listaServicios.forEach(s=>{ if(s.pagado>0&&mDeb[s.medioPagoId]!==undefined) mDeb[s.medioPagoId]+=s.pagado; });
@@ -1772,6 +1779,7 @@ function nuevoMes(opts) {
     listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; if(!s.esCuota) s.fVto=''; });
     listaCorrientesUSD=[];
     listaTransferenciasUSD=[];
+    listaComprasUSD=[];
     guardar(); renderTabs(); renderContenido();
     if(!auto) alert('✅ Mes "'+nombre+sufijo+'" archivado. Nuevo período abierto.');
     return true;
@@ -1782,7 +1790,7 @@ function nuevoMes(opts) {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1794,6 +1802,7 @@ function cargarDatos(res) {
     listaRubros         = res.listaRubros         || [];
     listaTransferencias = res.listaTransferencias || [];
     listaTransferenciasUSD = res.listaTransferenciasUSD || [];
+    listaComprasUSD      = res.listaComprasUSD      || [];
     listaCuotas         = res.listaCuotas         || [];
     historicoMeses      = res.historicoMeses      || [];
     listaCuentasUSD     = res.listaCuentasUSD     || [];
@@ -2095,6 +2104,18 @@ function buildDolares() {
                 <button type="submit" class="btn btn-add btn-amber">Registrar Transferencia USD</button>
               </form>
             </div>
+          <div class="panel no-print" style="border-top:4px solid #0ea5e9;">
+            <h3 class="panel-title" style="display:flex;align-items:center;">💱 Comprar Dólares ${btnAyuda('dolares')}</h3>
+            <div class="form-block">
+              <form id="form-compra-usd">
+                <div class="form-row"><div><label>Cuenta origen (pesos)</label><select id="comprausd-origen" required></select></div><div><label>Cuenta destino (USD)</label><select id="comprausd-destino" required></select></div></div>
+                <div class="form-row"><div><label>Monto a debitar ($)</label><input type="number" id="comprausd-monto" required placeholder="0" step="1"></div><div><label>Tipo de cambio</label><input type="number" id="comprausd-tc" required placeholder="0" step="0.01"></div></div>
+                <div class="form-row"><div><label>Fecha</label><input type="date" id="comprausd-fecha" required></div><div style="display:flex;align-items:flex-end;"><div id="comprausd-preview" style="font-size:13px;color:#0ea5e9;font-weight:bold;padding-bottom:9px;">Ingresá monto y TC para ver el equivalente en USD</div></div></div>
+                <button type="submit" class="btn btn-add" style="background:#0ea5e9;">Registrar Compra de USD</button>
+              </form>
+            </div>
+            <table><thead><tr><th style="width:14%">Fecha</th><th style="width:20%">Origen</th><th style="width:20%">Destino</th><th style="width:14%" class="tr">Monto $</th><th style="width:10%" class="tr">TC</th><th style="width:14%" class="tr">USD</th><th style="width:5%" class="no-print"></th></tr></thead><tbody id="t-compra-usd"></tbody></table>
+          </div>
             <table><thead><tr><th style="width:18%">Fecha</th><th style="width:30%">Origen</th><th style="width:30%">Destino</th><th style="width:17%" class="tr">Monto</th><th style="width:5%" class="no-print"></th></tr></thead><tbody id="t-transf-usd"></tbody></table>
           </div>
         </div>
@@ -2152,7 +2173,10 @@ function bindDolares() {
     g('form-cusd')?.addEventListener('submit', altaCuentaUSD);
     g('form-tusd')?.addEventListener('submit', altaTarjetaUSD);
     g('form-susd')?.addEventListener('submit', altaServicioUSD);
+    g('form-compra-usd')?.addEventListener('submit', altaCompraUSD);
     g('form-ccusd')?.addEventListener('submit', altaCorrienteUSD);
+    const inpM=g('comprausd-monto'), inpTC=g('comprausd-tc');
+    [inpM,inpTC].forEach(inp=>inp?.addEventListener('input', actualizarPreviewCompraUSD));
     g('form-transf-usd')?.addEventListener('submit', altaTransferenciaUSD);
     g('btn-dol-actualizar')?.addEventListener('click', actualizarTCDolares);
     g('form-rubro-usd')?.addEventListener('submit', e=>{
@@ -2258,6 +2282,21 @@ function renderDolares() {
         else { [...listaTransferenciasUSD].reverse().forEach(t=>{
             const tdM=el('td','tr'); tdM.style.cssText='font-weight:bold;color:#f59e0b;'; tdM.innerText=fmtUSD(t.monto);
             tTrU.appendChild(fila([tdTxt(t.fecha||'—'),tdTxt(t.origenNombre),tdTxt(t.destinoNombre),tdM,tdBtn('✕',()=>elimTransferenciaUSD(t.id))]));
+    // Comprar Dólares
+    const tCompU=document.getElementById('t-compra-usd'), selCOr=document.getElementById('comprausd-origen'), selCDest=document.getElementById('comprausd-destino'), inpCTC=document.getElementById('comprausd-tc');
+    if(selCOr){ selCOr.innerHTML=''; listaBancos.forEach(b=>addOpt(selCOr,b.id,'🏦 '+b.nombre)); }
+    if(selCDest){ selCDest.innerHTML=''; listaCuentasUSD.forEach(c=>addOpt(selCDest,c.id,'🏦 '+c.nombre)); }
+    if(inpCTC && !inpCTC.value && tipoCambio) inpCTC.value = tipoCambio;
+    if(tCompU){
+        tCompU.innerHTML='';
+        if(!listaComprasUSD.length) { tCompU.innerHTML='<tr><td colspan="7" class="tc" style="color:#94a3b8;padding:12px;">Sin compras registradas.</td></tr>'; }
+        else { [...listaComprasUSD].reverse().forEach(c=>{
+            const tdM=el('td','tr'); tdM.style.cssText='font-weight:bold;color:#dc2626;'; tdM.innerText=fmt(c.montoARS);
+            const tdTC=el('td','tr'); tdTC.style.color='#64748b'; tdTC.innerText=fmt(c.tc);
+            const tdU=el('td','tr'); tdU.style.cssText='font-weight:bold;color:#16a34a;'; tdU.innerText=fmtUSD(c.montoUSD);
+            tCompU.appendChild(fila([tdTxt(c.fecha||'—'),tdTxt(c.origenNombre),tdTxt(c.destinoNombre),tdM,tdTC,tdU,tdBtn('✕',()=>elimCompraUSD(c.id))]));
+        }); }
+    }
         }); }
     }
     const mDU=calcMDU();
@@ -2422,6 +2461,33 @@ function elimCorrienteUSD(id) { listaCorrientesUSD=listaCorrientesUSD.filter(x=>
 function elimTransferenciaUSD(id) {
     const t=listaTransferenciasUSD.find(x=>x.id===id);
     if(t){ const o=listaCuentasUSD.find(c=>String(c.id)===String(t.origenId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.origenId)); const d=listaCuentasUSD.find(c=>String(c.id)===String(t.destinoId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.destinoId)); if(o) o.saldo+=t.monto; if(d) d.saldo-=t.monto; }
+function actualizarPreviewCompraUSD() {
+    const prev=document.getElementById('comprausd-preview'); if(!prev) return;
+    const monto=parseFloat(document.getElementById('comprausd-monto')?.value)||0;
+    const tc=parseFloat(document.getElementById('comprausd-tc')?.value)||0;
+    if(monto>0 && tc>0) prev.innerText='≈ '+fmtUSD(monto/tc)+' al TC ingresado';
+    else prev.innerText='Ingresá monto y TC para ver el equivalente en USD';
+}
+function altaCompraUSD(e) {
+    e.preventDefault();
+    const origenId=vGet('comprausd-origen'), destinoId=vGet('comprausd-destino'), montoARS=nGet('comprausd-monto'), tc=nGet('comprausd-tc'), fecha=vGet('comprausd-fecha');
+    if(montoARS<=0){alert('El monto en pesos debe ser mayor a cero.');return;}
+    if(tc<=0){alert('Ingresá un tipo de cambio válido.');return;}
+    const orig=listaBancos.find(b=>String(b.id)===String(origenId));
+    const dest=listaCuentasUSD.find(c=>String(c.id)===String(destinoId));
+    if(!orig||!dest){ alert('No se pudo identificar la cuenta origen o destino. Probá recargar la página (Ctrl+Shift+R) e intentá de nuevo.'); return; }
+    const montoUSD=Math.round((montoARS/tc)*100)/100;
+    orig.saldo-=montoARS; dest.saldo+=montoUSD;
+    listaComprasUSD.push({id:'cu_compra_'+Date.now(),origenId,destinoId,montoARS,tc,montoUSD,fecha,origenNombre:orig.nombre,destinoNombre:dest.nombre});
+    guardar(); e.target.reset();
+    const prev=document.getElementById('comprausd-preview'); if(prev) prev.innerText='Ingresá monto y TC para ver el equivalente en USD';
+    renderDolares();
+}
+function elimCompraUSD(id) {
+    const c=listaComprasUSD.find(x=>x.id===id);
+    if(c){ const o=listaBancos.find(b=>String(b.id)===String(c.origenId)); const d=listaCuentasUSD.find(x=>String(x.id)===String(c.destinoId)); if(o) o.saldo+=c.montoARS; if(d) d.saldo-=c.montoUSD; }
+    listaComprasUSD=listaComprasUSD.filter(x=>x.id!==id); guardar(); renderDolares();
+}
     listaTransferenciasUSD=listaTransferenciasUSD.filter(x=>x.id!==id); guardar(); renderDolares();
 }
 
@@ -3501,7 +3567,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.95';
+const APP_VERSION = 'v3.7.96';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
