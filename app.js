@@ -216,6 +216,7 @@ function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-
 function clon(x)   { return JSON.parse(JSON.stringify(x)); }
 const PALETA_RUBROS = ['#4f46e5','#0284c7','#10b981','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1','#14b8a6'];
 function colorRubro(r) { const i = listaRubros.indexOf(r); return i>=0 ? PALETA_RUBROS[i % PALETA_RUBROS.length] : '#94a3b8'; }
+function colorRubroUSD(r) { const i = listaRubrosUSD.indexOf(r); return i>=0 ? PALETA_RUBROS[i % PALETA_RUBROS.length] : '#94a3b8'; }
 
 function parseNum(str) {
     const s=String(str).trim();
@@ -2978,7 +2979,7 @@ function buildReportes() {
             if(srvUSDConPres.length>0)
                 dibujarTorta('torta-srv-usd','torta-srv-usd-ley', srvUSDConPres.map(function(s){ return {label:s.nombre,valor:s.presupuesto}; }), fmtUSD);
             if(itemsCorrUSD.length>0){
-                const colsCorrUSD = itemsCorrUSD.map(function(it){ return colorRubro(it.label); });
+                const colsCorrUSD = itemsCorrUSD.map(function(it){ return colorRubroUSD(it.label); });
                 dibujarTorta('torta-corr-usd','torta-corr-usd-ley', itemsCorrUSD, fmtUSD, colsCorrUSD);
             }
         }
@@ -3567,7 +3568,7 @@ function renderPresupRubrosUSD() {
         const pres = listaPresupRubrosUSD[r]||0;
         const gast = gastado[r]||0;
         const pct = pres>0 ? Math.min(100,Math.round(gast/pres*100)) : 0;
-        const col = colorRubro(r);
+        const col = colorRubroUSD(r);
         const alerta = pres>0 && gast>=pres;
         const bg = alerta ? '#fef2f2' : '#f8fafc';
         const barColor = alerta ? '#ef4444' : col;
@@ -3605,7 +3606,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.102';
+const APP_VERSION = 'v3.8.0';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
