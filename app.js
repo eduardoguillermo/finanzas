@@ -1911,12 +1911,13 @@ function computeMovimientosBanco(bancoId, mesYM) {
     const targetYM = mesYM || mesActualYM;
     const esDelMes = fecha => (fecha || '').slice(0,7) === targetYM;
     const esMesActual = targetYM === mesActualYM;
-    let fCorrientes = listaCorrientes, fServicios = listaServicios, fTransferencias = listaTransferencias;
+    let fCorrientes = listaCorrientes, fServicios = listaServicios, fTransferencias = listaTransferencias, fComprasUSD = listaComprasUSD;
     if (!esMesActual) {
         const entry = historicoMesPorYM(targetYM);
         fCorrientes = (entry && entry.datos.listaCorrientes) || [];
         fServicios = (entry && entry.datos.listaServicios) || [];
         fTransferencias = (entry && entry.datos.listaTransferencias) || [];
+        fComprasUSD = (entry && entry.datos.listaComprasUSD) || [];
     }
     const mov = [];
     listaIngresos.forEach(i => { if (i.bancoId === bancoId && esDelMes(i.fecha)) mov.push({ fecha: i.fecha || '', detalle: '💰 ' + (i.descripcion || 'Ingreso'), monto: i.monto, orden: 0 }); });
@@ -1927,6 +1928,9 @@ function computeMovimientosBanco(bancoId, mesYM) {
     fTransferencias.forEach(t => {
         if (t.origenId === bancoId && esDelMes(t.fecha))  mov.push({ fecha: t.fecha || '', detalle: '↗ Transferencia a ' + (t.destinoNombre || '?'), monto: -t.monto, orden: 2 });
         if (t.destinoId === bancoId && esDelMes(t.fecha)) mov.push({ fecha: t.fecha || '', detalle: '↙ Transferencia de ' + (t.origenNombre || '?'), monto: t.monto, orden: 2 });
+    });
+    fComprasUSD.forEach(c => {
+        if (c.origenId === bancoId && esDelMes(c.fecha)) mov.push({ fecha: c.fecha || '', detalle: '💱 Compra USD → ' + (c.destinoNombre || '?'), monto: -c.montoARS, orden: 2 });
     });
     mov.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden - b.orden));
     return mov;
@@ -3567,7 +3571,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.96';
+const APP_VERSION = 'v3.7.97';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
