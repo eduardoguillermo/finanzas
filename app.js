@@ -2177,12 +2177,12 @@ function bindDolares() {
     g('form-cusd')?.addEventListener('submit', altaCuentaUSD);
     g('form-tusd')?.addEventListener('submit', altaTarjetaUSD);
     g('form-susd')?.addEventListener('submit', altaServicioUSD);
-    g('form-compra-usd')?.addEventListener('submit', altaCompraUSD);
     g('form-ccusd')?.addEventListener('submit', altaCorrienteUSD);
+    g('form-transf-usd')?.addEventListener('submit', altaTransferenciaUSD);
+    g('form-compra-usd')?.addEventListener('submit', altaCompraUSD);
+    g('btn-dol-actualizar')?.addEventListener('click', actualizarTCDolares);
     const inpM=g('comprausd-monto'), inpTC=g('comprausd-tc');
     [inpM,inpTC].forEach(inp=>inp?.addEventListener('input', actualizarPreviewCompraUSD));
-    g('form-transf-usd')?.addEventListener('submit', altaTransferenciaUSD);
-    g('btn-dol-actualizar')?.addEventListener('click', actualizarTCDolares);
     g('form-rubro-usd')?.addEventListener('submit', e=>{
         e.preventDefault();
         const nombre = document.getElementById('rubro-usd-nombre')?.value?.trim();
@@ -2286,6 +2286,8 @@ function renderDolares() {
         else { [...listaTransferenciasUSD].reverse().forEach(t=>{
             const tdM=el('td','tr'); tdM.style.cssText='font-weight:bold;color:#f59e0b;'; tdM.innerText=fmtUSD(t.monto);
             tTrU.appendChild(fila([tdTxt(t.fecha||'—'),tdTxt(t.origenNombre),tdTxt(t.destinoNombre),tdM,tdBtn('✕',()=>elimTransferenciaUSD(t.id))]));
+        }); }
+    }
     // Comprar Dólares
     const tCompU=document.getElementById('t-compra-usd'), selCOr=document.getElementById('comprausd-origen'), selCDest=document.getElementById('comprausd-destino'), inpCTC=document.getElementById('comprausd-tc');
     if(selCOr){ selCOr.innerHTML=''; listaBancos.forEach(b=>addOpt(selCOr,b.id,'🏦 '+b.nombre)); }
@@ -2299,8 +2301,6 @@ function renderDolares() {
             const tdTC=el('td','tr'); tdTC.style.color='#64748b'; tdTC.innerText=fmt(c.tc);
             const tdU=el('td','tr'); tdU.style.cssText='font-weight:bold;color:#16a34a;'; tdU.innerText=fmtUSD(c.montoUSD);
             tCompU.appendChild(fila([tdTxt(c.fecha||'—'),tdTxt(c.origenNombre),tdTxt(c.destinoNombre),tdM,tdTC,tdU,tdBtn('✕',()=>elimCompraUSD(c.id))]));
-        }); }
-    }
         }); }
     }
     const mDU=calcMDU();
@@ -2465,6 +2465,8 @@ function elimCorrienteUSD(id) { listaCorrientesUSD=listaCorrientesUSD.filter(x=>
 function elimTransferenciaUSD(id) {
     const t=listaTransferenciasUSD.find(x=>x.id===id);
     if(t){ const o=listaCuentasUSD.find(c=>String(c.id)===String(t.origenId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.origenId)); const d=listaCuentasUSD.find(c=>String(c.id)===String(t.destinoId))||listaTarjetasUSD.find(x=>String(x.id)===String(t.destinoId)); if(o) o.saldo+=t.monto; if(d) d.saldo-=t.monto; }
+    listaTransferenciasUSD=listaTransferenciasUSD.filter(x=>x.id!==id); guardar(); renderDolares();
+}
 function actualizarPreviewCompraUSD() {
     const prev=document.getElementById('comprausd-preview'); if(!prev) return;
     const monto=parseFloat(document.getElementById('comprausd-monto')?.value)||0;
@@ -2491,8 +2493,6 @@ function elimCompraUSD(id) {
     const c=listaComprasUSD.find(x=>x.id===id);
     if(c){ const o=listaBancos.find(b=>String(b.id)===String(c.origenId)); const d=listaCuentasUSD.find(x=>String(x.id)===String(c.destinoId)); if(o) o.saldo+=c.montoARS; if(d) d.saldo-=c.montoUSD; }
     listaComprasUSD=listaComprasUSD.filter(x=>x.id!==id); guardar(); renderDolares();
-}
-    listaTransferenciasUSD=listaTransferenciasUSD.filter(x=>x.id!==id); guardar(); renderDolares();
 }
 
 
@@ -3571,7 +3571,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.7.99';
+const APP_VERSION = 'v3.7.100';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
