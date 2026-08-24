@@ -3390,6 +3390,30 @@ function calcDashInv() {
     setTxt('inv-total-acciones',fmt(totalAcc));
 }
 
+// Cadena de proxies CORS con fallback: si uno falla (403/429/503/caído), prueba el siguiente.
+// Los proxies gratuitos son inestables por naturaleza (rate limits, caídas temporales),
+// así que en vez de depender de uno solo, probamos varios en orden.
+const CORS_PROXIES = [
+    function(url){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url); },
+    function(url){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url); },
+    function(url){ return 'https://corsproxy.io/?url='+encodeURIComponent(url); }
+];
+
+async function fetchViaProxyJSON(targetUrl) {
+    let lastErr = null;
+    for(let i=0; i<CORS_PROXIES.length; i++) {
+        try {
+            const proxied = CORS_PROXIES[i](targetUrl);
+            const res = await fetch(proxied);
+            if(!res.ok) { lastErr = new Error('proxy '+i+' status '+res.status); continue; }
+            const data = await res.json();
+            if(!data) { lastErr = new Error('proxy '+i+' respuesta vacía'); continue; }
+            return data;
+        } catch(e) { lastErr = e; }
+    }
+    throw lastErr || new Error('todos los proxies fallaron');
+}
+
 async function actualizarInversiones() {
     const btn = document.getElementById('btn-inv-actualizar');
     if(btn){ btn.disabled=true; btn.innerText='⏳ Actualizando...'; }
@@ -3403,15 +3427,13 @@ async function actualizarInversiones() {
         if(badge) badge.innerText = 'USD Oficial: ' + fmt(_dolarOficial) + ' (venta)';
     } catch(e) { console.warn('Error dólar:', e); }
 
-    // 2. Cotizaciones vía Yahoo Finance + allorigins proxy
+    // 2. Cotizaciones vía Yahoo Finance + cadena de proxies CORS con fallback
     for(let i=0; i<listaAcciones.length; i++) {
         const acc = listaAcciones[i];
         try {
             const url = 'https://query2.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
-            const proxy = 'https://corsproxy.io/?' + url;
-            const res = await fetch(proxy);
-            const data = await res.json();
-            if(!data.chart || !data.chart.result || !data.chart.result[0]) {
+            const data = await fetchViaProxyJSON(url);
+            if(!data || !data.chart || !data.chart.result || !data.chart.result[0]) {
                 console.warn('Sin datos para '+acc.ticker+'. Error:', data.chart && data.chart.error);
                 continue;
             }
@@ -3606,7 +3628,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.0';
+const APP_VERSION = 'v3.8.3';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3820,9 +3842,9 @@ async function actualizarYPF() {
     try {
         const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
         const ticker = ypfAcc ? ypfAcc.ticker : 'YPFD.BA';
-        const proxy = 'https://corsproxy.io/?https://query2.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=5d';
-        const res = await fetch(proxy);
-        const data = await res.json();
+        const yUrl = 'https://query2.finance.yahoo.com/v8/finance/chart/'+ticker+'?interval=1d&range=5d';
+        const data = await fetchViaProxyJSON(yUrl);
+        if(!data || !data.chart || !data.chart.result || !data.chart.result[0]) throw new Error('respuesta sin datos de cotización');
         const precioARS = data.chart.result[0].meta.regularMarketPrice || 0;
 
         let dolar = _dolarOficial || tipoCambio || 0;
