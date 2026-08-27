@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.7.102</p>
+    <p>Manual de usuario · v3.8.6</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.7.102</span>
+      <span class="badge badge-green">✓ v3.8.6</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -485,19 +485,23 @@
       <span class="section-icon">🏦</span>
       <div>
         <div class="section-title">Movimientos Bancarios</div>
-        <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta <span class="badge badge-purple">Nuevo</span></div>
+        <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta, en pesos o en dólares <span class="badge badge-purple">Nuevo</span></div>
       </div>
     </div>
     <p>La pestaña Movimientos muestra, cuenta por cuenta, cómo se fue moviendo el saldo a lo largo de un mes: desde qué saldo arrancó hasta el saldo de cierre (o el actual si es el mes en curso), con el detalle día por día de qué lo movió.</p>
 
+    <h2>Moneda: ARS o USD <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Si tenés cuentas cargadas en ambas monedas, arriba de todo aparece un selector 🏦 ARS / 💵 USD para elegir qué grupo de cuentas mirar. Si solo tenés cuentas en una moneda, la pestaña muestra directamente esa sin mostrar el selector.</p>
+
     <h2>Cómo se arma</h2>
-    <p>Elegís una cuenta en el primer selector y un mes en el segundo. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron en el mes elegido:</p>
+    <p>Elegís una cuenta en el primer selector y un mes en el segundo. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron en el mes elegido. En pesos:</p>
     <ul>
       <li><b>💰 Ingresos</b> — depósitos cargados con el botón "Ingreso"</li>
       <li><b>🛒 / ⬆ Gastos corrientes pagados</b> — solo si la cuenta tiene el auto-descuento activado (cuentas "líquidas")</li>
       <li><b>📋 Servicios fijos pagados</b> — ídem, solo cuentas líquidas</li>
       <li><b>↗ / ↙ Transferencias</b> — entre tus propias cuentas, salida en la cuenta origen y entrada en la destino</li>
     </ul>
+    <p>En dólares es análogo, con dos diferencias: todas las cuentas USD se consideran líquidas (no existe el toggle de auto-descuento en USD), y además de ingresos/gastos/transferencias se suman las <b>💱 Compras de USD</b> que tuvieron esa cuenta como destino.</p>
 
     <h2>Meses cerrados</h2>
     <p>El selector de mes incluye el mes actual y todos los meses ya archivados con "🔄 Abrir Nuevo Mes". Para un mes cerrado, la tabla se arma con la foto que quedó guardada al cierre de ese período — no con las listas en vivo — así que el detalle diario y el saldo de cierre siguen disponibles aunque hayan pasado varios meses.</p>
@@ -691,12 +695,21 @@
     <table>
       <tr><th>Panel</th><th>Descripción</th></tr>
       <tr><td>🏦 Cuentas en USD</td><td>Cuentas bancarias y efectivo en dólares</td></tr>
+      <tr><td>💰 Ingresar Fondos (USD)</td><td>Registra un ingreso externo a una cuenta USD, con historial y opción de deshacer <span class="badge badge-purple">Nuevo</span></td></tr>
       <tr><td>💳 Tarjetas en USD</td><td>Tarjetas de crédito con saldo en USD (ej. Visa Internacional)</td></tr>
       <tr><td>↔️ Transferencias USD</td><td>Mueve saldo entre cuentas/tarjetas en USD, sin tocar pesos</td></tr>
       <tr><td>💱 Comprar Dólares</td><td>Compra USD debitando una cuenta en pesos, con tipo de cambio manual</td></tr>
       <tr><td>📋 Servicios Fijos en USD</td><td>Suscripciones y servicios que se cobran en dólares (ej. Spotify, Netflix, Claude)</td></tr>
       <tr><td>🛍️ Gastos Corrientes en USD</td><td>Gastos variables en dólares</td></tr>
     </table>
+
+    <h2>💰 Ingresar Fondos (USD) <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Registra un ingreso de dinero que entra a la app desde afuera (cobro, sueldo en dólares, etc.) directamente a una cuenta en USD — análogo al botón "Ingreso" que ya existía para cuentas en pesos.</p>
+    <ul>
+      <li><b>Cuenta destino</b>: cuenta USD que recibe el monto.</li>
+      <li><b>Monto (USD)</b>, <b>Descripción</b> y <b>Fecha</b>.</li>
+    </ul>
+    <p>Cada ingreso queda en un historial debajo de la tabla de Cuentas en USD, con fecha, cuenta, descripción y monto. El botón ✕ lo elimina y revierte el monto del saldo de la cuenta.</p>
 
     <h2>Tipo de cambio</h2>
     <p>La app obtiene automáticamente el tipo de cambio oficial (dólar venta) al abrir la pestaña Dólares. También se puede ingresar manualmente. El tipo de cambio se usa para mostrar los totales en pesos equivalentes.</p>
@@ -1127,6 +1140,31 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.6</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Movimientos Bancarios ahora tiene un selector 🏦 ARS / 💵 USD (visible solo si hay cuentas en ambas monedas) para ver el detalle diario también de las cuentas en dólares</li>
+        <li>El detalle en USD incluye ingresos, corrientes/servicios pagados, transferencias entre cuentas USD y compras de dólares acreditadas</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.5</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Pestaña Inversiones: las cotizaciones ahora se piden en paralelo en vez de una por una — la carga es notablemente más rápida con varios tickers cargados</li>
+        <li>Cada intento contra los proxies CORS tiene timeout de 8 segundos, para no colgarse si uno está caído</li>
+        <li>Se eliminó un pedido duplicado de la cotización de YPF al entrar a la pestaña</li>
+        <li>Las cotizaciones se cachean por 90 segundos para no repreguntar innecesariamente al volver a la pestaña</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.4</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo panel 💰 Ingresar Fondos (USD) en la pestaña Dólares, con historial y opción de deshacer — antes solo existía para cuentas en pesos</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.7.102</span><span class="changelog-tag tag-fix">fix</span></div>
