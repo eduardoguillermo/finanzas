@@ -725,7 +725,7 @@ function renderContenido() {
     else if (tabActivo==='movimientos') { app.appendChild(buildMovimientos()); }
     else if (tabActivo==='presupuesto')  { app.appendChild(buildPresupuesto()); }
     else if (tabActivo==='reportes')    { app.appendChild(buildReportes()); }
-    else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); iniciarTimerYPF(); }
+    else if (tabActivo==='inversiones') { app.appendChild(buildInversiones()); bindInversiones(); actualizarInversiones(); iniciarTimerYPF(listaAcciones.some(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); })); }
     else if (tabActivo==='anual')       { app.appendChild(buildAnual()); }
     else {
         const mes = historicoMeses.find(m=>m.id===tabActivo);
@@ -3299,7 +3299,7 @@ function buildInversiones() {
 function bindInversiones() {
     document.getElementById('form-instrumento')?.addEventListener('submit', altaInstrumento);
     document.getElementById('form-accion')?.addEventListener('submit', altaAccion);
-    document.getElementById('btn-inv-actualizar')?.addEventListener('click', actualizarInversiones);
+    document.getElementById('btn-inv-actualizar')?.addEventListener('click', function(){ actualizarInversiones(true); });
     document.getElementById('acc-ticker')?.addEventListener('input', function(e) { e.target.value = e.target.value.toUpperCase(); });
 }
 
@@ -3315,7 +3315,7 @@ function altaAccion(e) {
     const ticker = vGet('acc-ticker').toUpperCase();
     if(listaAcciones.find(function(a){ return a.ticker===ticker; })){ alert('Ese ticker ya está agregado.'); return; }
     listaAcciones.push({id:'acc_'+Date.now(), ticker, desc:vGet('acc-desc'), cant:parseInt(document.getElementById('acc-cant').value)||1});
-    guardar(); e.target.reset(); actualizarInversiones();
+    guardar(); e.target.reset(); actualizarInversiones(true);
 }
 function elimInstrumento(id) { listaInstrumentos=listaInstrumentos.filter(function(x){ return x.id!==id; }); guardar(); renderInstrumentos(); calcDashInv(); }
 function elimAccion(id)      { listaAcciones=listaAcciones.filter(function(x){ return x.id!==id; });         guardar(); renderAcciones(); calcDashInv(); }
@@ -3480,29 +3480,80 @@ function calcDashInv() {
 // Cadena de proxies CORS con fallback: si uno falla (403/429/503/caído), prueba el siguiente.
 // Los proxies gratuitos son inestables por naturaleza (rate limits, caídas temporales),
 // así que en vez de depender de uno solo, probamos varios en orden.
+// Cada intento tiene timeout propio para no colgarse esperando un proxy caído.
 const CORS_PROXIES = [
     function(url){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url); },
     function(url){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url); },
     function(url){ return 'https://corsproxy.io/?url='+encodeURIComponent(url); }
 ];
+const CORS_PROXY_TIMEOUT_MS = 8000;
+
+async function fetchConTimeout(url, ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), ms);
+    try {
+        return await fetch(url, {signal: ctrl.signal});
+    } finally {
+        clearTimeout(t);
+    }
+}
 
 async function fetchViaProxyJSON(targetUrl) {
     let lastErr = null;
     for(let i=0; i<CORS_PROXIES.length; i++) {
         try {
             const proxied = CORS_PROXIES[i](targetUrl);
-            const res = await fetch(proxied);
+            const res = await fetchConTimeout(proxied, CORS_PROXY_TIMEOUT_MS);
             if(!res.ok) { lastErr = new Error('proxy '+i+' status '+res.status); continue; }
             const data = await res.json();
             if(!data) { lastErr = new Error('proxy '+i+' respuesta vacía'); continue; }
             return data;
-        } catch(e) { lastErr = e; }
+        } catch(e) {
+            lastErr = (e && e.name==='AbortError') ? new Error('proxy '+i+' timeout ('+CORS_PROXY_TIMEOUT_MS+'ms)') : e;
+        }
     }
     throw lastErr || new Error('todos los proxies fallaron');
 }
 
-async function actualizarInversiones() {
+async function fetchCotizacionTicker(acc) {
+    const url = 'https://query2.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
+    const data = await fetchViaProxyJSON(url);
+    if(!data || !data.chart || !data.chart.result || !data.chart.result[0]) {
+        throw new Error('Sin datos para '+acc.ticker+'. Error: '+(data && data.chart && data.chart.error));
+    }
+    const result = data.chart.result[0];
+    const meta = result.meta;
+    const timestamps = result.timestamp;
+    const closes = result.indicators.quote[0].close;
+
+    const historia = [];
+    for(let j=0; j<timestamps.length; j++) {
+        if(closes[j] != null) {
+            const fecha = new Date(timestamps[j]*1000).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+            historia.push({fecha: fecha, cierre: closes[j]});
+        }
+    }
+
+    const precio = meta.regularMarketPrice || closes.filter(function(c){ return c!=null; }).pop() || 0;
+    const prevClose = meta.chartPreviousClose || 0;
+    const variacion = prevClose > 0 ? ((precio - prevClose) / prevClose) * 100 : 0;
+
+    return {precio: precio, variacion: variacion, historia: historia};
+}
+
+let _ultimaActualizacionInv = 0;
+const INV_CACHE_TTL_MS = 90000; // no repreguntar si se actualizó hace menos de 90s
+
+async function actualizarInversiones(force) {
     const btn = document.getElementById('btn-inv-actualizar');
+
+    // Cache corta: si ya tenemos cotización de todos los tickers actuales y no pasó el TTL, no repreguntamos.
+    const todasEnCache = listaAcciones.length>0 && listaAcciones.every(function(a){ return !!_cotizaciones[a.ticker]; });
+    if(!force && todasEnCache && (Date.now() - _ultimaActualizacionInv) < INV_CACHE_TTL_MS) {
+        renderInstrumentos(); renderAcciones(); calcDashInv(); renderGraficosInv();
+        return;
+    }
+
     if(btn){ btn.disabled=true; btn.innerText='⏳ Actualizando...'; }
 
     // 1. Dólar oficial
@@ -3514,41 +3565,32 @@ async function actualizarInversiones() {
         if(badge) badge.innerText = 'USD Oficial: ' + fmt(_dolarOficial) + ' (venta)';
     } catch(e) { console.warn('Error dólar:', e); }
 
-    // 2. Cotizaciones vía Yahoo Finance + cadena de proxies CORS con fallback
-    for(let i=0; i<listaAcciones.length; i++) {
-        const acc = listaAcciones[i];
-        try {
-            const url = 'https://query2.finance.yahoo.com/v8/finance/chart/'+acc.ticker+'?interval=1d&range=30d';
-            const data = await fetchViaProxyJSON(url);
-            if(!data || !data.chart || !data.chart.result || !data.chart.result[0]) {
-                console.warn('Sin datos para '+acc.ticker+'. Error:', data.chart && data.chart.error);
-                continue;
-            }
-            const result = data.chart.result[0];
-            const meta = result.meta;
-            const timestamps = result.timestamp;
-            const closes = result.indicators.quote[0].close;
+    // 2. Cotizaciones vía Yahoo Finance + cadena de proxies CORS, EN PARALELO (antes era secuencial)
+    await Promise.allSettled(listaAcciones.map(function(acc) {
+        return fetchCotizacionTicker(acc).then(function(cot) {
+            _cotizaciones[acc.ticker] = cot;
+        }).catch(function(e) {
+            console.warn('Error cotización '+acc.ticker+':', e);
+        });
+    }));
 
-            const historia = [];
-            for(let j=0; j<timestamps.length; j++) {
-                if(closes[j] != null) {
-                    const fecha = new Date(timestamps[j]*1000).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
-                    historia.push({fecha: fecha, cierre: closes[j]});
-                }
-            }
-
-            const precio = meta.regularMarketPrice || closes.filter(function(c){ return c!=null; }).pop() || 0;
-            const prevClose = meta.chartPreviousClose || 0;
-            const variacion = prevClose > 0 ? ((precio - prevClose) / prevClose) * 100 : 0;
-
-            _cotizaciones[acc.ticker] = {precio: precio, variacion: variacion, historia: historia};
-        } catch(e) { console.warn('Error cotización '+acc.ticker+':', e); }
-    }
+    _ultimaActualizacionInv = Date.now();
 
     renderInstrumentos();
     renderAcciones();
     calcDashInv();
     renderGraficosInv();
+
+    // Actualizar el widget YPF con la cotización ya obtenida arriba, sin volver a pegarle a los proxies
+    const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
+    if(ypfAcc && _cotizaciones[ypfAcc.ticker]) {
+        const ahora = new Date();
+        const dia = ahora.getDay(), hora = ahora.getHours();
+        const esHorario = dia>=1 && dia<=5 && hora>=10 && hora<19;
+        const horaStr = ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+        _ypfSetUI(_cotizaciones[ypfAcc.ticker].precio, _dolarOficial||tipoCambio||0, horaStr, !esHorario, ypfAcc.cant);
+        _ypfCache = {precioARS: _cotizaciones[ypfAcc.ticker].precio, dolar: _dolarOficial||tipoCambio||0, horaStr: horaStr, fuera: !esHorario};
+    }
 
     if(btn){ btn.disabled=false; btn.innerText='🔄 Actualizar cotizaciones'; }
 }
@@ -3715,7 +3757,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.4';
+const APP_VERSION = 'v3.8.5';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4271,9 +4313,11 @@ function mostrarInformeSemanal() {
     document.body.appendChild(ov);
 }
 
-function iniciarTimerYPF() {
+function iniciarTimerYPF(skipImmediate) {
     clearInterval(_ypfTimer);
-    actualizarYPF();
+    // skipImmediate: en la pestaña Inversiones, actualizarInversiones() ya trae la cotización
+    // de YPF (si está en listaAcciones) y actualiza este mismo widget — evita pedirla 2 veces.
+    if(!skipImmediate) actualizarYPF();
     _ypfTimer = setInterval(function() {
         const ahora = new Date();
         const dia = ahora.getDay();
