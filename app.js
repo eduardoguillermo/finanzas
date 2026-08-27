@@ -13,6 +13,7 @@ const K = {
     instrumentos:'f_instrumentos_v1',
     acciones:'f_acciones_v1',
     ingresos:'f_ingresos_v1',
+    ingresosUSD:'f_ingresosUSD_v1',
     ingresosPresup:'f_ingresosPresup_v1',
     pagosTarjeta:'f_pagosTarjeta_v1',
     pagosTarjetaUSD:'f_pagosTarjetaUSD_v1'
@@ -35,6 +36,7 @@ let tipoCambio         = leer(K.tipoCambio)    || 1200;
 let listaInstrumentos  = leer(K.instrumentos)  || [];
 let listaAcciones      = leer(K.acciones)      || [];
 let listaIngresos      = leer(K.ingresos)      || [];
+let listaIngresosUSD   = leer(K.ingresosUSD)   || [];
 let listaIngresosPresup = leer(K.ingresosPresup) || [];
 let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
 let listaPagosTarjetaUSD = leer(K.pagosTarjetaUSD) || [];
@@ -64,7 +66,7 @@ function cfSnapshotData() {
     return JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,
         listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
-        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,
+        listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,
         listaPagosTarjeta,listaPagosTarjetaUSD});
 }
 function cfHacerSnapshot(manual=false) {
@@ -117,6 +119,7 @@ function cfRestaurarSnapshot(ts) {
         if(d.listaPresupRubrosUSD) listaPresupRubrosUSD = d.listaPresupRubrosUSD;
         if(d.listaRubrosUSD)     listaRubrosUSD     = d.listaRubrosUSD;
         if(d.listaIngresos)      listaIngresos      = d.listaIngresos;
+        if(d.listaIngresosUSD)   listaIngresosUSD   = d.listaIngresosUSD;
         if(d.listaIngresosPresup) listaIngresosPresup = d.listaIngresosPresup;
         if(d.listaPagosTarjeta)  listaPagosTarjeta  = d.listaPagosTarjeta;
         if(d.listaPagosTarjetaUSD) listaPagosTarjetaUSD = d.listaPagosTarjetaUSD;
@@ -193,6 +196,7 @@ function guardar() {
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
+        localStorage.setItem(K.ingresosUSD,    JSON.stringify(listaIngresosUSD));
         localStorage.setItem(K.ingresosPresup, JSON.stringify(listaIngresosPresup));
         localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
         localStorage.setItem(K.pagosTarjetaUSD,JSON.stringify(listaPagosTarjetaUSD));
@@ -259,7 +263,7 @@ async function syncSilencioso() {
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
         const gmailProcessed = cfGmailGetProcessed();
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,groqKey,gmailProcessed});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,groqKey,gmailProcessed});
 
         const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
 
@@ -446,7 +450,7 @@ async function cfBackupEnCarpeta(handle) {
                         listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,
                         listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,
                         listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,
-                        listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD};
+                        listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD};
         const fileHandle = await handle.getFileHandle(nombre, { create: true });
         const writable   = await fileHandle.createWritable();
         await writable.write(JSON.stringify(data, null, 2));
@@ -1467,6 +1471,49 @@ function elimIngreso(id) {
     render();
 }
 
+// ── Ingresar Fondos USD ──────────────────────────────────────
+function abrirModalIngresoUSD() {
+    const sel = document.getElementById('ingusd-cuenta');
+    if(!sel) return;
+    sel.innerHTML = '';
+    listaCuentasUSD.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent='🏦 '+c.nombre; sel.appendChild(o); });
+    document.getElementById('ingusd-monto').value = '';
+    document.getElementById('ingusd-desc').value = '';
+    document.getElementById('ingusd-fecha').value = cfFechaLocal();
+    const m = document.getElementById('modal-ingreso-usd');
+    m.style.display = 'flex';
+}
+function cerrarModalIngresoUSD() {
+    document.getElementById('modal-ingreso-usd').style.display = 'none';
+}
+function confirmarIngresoUSD() {
+    const cuentaId = document.getElementById('ingusd-cuenta').value;
+    const monto = parseFloat(document.getElementById('ingusd-monto').value)||0;
+    const desc = document.getElementById('ingusd-desc').value.trim()||'Sin descripción';
+    const fecha = document.getElementById('ingusd-fecha').value||cfFechaLocal();
+    if(!cuentaId){ alert('Seleccioná una cuenta.'); return; }
+    if(monto<=0){ alert('Ingresá un monto mayor a cero.'); return; }
+    const cuenta = listaCuentasUSD.find(c=>c.id===cuentaId);
+    if(!cuenta){ alert('Cuenta no encontrada.'); return; }
+    cuenta.saldo = Math.round((cuenta.saldo + monto)*100)/100;
+    listaIngresosUSD.push({id:'ingusd_'+Date.now(), cuentaId, cuentaNombre:cuenta.nombre, monto, descripcion:desc, fecha});
+    guardar();
+    cerrarModalIngresoUSD();
+    calcDashUSD();
+    renderDolares();
+}
+function elimIngresoUSD(id) {
+    const ing = listaIngresosUSD.find(i=>i.id===id);
+    if(!ing) return;
+    if(!confirm('¿Eliminar este ingreso? Se restará el monto del saldo de la cuenta.')) return;
+    const cuenta = listaCuentasUSD.find(c=>c.id===ing.cuentaId);
+    if(cuenta) cuenta.saldo = Math.round((cuenta.saldo - ing.monto)*100)/100;
+    listaIngresosUSD = listaIngresosUSD.filter(i=>i.id!==id);
+    guardar();
+    calcDashUSD();
+    renderDolares();
+}
+
 let edsBancoId = null;
 function abrirModalEditarSaldo(bancoId) {
     const banco = listaBancos.find(b=>b.id===bancoId);
@@ -1807,7 +1854,7 @@ function nuevoMes(opts) {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1833,6 +1880,7 @@ function cargarDatos(res) {
     if(res.listaPresupRubrosUSD) listaPresupRubrosUSD = res.listaPresupRubrosUSD;
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
     if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
+    if(res.listaIngresosUSD)     listaIngresosUSD     = res.listaIngresosUSD;
     if(res.listaIngresosPresup)  listaIngresosPresup  = res.listaIngresosPresup;
     if(res.listaPagosTarjeta)    listaPagosTarjeta    = res.listaPagosTarjeta;
     if(res.listaPagosTarjetaUSD) listaPagosTarjetaUSD = res.listaPagosTarjetaUSD;
@@ -2094,6 +2142,7 @@ function buildDolares() {
         <div>
           <div class="panel no-print" style="border-top:4px solid #16a34a;">
             <h3 class="panel-title" style="display:flex;align-items:center;">🏦 Cuentas en USD ${btnAyuda('dolares')}</h3>
+            <button type="button" onclick="abrirModalIngresoUSD()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#16a34a;border:none;color:#fff;border-radius:6px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;">💰 Ingresar fondos (USD)</button>
             <div class="form-block">
               <form id="form-cusd">
                 <div class="form-group"><label>Nombre</label><input type="text" id="cusd-nombre" required placeholder="Ej. Billetera USD"></div>
@@ -2102,6 +2151,27 @@ function buildDolares() {
               </form>
             </div>
             <table><thead><tr><th style="width:40%">Cuenta</th><th style="width:28%" class="tr">Saldo (USD)</th><th style="width:27%" class="tr">En pesos</th><th style="width:5%"></th></tr></thead><tbody id="t-cusd"></tbody></table>
+            <div id="panel-historial-ingresos-usd" style="margin-top:16px;display:none;">
+              <h4 style="margin:0 0 8px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;">📋 Historial de Ingresos USD</h4>
+              <table style="font-size:12px;width:100%;border-collapse:collapse;">
+                <thead><tr style="background:#f0fdf4;"><th style="padding:6px 8px;text-align:left;color:#166534;">Fecha</th><th style="padding:6px 8px;text-align:left;color:#166534;">Cuenta</th><th style="padding:6px 8px;text-align:left;color:#166534;">Descripción</th><th style="padding:6px 8px;text-align:right;color:#166534;">Monto</th><th style="padding:6px 8px;" class="no-print"></th></tr></thead>
+                <tbody id="t-ingresos-usd"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Modal Ingresar Fondos USD -->
+          <div id="modal-ingreso-usd" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:white;border-radius:12px;padding:24px;width:340px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+              <h3 style="margin:0 0 16px;color:#166534;font-size:16px;">💰 Ingresar Fondos (USD)</h3>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Cuenta destino</label><select id="ingusd-cuenta" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"></select></div>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Monto (USD)</label><input type="number" id="ingusd-monto" min="0" step="0.01" value="" placeholder="0" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="margin-bottom:12px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Descripción</label><input type="text" id="ingusd-desc" placeholder="Ej. Sueldo, Cobro cliente..." style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="margin-bottom:20px;"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Fecha</label><input type="date" id="ingusd-fecha" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;box-sizing:border-box;"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="cerrarModalIngresoUSD()" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:14px;">Cancelar</button>
+                <button onclick="confirmarIngresoUSD()" style="padding:8px 20px;border:none;border-radius:6px;background:#16a34a;color:white;cursor:pointer;font-size:14px;font-weight:bold;">✓ Confirmar</button>
+              </div>
+            </div>
           </div>
           <div class="panel no-print" style="border-top:4px solid #a855f7;">
             <h3 class="panel-title" style="display:flex;align-items:center;">💳 Tarjetas en USD ${btnAyuda('dolares')}</h3>
@@ -2348,6 +2418,23 @@ function renderDolares() {
     });
     if(listaCuentasUSD.length){ const trT=el('tr'); trT.style.background='#f8fafc'; trT.innerHTML=`<td><b>Total</b></td><td class="tr" style="color:#16a34a;font-weight:bold;">${fmtUSD(totCU)}</td><td class="tr" style="font-weight:bold;">${fmt(totCU*tipoCambio)}</td><td></td>`; tCU.appendChild(trT); }
     else tCU.innerHTML='<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin cuentas USD.</td></tr>';
+    // Historial de ingresos USD
+    const panelHistU = document.getElementById('panel-historial-ingresos-usd');
+    const tIU = document.getElementById('t-ingresos-usd');
+    if(panelHistU && tIU) {
+        tIU.innerHTML = '';
+        if(listaIngresosUSD.length) {
+            panelHistU.style.display = 'block';
+            [...listaIngresosUSD].reverse().forEach(ing => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #f0fdf4';
+                tr.innerHTML = `<td style="padding:5px 8px;color:#475569;">${ing.fecha||'—'}</td><td style="padding:5px 8px;font-weight:bold;color:#166534;">${ing.cuentaNombre||'—'}</td><td style="padding:5px 8px;color:#fff;background:#0f172a;">${ing.descripcion||'—'}</td><td style="padding:5px 8px;text-align:right;font-weight:bold;color:#16a34a;">${fmtUSD(ing.monto)}</td><td style="padding:5px 8px;" class="no-print"><button onclick="elimIngresoUSD('${ing.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button></td>`;
+                tIU.appendChild(tr);
+            });
+        } else {
+            panelHistU.style.display = 'none';
+        }
+    }
     // Tarjetas USD - cards
     let totTU=0;
     if(!listaTarjetasUSD.length){ tTU.innerHTML='<p style="color:#94a3b8;padding:12px;text-align:center;">Sin tarjetas USD.</p>'; }
@@ -3628,7 +3715,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.3';
+const APP_VERSION = 'v3.8.4';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3707,7 +3794,7 @@ function driveSubir() {
         driveEnsureFolder(token, folderId=>{
             const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
             const nombre='backup_finanzas_'+ts+'.json';
-            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD});
+            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD});
             const meta=JSON.stringify({name:nombre,parents:[folderId]});
             const form=new FormData();
             form.append('metadata',new Blob([meta],{type:'application/json'}));
