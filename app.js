@@ -3850,7 +3850,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.8';
+const APP_VERSION = 'v3.8.9';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -5530,7 +5530,7 @@ function cfAbrirModalGasto(datos) {
     const opsBancosMedio = listaBancosActual.map(b => `<option value="${b.id}" ${b.id === medioPagoId ? 'selected' : ''}>🏦 ${b.nombre}</option>`).join('');
     const opsTarjetas = listaTarjetasActual.map(t => `<option value="${t.id}" ${t.id === medioPagoId ? 'selected' : ''}>💳 ${t.nombre}</option>`).join('');
     const listaRubrosActual = esUSD ? listaRubrosUSD : listaRubros;
-    const opsRubros = listaRubrosActual.map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
+    const opsRubros = [...listaRubrosActual].sort((a,b) => a.localeCompare(b,'es')).map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
     const fechaHoy = cfFechaLocal();
     const overlay = document.createElement('div');
     overlay.id = 'cf-gmail-overlay';
