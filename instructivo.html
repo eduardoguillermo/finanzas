@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.11</p>
+    <p>Manual de usuario · v3.8.12</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.11</span>
+      <span class="badge badge-green">✓ v3.8.12</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -357,7 +357,7 @@
     <table>
       <tr><th>Pestaña</th><th>Contenido</th></tr>
       <tr><td>📊 Mes Actual</td><td>Vista principal con todos los paneles del período en curso</td></tr>
-      <tr><td>🏦 Movimientos</td><td>Detalle diario de movimientos y saldo por cuenta, mes a mes</td></tr>
+      <tr><td>🏦 Movimientos</td><td>Detalle diario de movimientos y saldo por cuenta o tarjeta, mes a mes (ARS y USD)</td></tr>
       <tr><td>🎯 Presupuesto</td><td>Límites de gasto por rubro, ingresos del mes y balance superávit/déficit</td></tr>
       <tr><td>💵 Dólares</td><td>Cuentas, tarjetas, servicios y gastos en USD</td></tr>
       <tr><td>📈 Reportes</td><td>Gráficos y resúmenes del período actual</td></tr>
@@ -484,17 +484,20 @@
     <div class="section-header">
       <span class="section-icon">🏦</span>
       <div>
-        <div class="section-title">Movimientos Bancarios</div>
-        <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta, en pesos o en dólares <span class="badge badge-purple">Nuevo</span></div>
+        <div class="section-title">Movimientos</div>
+        <div class="section-subtitle">Saldo al inicio del mes y detalle diario por cuenta o tarjeta, en pesos o en dólares <span class="badge badge-purple">Nuevo</span></div>
       </div>
     </div>
-    <p>La pestaña Movimientos muestra, cuenta por cuenta, cómo se fue moviendo el saldo a lo largo de un mes: desde qué saldo arrancó hasta el saldo de cierre (o el actual si es el mes en curso), con el detalle día por día de qué lo movió.</p>
+    <p>La pestaña Movimientos muestra cómo se fue moviendo el saldo (o la deuda, si es una tarjeta) a lo largo de un mes: desde el valor con que arrancó hasta el de cierre (o el actual si es el mes en curso), con el detalle día por día de qué lo movió.</p>
 
-    <h2>Moneda: ARS o USD <span class="badge badge-purple">Nuevo</span></h2>
-    <p>Si tenés cuentas cargadas en ambas monedas, arriba de todo aparece un selector 🏦 ARS / 💵 USD para elegir qué grupo de cuentas mirar. Si solo tenés cuentas en una moneda, la pestaña muestra directamente esa sin mostrar el selector.</p>
+    <h2>Tipo: Cuentas o Tarjetas <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Si tenés tanto cuentas bancarias/efectivo como tarjetas de crédito cargadas, arriba de todo aparece un selector 🏦 Cuentas / 💳 Tarjetas para elegir qué tipo de objeto mirar. Si solo tenés uno de los dos, la pestaña muestra directamente ese sin mostrar el selector.</p>
 
-    <h2>Cómo se arma</h2>
-    <p>Elegís una cuenta en el primer selector y un mes en el segundo. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron en el mes elegido. En pesos:</p>
+    <h2>Moneda: ARS o USD</h2>
+    <p>Debajo, si el tipo elegido tiene objetos cargados en ambas monedas, aparece un segundo selector 🏦 ARS / 💵 USD. Si solo hay una moneda para ese tipo, tampoco se muestra.</p>
+
+    <h2>Cómo se arma — Cuentas</h2>
+    <p>Elegís una cuenta en el selector de objeto y un mes en el de fecha. La app junta automáticamente todos los eventos de esa cuenta que ocurrieron en el mes elegido. En pesos:</p>
     <ul>
       <li><b>💰 Ingresos</b> — depósitos cargados con el botón "Ingreso"</li>
       <li><b>🛒 / ⬆ Gastos corrientes pagados</b> — solo si la cuenta tiene el auto-descuento activado (cuentas "líquidas")</li>
@@ -503,11 +506,20 @@
     </ul>
     <p>En dólares es análogo, con dos diferencias: todas las cuentas USD se consideran líquidas (no existe el toggle de auto-descuento en USD), y además de ingresos/gastos/transferencias se suman las <b>💱 Compras de USD</b> que tuvieron esa cuenta como destino.</p>
 
+    <h2>Cómo se arma — Tarjetas <span class="badge badge-purple">Nuevo</span></h2>
+    <p>La lógica es la misma, pero invertida: acá el valor de referencia es la <b>deuda</b>, no el disponible. Una compra <b>suma</b> a la deuda (se muestra en rojo, como "Consumo") y un pago la <b>resta</b> (se muestra en verde, como "Pago"):</p>
+    <ul>
+      <li><b>🛒 / ⬆ Consumos</b> — gastos corrientes cargados a esa tarjeta como medio de pago, con fecha</li>
+      <li><b>📋 Servicios fijos pagados</b> — con esa tarjeta como medio de pago</li>
+      <li><b>💳 Pagos</b> — pagos hechos a la tarjeta desde una cuenta, cargados con el botón "💳 Pagar"</li>
+    </ul>
+    <p>Funciona igual en ARS y en USD.</p>
+
     <h2>Meses cerrados</h2>
-    <p>El selector de mes incluye el mes actual y todos los meses ya archivados con "🔄 Abrir Nuevo Mes". Para un mes cerrado, la tabla se arma con la foto que quedó guardada al cierre de ese período — no con las listas en vivo — así que el detalle diario y el saldo de cierre siguen disponibles aunque hayan pasado varios meses.</p>
+    <p>El selector de mes incluye el mes actual y todos los meses ya archivados con "🔄 Abrir Nuevo Mes". Para un mes cerrado, la tabla se arma con la foto que quedó guardada al cierre de ese período — no con las listas en vivo — así que el detalle diario y el saldo (o deuda) de cierre siguen disponibles aunque hayan pasado varios meses. Los pagos a tarjeta no se archivan por mes (como los ingresos): siempre están disponibles y se filtran por su fecha.</p>
 
     <h2>Saldo al inicio del mes</h2>
-    <p>No es un dato que se guarde aparte: se calcula restándole al saldo de referencia del mes (el actual, o el de cierre si es un mes pasado) la suma de todos los movimientos de ese período. Por eso siempre es consistente con el saldo que corresponde a ese mes.</p>
+    <p>No es un dato que se guarde aparte: se calcula restándole al valor de referencia del mes (el actual, o el de cierre si es un mes pasado) la suma de todos los movimientos de ese período. Por eso siempre es consistente con el valor que corresponde a ese mes.</p>
 
     <h2>Lectura de la tabla</h2>
     <p>Los movimientos están agrupados por día, con el saldo acumulado al lado de cada uno para poder seguir la evolución. Las filas se muestran con fondo alternado para facilitar la lectura en pantallas anchas. En el mes actual la última fila dice "Saldo actual"; en un mes cerrado dice "Saldo al cierre".</p>
@@ -1144,6 +1156,13 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.12</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Movimientos ahora también funciona para tarjetas de crédito (ARS y USD), no solo cuentas: nuevo selector 🏦 Cuentas / 💳 Tarjetas. Para tarjetas, el valor de referencia es la deuda: los consumos la aumentan (rojo) y los pagos la reducen (verde)</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.11</span><span class="changelog-tag tag-feature">feature</span></div>
