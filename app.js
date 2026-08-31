@@ -16,7 +16,8 @@ const K = {
     ingresosUSD:'f_ingresosUSD_v1',
     ingresosPresup:'f_ingresosPresup_v1',
     pagosTarjeta:'f_pagosTarjeta_v1',
-    pagosTarjetaUSD:'f_pagosTarjetaUSD_v1'
+    pagosTarjetaUSD:'f_pagosTarjetaUSD_v1',
+    cotizacionesManual:'f_cotizacionesManual_v1'
 };
 let listaRubros        = leer(K.rubros)        || ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
 let listaBancos        = leer(K.bancos)        || [];
@@ -69,7 +70,7 @@ function cfSnapshotData() {
         listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,
         listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,
         listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,
-        listaPagosTarjeta,listaPagosTarjetaUSD});
+        listaPagosTarjeta,listaPagosTarjetaUSD,cotizacionesManual});
 }
 function cfHacerSnapshot(manual=false) {
     try {
@@ -122,6 +123,7 @@ function cfRestaurarSnapshot(ts) {
         if(d.listaRubrosUSD)     listaRubrosUSD     = d.listaRubrosUSD;
         if(d.listaIngresos)      listaIngresos      = d.listaIngresos;
         if(d.listaIngresosUSD)   listaIngresosUSD   = d.listaIngresosUSD;
+        if(d.cotizacionesManual) cotizacionesManual = d.cotizacionesManual;
         if(d.listaIngresosPresup) listaIngresosPresup = d.listaIngresosPresup;
         if(d.listaPagosTarjeta)  listaPagosTarjeta  = d.listaPagosTarjeta;
         if(d.listaPagosTarjetaUSD) listaPagosTarjetaUSD = d.listaPagosTarjetaUSD;
@@ -202,6 +204,7 @@ function guardar() {
         localStorage.setItem(K.ingresosPresup, JSON.stringify(listaIngresosPresup));
         localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
         localStorage.setItem(K.pagosTarjetaUSD,JSON.stringify(listaPagosTarjetaUSD));
+        localStorage.setItem(K.cotizacionesManual,JSON.stringify(cotizacionesManual));
         syncDebounce();
     } catch(e) {
         if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
@@ -265,7 +268,7 @@ async function syncSilencioso() {
     try {
         const groqKey = localStorage.getItem('groq_api_key')||'';
         const gmailProcessed = cfGmailGetProcessed();
-        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,groqKey,gmailProcessed});
+        const data = JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,cotizacionesManual,groqKey,gmailProcessed});
 
         const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
 
@@ -452,7 +455,7 @@ async function cfBackupEnCarpeta(handle) {
                         listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,
                         listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,
                         listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,
-                        listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD};
+                        listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,cotizacionesManual};
         const fileHandle = await handle.getFileHandle(nombre, { create: true });
         const writable   = await fileHandle.createWritable();
         await writable.write(JSON.stringify(data, null, 2));
@@ -1856,7 +1859,7 @@ function nuevoMes(opts) {
 // ═══════════════════════════════════════════
 function exportar() {
     const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
-    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,gmailProcessed:cfGmailGetProcessed()};
+    const data={listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,cotizacionesManual,gmailProcessed:cfGmailGetProcessed()};
     const lnk=document.createElement('a'); lnk.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data));
     lnk.download='backup_finanzas_'+ts+'.json'; document.body.appendChild(lnk); lnk.click(); lnk.remove();
 }
@@ -1883,6 +1886,7 @@ function cargarDatos(res) {
     if(res.listaRubrosUSD)       listaRubrosUSD       = res.listaRubrosUSD;
     if(res.listaIngresos)        listaIngresos        = res.listaIngresos;
     if(res.listaIngresosUSD)     listaIngresosUSD     = res.listaIngresosUSD;
+    if(res.cotizacionesManual)   cotizacionesManual   = res.cotizacionesManual;
     if(res.listaIngresosPresup)  listaIngresosPresup  = res.listaIngresosPresup;
     if(res.listaPagosTarjeta)    listaPagosTarjeta    = res.listaPagosTarjeta;
     if(res.listaPagosTarjetaUSD) listaPagosTarjetaUSD = res.listaPagosTarjetaUSD;
@@ -3318,6 +3322,8 @@ function roCorrientes(db) {
 //  INVERSIONES
 // ═══════════════════════════════════════════
 let _cotizaciones = {};
+let _cotizacionesError = {}; // ticker -> true si la última actualización falló (para ofrecer carga manual)
+let cotizacionesManual = leer(K.cotizacionesManual) || {}; // ticker -> {precio, fecha} — override manual cuando los proxies fallan
 let _dolarOficial = 0;
 let _ypfCache = null; // {precioARS, dolar, horaStr, fuera} del último fetch exitoso
 
@@ -3474,7 +3480,8 @@ function renderAcciones() {
         return;
     }
     listaAcciones.forEach(function(a) {
-        const cot = _cotizaciones[a.ticker] || {};
+        const manualEntry = cotizacionesManual[a.ticker];
+        const cot = _cotizaciones[a.ticker] || (manualEntry ? {precio: manualEntry.precio, variacion: 0, historia: [], manual: true} : {});
         const precio = cot.precio || 0, variacion = cot.variacion || 0;
         const esLocal = a.ticker.toUpperCase().endsWith('.BA');
         const tc = _dolarOficial > 0 ? _dolarOficial : tipoCambio;
@@ -3531,13 +3538,43 @@ function renderAcciones() {
         celdaVar.appendChild(lVar); celdaVar.appendChild(vVar);
 
         row2.appendChild(celdaCant);
-        const precioStr = precio ? (esLocal ? fmt(precio) : fmtUSD(precio)) : 'Actualizando...';
+        const precioStr = precio ? (esLocal ? fmt(precio) : fmtUSD(precio)) + (cot.manual ? ' ✏️' : '') : 'Actualizando...';
         const valStr    = valuacionARS ? fmt(valuacionARS) + (esLocal ? '' : ' ≈') : '—';
-        row2.appendChild(mkCell('Precio', precioStr, '#1e293b'));
+        row2.appendChild(mkCell('Precio', precioStr, cot.manual ? '#b45309' : '#1e293b'));
         row2.appendChild(celdaVar);
         row2.appendChild(mkCell('Valuación (ARS)', valStr, '#6366f1'));
 
         card.appendChild(row1); card.appendChild(row2);
+
+        // Si la última actualización automática falló (o el precio es manual), ofrecemos carga manual.
+        if(_cotizacionesError[a.ticker] || cot.manual) {
+            const row3 = el('div');
+            row3.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px dashed #fbbf24;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;';
+            const aviso = el('span');
+            aviso.style.cssText = 'font-size:11px;color:#b45309;';
+            aviso.innerText = _cotizacionesError[a.ticker]
+                ? '⚠️ No se pudo actualizar automáticamente.'
+                : '✏️ Precio cargado manualmente (' + (manualEntry ? manualEntry.fecha.split('-').reverse().join('/') : '—') + ').';
+            const btnsWrap = el('div'); btnsWrap.style.cssText = 'display:flex;gap:6px;';
+            const btnManual = el('button');
+            btnManual.type = 'button';
+            btnManual.innerText = cot.manual ? '✏️ Editar' : '✏️ Ingresar manualmente';
+            btnManual.style.cssText = 'font-size:11px;padding:4px 8px;border:1px solid #fbbf24;background:#fffbeb;color:#b45309;border-radius:4px;cursor:pointer;';
+            btnManual.onclick = function(){ ingresarCotizacionManual(a.ticker); };
+            btnsWrap.appendChild(btnManual);
+            if(cot.manual) {
+                const btnQuitar = el('button');
+                btnQuitar.type = 'button';
+                btnQuitar.innerText = '✕';
+                btnQuitar.title = 'Quitar precio manual';
+                btnQuitar.style.cssText = 'font-size:11px;padding:4px 8px;border:1px solid #e2e8f0;background:white;color:#64748b;border-radius:4px;cursor:pointer;';
+                btnQuitar.onclick = function(){ borrarCotizacionManual(a.ticker); };
+                btnsWrap.appendChild(btnQuitar);
+            }
+            row3.appendChild(aviso); row3.appendChild(btnsWrap);
+            card.appendChild(row3);
+        }
+
         wrap.appendChild(card);
     });
 }
@@ -3548,7 +3585,7 @@ function calcDashInv() {
         return a + ((i.moneda==='USD') ? i.monto*tc : i.monto);
     }, 0);
     const totalAcc = listaAcciones.reduce(function(a,ac){
-        const p=(_cotizaciones[ac.ticker]||{}).precio||0;
+        const p = ((_cotizaciones[ac.ticker]||{}).precio) || ((cotizacionesManual[ac.ticker]||{}).precio) || 0;
         const esL=ac.ticker.toUpperCase().endsWith('.BA');
         const tc2=_dolarOficial>0?_dolarOficial:tipoCambio;
         return a+(esL?p*ac.cant:p*ac.cant*tc2);
@@ -3561,14 +3598,15 @@ function calcDashInv() {
     setTxt('inv-total-acciones',fmt(totalAcc));
 }
 
-// Cadena de proxies CORS con fallback: si uno falla (403/429/503/caído), prueba el siguiente.
-// Los proxies gratuitos son inestables por naturaleza (rate limits, caídas temporales),
-// así que en vez de depender de uno solo, probamos varios en orden.
-// Cada intento tiene timeout propio para no colgarse esperando un proxy caído.
+// Proxies CORS que se prueban en simultáneo (Promise.any, ver fetchViaProxyJSON) — nos quedamos
+// con el primero que responda bien. Son servicios gratuitos de terceros, así que van cambiando:
+// corsproxy.io dejó de funcionar sin API key propia (ahora devuelve 401).
+// corsfix.com se probó y se descartó: para sitios que no son localhost exige whitelistear el
+// dominio en su panel — sin eso devuelve 403 siempre, no es un fallo intermitente.
 const CORS_PROXIES = [
     function(url){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url); },
     function(url){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url); },
-    function(url){ return 'https://corsproxy.io/?url='+encodeURIComponent(url); }
+    function(url){ return 'https://thingproxy.freeboard.io/fetch/'+url; }
 ];
 const CORS_PROXY_TIMEOUT_MS = 8000;
 
@@ -3662,8 +3700,12 @@ async function actualizarInversiones(force) {
     await Promise.allSettled(listaAcciones.map(function(acc) {
         return fetchCotizacionTicker(acc).then(function(cot) {
             _cotizaciones[acc.ticker] = cot;
+            _cotizacionesError[acc.ticker] = false;
+            // Si había un valor manual cargado por una falla anterior, ya no hace falta: tenemos dato real.
+            if(cotizacionesManual[acc.ticker]) { delete cotizacionesManual[acc.ticker]; guardar(); }
         }).catch(function(e) {
             console.warn('Error cotización '+acc.ticker+':', e);
+            _cotizacionesError[acc.ticker] = true;
         });
     }));
 
@@ -3686,6 +3728,29 @@ async function actualizarInversiones(force) {
     }
 
     if(btn){ btn.disabled=false; btn.innerText='🔄 Actualizar cotizaciones'; }
+}
+
+// ── Ingreso manual de cotización (fallback cuando fallan los proxies CORS) ──
+function ingresarCotizacionManual(ticker) {
+    const actual = cotizacionesManual[ticker] ? cotizacionesManual[ticker].precio : ((_cotizaciones[ticker]||{}).precio || '');
+    const val = prompt('Ingresá manualmente el precio de '+ticker+' (se usa hasta que la actualización automática vuelva a funcionar):', actual);
+    if(val === null) return; // canceló
+    const precio = parseFloat(String(val).replace(',', '.'));
+    if(!precio || precio <= 0) { alert('Ingresá un número mayor a cero.'); return; }
+    cotizacionesManual[ticker] = { precio: precio, fecha: cfFechaLocal() };
+    _cotizacionesError[ticker] = false; // ya no hace falta seguir mostrando el aviso de error
+    guardar();
+    renderAcciones();
+    calcDashInv();
+    renderGraficosInv();
+}
+function borrarCotizacionManual(ticker) {
+    if(!cotizacionesManual[ticker]) return;
+    delete cotizacionesManual[ticker];
+    guardar();
+    renderAcciones();
+    calcDashInv();
+    renderGraficosInv();
 }
 
 function renderGraficosInv() {
@@ -3850,7 +3915,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.9';
+const APP_VERSION = 'v3.8.11';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -3929,7 +3994,7 @@ function driveSubir() {
         driveEnsureFolder(token, folderId=>{
             const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
             const nombre='backup_finanzas_'+ts+'.json';
-            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD});
+            const data=JSON.stringify({listaBancos,listaTarjetas,listaServicios,listaCorrientes,listaRubros,listaTransferencias,listaTransferenciasUSD,listaComprasUSD,listaCuotas,historicoMeses,listaCuentasUSD,listaTarjetasUSD,listaServiciosUSD,listaCorrientesUSD,tipoCambio,listaInstrumentos,listaAcciones,listaPresupRubros,listaPresupRubrosUSD,listaRubrosUSD,listaIngresos,listaIngresosUSD,listaIngresosPresup,listaPagosTarjeta,listaPagosTarjetaUSD,cotizacionesManual});
             const meta=JSON.stringify({name:nombre,parents:[folderId]});
             const form=new FormData();
             form.append('metadata',new Blob([meta],{type:'application/json'}));
@@ -5530,7 +5595,7 @@ function cfAbrirModalGasto(datos) {
     const opsBancosMedio = listaBancosActual.map(b => `<option value="${b.id}" ${b.id === medioPagoId ? 'selected' : ''}>🏦 ${b.nombre}</option>`).join('');
     const opsTarjetas = listaTarjetasActual.map(t => `<option value="${t.id}" ${t.id === medioPagoId ? 'selected' : ''}>💳 ${t.nombre}</option>`).join('');
     const listaRubrosActual = esUSD ? listaRubrosUSD : listaRubros;
-    const opsRubros = [...listaRubrosActual].sort((a,b) => a.localeCompare(b,'es')).map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
+    const opsRubros = listaRubrosActual.map(r => `<option value="${r}" ${r === datos.rubroSugerido ? 'selected' : ''}>${r}</option>`).join('');
     const fechaHoy = cfFechaLocal();
     const overlay = document.createElement('div');
     overlay.id = 'cf-gmail-overlay';
