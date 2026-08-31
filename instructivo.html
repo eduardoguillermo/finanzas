@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.8</p>
+    <p>Manual de usuario · v3.8.11</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.8</span>
+      <span class="badge badge-green">✓ v3.8.11</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -802,6 +802,10 @@
     <p>La app tiene integración especial con la cotización de YPF.BA. Se puede registrar la cantidad de acciones poseídas y la app calcula automáticamente el valor del portfolio en USD y en pesos.</p>
 
     <div class="info">ℹ️ La cotización de YPF.BA se actualiza automáticamente al abrir la pestaña y cada cierto tiempo. También se puede actualizar manualmente haciendo clic en el valor.</div>
+
+    <h2>Si falla la actualización automática <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Las cotizaciones se traen de Yahoo Finance a través de proxies CORS gratuitos de terceros, que a veces fallan o quedan caídos. Cuando eso pasa, la tarjeta de esa acción muestra un aviso "⚠️ No se pudo actualizar automáticamente" con un botón <strong>✏️ Ingresar manualmente</strong>.</p>
+    <p>Al tocarlo, se pide el precio actual y queda guardado como valor manual (marcado con ✏️ junto al precio) hasta que la próxima actualización automática consiga traer un valor real — ahí se descarta solo. También se puede editar o quitar el valor manual en cualquier momento desde los botones de esa misma tarjeta.</p>
   </section>
 
   <!-- ANUAL -->
@@ -1140,6 +1144,14 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.11</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Ingreso manual de cotización: si la actualización automática de una acción falla, ahora aparece un botón "✏️ Ingresar manualmente" en su tarjeta para cargar el precio a mano. Se guarda y se usa hasta que la actualización automática vuelva a traer un valor real (ahí se descarta solo)</li>
+        <li>Se sacó corsproxy.io de la lista de proxies (empezó a exigir API key propia, devolvía 401) y se probó y descartó corsfix.com (403 sin whitelistear el dominio) — queda allorigins + codetabs + thingproxy</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.8</span><span class="changelog-tag tag-fix">fix</span></div>
