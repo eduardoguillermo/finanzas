@@ -49,6 +49,9 @@ let movBancoSelId = null; // cuenta bancaria seleccionada en la pestaña Movimie
 let movMesSelYM = null; // mes (YYYY-MM) seleccionado en la pestaña Movimientos
 let movMoneda = 'ARS'; // 'ARS' | 'USD' — moneda seleccionada en la pestaña Movimientos
 let movCuentaUSDSelId = null; // cuenta USD seleccionada en la pestaña Movimientos
+let movTipo = 'cuenta'; // 'cuenta' | 'tarjeta' — tipo de objeto seleccionado en la pestaña Movimientos
+let movTarjetaSelId = null; // tarjeta ARS seleccionada
+let movTarjetaUSDSelId = null; // tarjeta USD seleccionada
 let filtroCorrientes = '';
 let filtroClase = '';
 let _syncTimer = null;
@@ -2049,31 +2052,119 @@ function computeMovimientosBancoUSD(cuentaId, mesYM) {
     return mov;
 }
 
+// ── Tarjetas de crédito (ARS): misma lógica que las cuentas, pero el saldo es deuda, no
+// disponible — una compra SUMA al saldo (más deuda) y un pago RESTA. Los pagos a tarjeta
+// (listaPagosTarjeta) nunca se archivan por mes, como listaIngresos: siempre están en la lista
+// viva y se filtran por fecha directamente.
+function getSaldoTarjetaMes(tarjetaId, mesYM) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    if (!mesYM || mesYM === mesActualYM) {
+        const t = listaTarjetas.find(x => x.id === tarjetaId);
+        return t ? t.saldo : 0;
+    }
+    const entry = historicoMesPorYM(mesYM);
+    if (!entry) return null;
+    const t = (entry.datos.listaTarjetas || []).find(x => x.id === tarjetaId);
+    return t ? t.saldo : null;
+}
+function computeMovimientosTarjeta(tarjetaId, mesYM) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const targetYM = mesYM || mesActualYM;
+    const esDelMes = fecha => (fecha || '').slice(0,7) === targetYM;
+    const esMesActual = targetYM === mesActualYM;
+    let fCorrientes = listaCorrientes, fServicios = listaServicios;
+    if (!esMesActual) {
+        const entry = historicoMesPorYM(targetYM);
+        fCorrientes = (entry && entry.datos.listaCorrientes) || [];
+        fServicios = (entry && entry.datos.listaServicios) || [];
+    }
+    const mov = [];
+    fCorrientes.forEach(c => { if (c.medioPagoId === tarjetaId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? -c.monto : c.monto, orden: 1 }); });
+    fServicios.forEach(s => { if (s.medioPagoId === tarjetaId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: s.pagado, orden: 1 }); });
+    listaPagosTarjeta.forEach(p => { if (p.tarjetaId === tarjetaId && esDelMes(p.fecha)) mov.push({ fecha: p.fecha || '', detalle: '💳 Pago desde ' + (p.bancoNombre || '?'), monto: -p.monto, orden: 2 }); });
+    mov.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden - b.orden));
+    return mov;
+}
+
+// ── Tarjetas de crédito (USD): mismo criterio que la versión ARS.
+function getSaldoTarjetaMesUSD(tarjetaId, mesYM) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    if (!mesYM || mesYM === mesActualYM) {
+        const t = listaTarjetasUSD.find(x => x.id === tarjetaId);
+        return t ? t.saldo : 0;
+    }
+    const entry = historicoMesPorYM(mesYM);
+    if (!entry) return null;
+    const t = (entry.datos.listaTarjetasUSD || []).find(x => x.id === tarjetaId);
+    return t ? t.saldo : null;
+}
+function computeMovimientosTarjetaUSD(tarjetaId, mesYM) {
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const targetYM = mesYM || mesActualYM;
+    const esDelMes = fecha => (fecha || '').slice(0,7) === targetYM;
+    const esMesActual = targetYM === mesActualYM;
+    let fCorrientes = listaCorrientesUSD, fServicios = listaServiciosUSD;
+    if (!esMesActual) {
+        const entry = historicoMesPorYM(targetYM);
+        fCorrientes = (entry && entry.datos.listaCorrientesUSD) || [];
+        fServicios = (entry && entry.datos.listaServiciosUSD) || [];
+    }
+    const mov = [];
+    fCorrientes.forEach(c => { if (c.medioPagoId === tarjetaId && c.fechaPago && esDelMes(c.fechaPago)) mov.push({ fecha: c.fechaPago, detalle: (c.esIngreso ? '⬆ ' : '🛒 ') + c.rubro + (c.detalle ? ' — ' + c.detalle : ''), monto: c.esIngreso ? -c.monto : c.monto, orden: 1 }); });
+    fServicios.forEach(s => { if (s.medioPagoId === tarjetaId && s.pagado > 0 && s.fPago && esDelMes(s.fPago)) mov.push({ fecha: s.fPago, detalle: '📋 ' + s.nombre, monto: s.pagado, orden: 1 }); });
+    listaPagosTarjetaUSD.forEach(p => { if (p.tarjetaId === tarjetaId && esDelMes(p.fecha)) mov.push({ fecha: p.fecha || '', detalle: '💳 Pago desde ' + (p.cuentaNombre || '?'), monto: -p.monto, orden: 2 }); });
+    mov.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.orden - b.orden));
+    return mov;
+}
+
 function buildMovimientos() {
     const wrap = el('div', 'container'); wrap.style.paddingTop = '20px';
     const hdr = el('div'); hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #0284c7;';
-    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🏦 Movimientos Bancarios' + btnAyuda('movimientos') + '</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Saldo al inicio del mes y movimientos diarios por cuenta</p></div>';
+    hdr.innerHTML = '<div><h2 style="margin:0;font-size:22px;color:#1e293b;">🏦 Movimientos' + btnAyuda('movimientos') + '</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">Saldo al inicio del mes y movimientos diarios por cuenta o tarjeta</p></div>';
     wrap.appendChild(hdr);
 
-    if (!listaBancos.length && !listaCuentasUSD.length) {
+    const hayCuentas = listaBancos.length || listaCuentasUSD.length;
+    const hayTarjetas = listaTarjetas.length || listaTarjetasUSD.length;
+    if (!hayCuentas && !hayTarjetas) {
         const vacio = el('div'); vacio.style.cssText = 'background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;font-size:13px;';
-        vacio.innerText = 'No hay cuentas cargadas todavía.';
+        vacio.innerText = 'No hay cuentas ni tarjetas cargadas todavía.';
         wrap.appendChild(vacio);
         return wrap;
     }
-    // Si la moneda seleccionada no tiene cuentas, volvemos a la que sí tenga.
-    if (movMoneda === 'ARS' && !listaBancos.length) movMoneda = 'USD';
-    if (movMoneda === 'USD' && !listaCuentasUSD.length) movMoneda = 'ARS';
+    // Si el tipo/moneda seleccionados no tienen nada cargado, buscamos la primera combinación que sí tenga.
+    if (movTipo === 'cuenta' && !hayCuentas) movTipo = 'tarjeta';
+    if (movTipo === 'tarjeta' && !hayTarjetas) movTipo = 'cuenta';
+    const listaARSActual = movTipo === 'cuenta' ? listaBancos : listaTarjetas;
+    const listaUSDActual = movTipo === 'cuenta' ? listaCuentasUSD : listaTarjetasUSD;
+    if (movMoneda === 'ARS' && !listaARSActual.length) movMoneda = 'USD';
+    if (movMoneda === 'USD' && !listaUSDActual.length) movMoneda = 'ARS';
 
     if (!movBancoSelId || !listaBancos.some(b => b.id === movBancoSelId)) movBancoSelId = listaBancos[0]?.id || null;
     if (!movCuentaUSDSelId || !listaCuentasUSD.some(c => c.id === movCuentaUSDSelId)) movCuentaUSDSelId = listaCuentasUSD[0]?.id || null;
+    if (!movTarjetaSelId || !listaTarjetas.some(t => t.id === movTarjetaSelId)) movTarjetaSelId = listaTarjetas[0]?.id || null;
+    if (!movTarjetaUSDSelId || !listaTarjetasUSD.some(t => t.id === movTarjetaUSDSelId)) movTarjetaUSDSelId = listaTarjetasUSD[0]?.id || null;
     const mesActualYM = cfFechaLocal().slice(0,7);
     if (!movMesSelYM) movMesSelYM = mesActualYM;
 
     const selRow = el('div'); selRow.style.cssText = 'margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;';
 
-    // Toggle de moneda (solo si hay cuentas en ambas monedas — si no, no tiene sentido elegir)
-    if (listaBancos.length && listaCuentasUSD.length) {
+    // Toggle de tipo (solo si hay cuentas Y tarjetas cargadas — si no, no tiene sentido elegir)
+    if (hayCuentas && hayTarjetas) {
+        const togTipo = el('div'); togTipo.style.cssText = 'display:flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;';
+        const btnC = el('button'); btnC.type = 'button'; btnC.innerText = '🏦 Cuentas';
+        const btnT = el('button'); btnT.type = 'button'; btnT.innerText = '💳 Tarjetas';
+        const estiloOnT = 'padding:8px 14px;font-size:13px;font-weight:bold;border:none;cursor:pointer;background:#334155;color:white;';
+        const estiloOffT = 'padding:8px 14px;font-size:13px;font-weight:bold;border:none;cursor:pointer;background:white;color:#64748b;';
+        btnC.style.cssText = movTipo === 'cuenta' ? estiloOnT : estiloOffT;
+        btnT.style.cssText = movTipo === 'tarjeta' ? estiloOnT.replace('#334155','#a855f7') : estiloOffT;
+        btnC.onclick = () => { movTipo = 'cuenta'; renderTabs(); renderContenido(); };
+        btnT.onclick = () => { movTipo = 'tarjeta'; renderTabs(); renderContenido(); };
+        togTipo.appendChild(btnC); togTipo.appendChild(btnT);
+        selRow.appendChild(togTipo);
+    }
+
+    // Toggle de moneda (solo si el tipo elegido tiene cuentas/tarjetas en ambas monedas)
+    if (listaARSActual.length && listaUSDActual.length) {
         const tog = el('div'); tog.style.cssText = 'display:flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;';
         const btnA = el('button'); btnA.type = 'button'; btnA.innerText = '🏦 ARS';
         const btnU = el('button'); btnU.type = 'button'; btnU.innerText = '💵 USD';
@@ -2088,12 +2179,22 @@ function buildMovimientos() {
     }
 
     const sel = el('select'); sel.id = 'mov-banco-sel'; sel.className = 'inp'; sel.style.cssText = 'max-width:280px;font-size:13px;padding:8px 10px;';
-    if (movMoneda === 'ARS') {
-        listaBancos.forEach(b => addOpt(sel, b.id, '🏦 ' + b.nombre, b.id === movBancoSelId));
-        sel.onchange = e => { movBancoSelId = e.target.value; renderMovimientosDetalle(); };
+    if (movTipo === 'cuenta') {
+        if (movMoneda === 'ARS') {
+            listaBancos.forEach(b => addOpt(sel, b.id, '🏦 ' + b.nombre, b.id === movBancoSelId));
+            sel.onchange = e => { movBancoSelId = e.target.value; renderMovimientosDetalle(); };
+        } else {
+            listaCuentasUSD.forEach(c => addOpt(sel, c.id, '💵 ' + c.nombre, c.id === movCuentaUSDSelId));
+            sel.onchange = e => { movCuentaUSDSelId = e.target.value; renderMovimientosDetalle(); };
+        }
     } else {
-        listaCuentasUSD.forEach(c => addOpt(sel, c.id, '💵 ' + c.nombre, c.id === movCuentaUSDSelId));
-        sel.onchange = e => { movCuentaUSDSelId = e.target.value; renderMovimientosDetalle(); };
+        if (movMoneda === 'ARS') {
+            listaTarjetas.forEach(t => addOpt(sel, t.id, '💳 ' + t.nombre, t.id === movTarjetaSelId));
+            sel.onchange = e => { movTarjetaSelId = e.target.value; renderMovimientosDetalle(); };
+        } else {
+            listaTarjetasUSD.forEach(t => addOpt(sel, t.id, '💳 ' + t.nombre, t.id === movTarjetaUSDSelId));
+            sel.onchange = e => { movTarjetaUSDSelId = e.target.value; renderMovimientosDetalle(); };
+        }
     }
     selRow.appendChild(sel);
 
@@ -2117,6 +2218,26 @@ function buildMovimientos() {
 }
 
 function renderMovimientosDetalle() {
+    if (movTipo === 'tarjeta') {
+        if (movMoneda === 'USD') return renderMovimientosDetalleGenerico({
+            cuentaId: movTarjetaUSDSelId, listaCuentas: listaTarjetasUSD,
+            getSaldo: getSaldoTarjetaMesUSD, computeMov: computeMovimientosTarjetaUSD,
+            formatFn: fmtUSD, colorTema: '#a855f7', bgTema: '#faf5ff', borderTema: '#e9d5ff',
+            vacioMsg: 'No hay tarjetas en esta moneda.',
+            lblSaldoInicio: 'Deuda inicio de mes', lblActualPrefix: 'Deuda',
+            lblPositivo: 'Consumos del mes', colorPositivo: '#dc2626', bgPositivo: '#fef2f2', borderPositivo: '#fecaca',
+            lblNegativo: 'Pagos del mes', colorNegativo: '#16a34a', bgNegativo: '#f0fdf4', borderNegativo: '#bbf7d0'
+        });
+        return renderMovimientosDetalleGenerico({
+            cuentaId: movTarjetaSelId, listaCuentas: listaTarjetas,
+            getSaldo: getSaldoTarjetaMes, computeMov: computeMovimientosTarjeta,
+            formatFn: fmt, colorTema: '#a855f7', bgTema: '#faf5ff', borderTema: '#e9d5ff',
+            vacioMsg: 'No hay tarjetas en esta moneda.',
+            lblSaldoInicio: 'Deuda inicio de mes', lblActualPrefix: 'Deuda',
+            lblPositivo: 'Consumos del mes', colorPositivo: '#dc2626', bgPositivo: '#fef2f2', borderPositivo: '#fecaca',
+            lblNegativo: 'Pagos del mes', colorNegativo: '#16a34a', bgNegativo: '#f0fdf4', borderNegativo: '#bbf7d0'
+        });
+    }
     if (movMoneda === 'USD') return renderMovimientosDetalleGenerico({
         cuentaId: movCuentaUSDSelId, listaCuentas: listaCuentasUSD,
         getSaldo: getSaldoBancoMesUSD, computeMov: computeMovimientosBancoUSD,
@@ -2133,7 +2254,7 @@ function renderMovimientosDetalleGenerico(cfg) {
     const det = document.getElementById('mov-detalle');
     if (!det) return;
     const cuenta = cfg.listaCuentas.find(c => c.id === cfg.cuentaId);
-    if (!cuenta) { det.innerHTML = '<div style="background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:13px;">No hay cuentas en esta moneda.</div>'; return; }
+    if (!cuenta) { det.innerHTML = '<div style="background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:13px;">' + (cfg.vacioMsg || 'No hay cuentas en esta moneda.') + '</div>'; return; }
 
     const mesActualYM = cfFechaLocal().slice(0,7);
     const targetYM = movMesSelYM || mesActualYM;
@@ -2151,12 +2272,21 @@ function renderMovimientosDetalleGenerico(cfg) {
     const saldoInicio = Math.round((saldoRef - totalMov) * 100) / 100;
     const totalIngresos = mov.filter(m => m.monto > 0).reduce((a, m) => a + m.monto, 0);
     const totalEgresos = mov.filter(m => m.monto < 0).reduce((a, m) => a + m.monto, 0);
-    const lblSaldoActual = esMesActual ? 'Saldo actual' : 'Saldo al cierre';
+    const lblSaldoInicio  = cfg.lblSaldoInicio  || 'Saldo inicio de mes';
+    const lblPositivo     = cfg.lblPositivo     || 'Ingresos del mes';
+    const lblNegativo     = cfg.lblNegativo     || 'Egresos del mes';
+    const colorPositivo   = cfg.colorPositivo   || '#16a34a';
+    const bgPositivo      = cfg.bgPositivo      || '#f0fdf4';
+    const borderPositivo  = cfg.borderPositivo  || '#bbf7d0';
+    const colorNegativo   = cfg.colorNegativo   || '#dc2626';
+    const bgNegativo      = cfg.bgNegativo      || '#fef2f2';
+    const borderNegativo  = cfg.borderNegativo  || '#fecaca';
+    const lblSaldoActual = (esMesActual ? (cfg.lblActualPrefix || 'Saldo') + ' actual' : (cfg.lblActualPrefix || 'Saldo') + ' al cierre');
 
     let cards = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
-    cards += '<div style="background:white;border:1px solid #cbd5e1;border-top:4px solid #64748b;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Saldo inicio de mes</span><br><span style="font-size:20px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</span></div>';
-    cards += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-top:4px solid #16a34a;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#16a34a;text-transform:uppercase;">Ingresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#16a34a;">+' + fmt2(totalIngresos) + '</span></div>';
-    cards += '<div style="background:#fef2f2;border:1px solid #fecaca;border-top:4px solid #dc2626;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#dc2626;text-transform:uppercase;">Egresos del mes</span><br><span style="font-size:20px;font-weight:bold;color:#dc2626;">' + fmt2(totalEgresos) + '</span></div>';
+    cards += '<div style="background:white;border:1px solid #cbd5e1;border-top:4px solid #64748b;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">' + lblSaldoInicio + '</span><br><span style="font-size:20px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</span></div>';
+    cards += '<div style="background:' + bgPositivo + ';border:1px solid ' + borderPositivo + ';border-top:4px solid ' + colorPositivo + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + colorPositivo + ';text-transform:uppercase;">' + lblPositivo + '</span><br><span style="font-size:20px;font-weight:bold;color:' + colorPositivo + ';">+' + fmt2(totalIngresos) + '</span></div>';
+    cards += '<div style="background:' + bgNegativo + ';border:1px solid ' + borderNegativo + ';border-top:4px solid ' + colorNegativo + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + colorNegativo + ';text-transform:uppercase;">' + lblNegativo + '</span><br><span style="font-size:20px;font-weight:bold;color:' + colorNegativo + ';">' + fmt2(totalEgresos) + '</span></div>';
     cards += '<div style="background:' + cfg.bgTema + ';border:1px solid ' + cfg.borderTema + ';border-top:4px solid ' + cfg.colorTema + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';text-transform:uppercase;">' + lblSaldoActual + '</span><br><span style="font-size:20px;font-weight:bold;color:' + cfg.colorTema + ';">' + fmt2(saldoRef) + '</span></div>';
     cards += '</div>';
 
@@ -2168,7 +2298,7 @@ function renderMovimientosDetalleGenerico(cfg) {
         let running = saldoInicio;
         let fechaAnterior = null;
         let filaIdx = 0;
-        filas += '<tr style="background:#f8fafc;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#64748b;">Saldo al inicio del mes</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</td></tr>';
+        filas += '<tr style="background:#f8fafc;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#64748b;">' + lblSaldoInicio + '</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</td></tr>';
         mov.forEach(m => {
             running = Math.round((running + m.monto) * 100) / 100;
             const fechaLbl = m.fecha ? m.fecha.split('-').reverse().join('/') : '—';
@@ -2176,7 +2306,7 @@ function renderMovimientosDetalleGenerico(cfg) {
                 filas += '<tr><td colspan="3" style="padding:10px 4px 2px;font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';border-top:1px solid #e2e8f0;">📅 ' + fechaLbl + '</td></tr>';
                 fechaAnterior = m.fecha;
             }
-            const colorMonto = m.monto >= 0 ? '#16a34a' : '#dc2626';
+            const colorMonto = m.monto >= 0 ? colorPositivo : colorNegativo;
             const signo = m.monto >= 0 ? '+' : '';
             const bgFila = (filaIdx % 2 === 0) ? '#ffffff' : '#cbd5e1';
             filaIdx++;
@@ -3915,7 +4045,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.11';
+const APP_VERSION = 'v3.8.12';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
