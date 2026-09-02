@@ -4045,7 +4045,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.12';
+const APP_VERSION = 'v3.8.13';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4275,12 +4275,42 @@ async function actualizarYPF() {
         const horaStr = ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
         _ypfCache = {precioARS, dolar, horaStr, fuera: !esHorario};
         _ypfSetUI(precioARS, dolar, horaStr, !esHorario, ypfAcc ? ypfAcc.cant : undefined);
+        // Si había un valor manual cargado por una falla anterior, ya no hace falta: tenemos dato real.
+        if(cotizacionesManual[ticker]) { delete cotizacionesManual[ticker]; guardar(); }
     } catch(e) {
-        [['ypf-usd'],['ypf-usd-inv']].forEach(function(ids){
-            const u=document.getElementById(ids[0]); if(u) u.innerText='Error ↺';
-        });
         console.warn('YPF error:', e);
+        if(!_ypfAplicarManualSiHay()) {
+            [['ypf-usd'],['ypf-usd-inv']].forEach(function(ids){
+                const u=document.getElementById(ids[0]); if(u) u.innerText='Error ↺';
+            });
+            ['ypf-badge-hora','ypf-badge-hora-inv'].forEach(function(id){
+                const h=document.getElementById(id);
+                if(h) h.innerHTML='<span onclick="event.stopPropagation();ingresarCotizacionManualYPF();" style="text-decoration:underline;cursor:pointer;">✏️ Manual</span>';
+            });
+        }
     }
+}
+
+// Si hay un precio manual cargado para el ticker de YPF, lo aplica al widget y devuelve true.
+function _ypfAplicarManualSiHay() {
+    const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
+    const ticker = ypfAcc ? ypfAcc.ticker : 'YPFD.BA';
+    const manual = cotizacionesManual[ticker];
+    if(!manual) return false;
+    const dolar = _dolarOficial || tipoCambio || 0;
+    _ypfSetUI(manual.precio, dolar, '', false, ypfAcc ? ypfAcc.cant : undefined);
+    ['ypf-badge-hora','ypf-badge-hora-inv'].forEach(function(id){
+        const h=document.getElementById(id);
+        if(h) h.innerHTML='<span onclick="event.stopPropagation();ingresarCotizacionManualYPF();" style="text-decoration:underline;cursor:pointer;">✏️ Manual (' + manual.fecha.split('-').reverse().join('/') + ')</span>';
+    });
+    return true;
+}
+// Fallback manual para el widget YPF cuando fallan los proxies (llamado desde el ✏️ Manual del widget).
+function ingresarCotizacionManualYPF() {
+    const ypfAcc = listaAcciones.find(function(a){ return a.ticker && a.ticker.toUpperCase().includes('YPF'); });
+    const ticker = ypfAcc ? ypfAcc.ticker : 'YPFD.BA';
+    ingresarCotizacionManual(ticker); // guarda + refresca acciones/dash/gráficos
+    _ypfAplicarManualSiHay();
 }
 
 
