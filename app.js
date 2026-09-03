@@ -1934,7 +1934,7 @@ function modalVencimientos() {
     const proximos=listaServicios.filter(s=>{ if(!s.fVto) return false; if(s.pagado>=s.presupuesto&&s.presupuesto>0) return false; const v=new Date(s.fVto+'T00:00:00'); return v>=hoy&&v<=limite; });
     // Cuotas por terminar: 1 o 2 cuotas restantes
     const cuotasTerminando = listaCuotas.filter(c=>(c.totalCuotas-c.cuotaActual)<=2);
-    if(!proximos.length && !cuotasTerminando.length) return;
+    if(!proximos.length && !cuotasTerminando.length) { modalPresupuestoLimite(); return; }
     const fmtF=d=>d.toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'});
     const conDias2=proximos.map(s=>{ const v=new Date(s.fVto+'T00:00:00'); let dh=0; const cur=new Date(hoy); while(cur<v){cur.setDate(cur.getDate()+1);if(esHabil(cur))dh++;} return {...s,vtoDate:v,diasH:dh}; }).sort((a,b)=>a.vtoDate-b.vtoDate);
     let itemsHtml='';
@@ -1948,7 +1948,43 @@ function modalVencimientos() {
     }
     const ov=el('div','modal-overlay no-print'); ov.id='modal-vto';
     const titulo = proximos.length && cuotasTerminando.length ? 'Vencimientos y cuotas próximas' : proximos.length ? 'Vencimientos en los próximos 5 días hábiles' : 'Cuotas por terminar';
-    ov.innerHTML='<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">⚠️</span><h3>'+titulo+'</h3></div><div class="modal-body">'+itemsHtml+'</div><div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById(\'modal-vto\').remove()">Entendido</button></div></div>';
+    ov.innerHTML='<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">⚠️</span><h3>'+titulo+'</h3></div><div class="modal-body">'+itemsHtml+'</div><div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById(\'modal-vto\').remove(); modalPresupuestoLimite();">Entendido</button></div></div>';
+    document.body.appendChild(ov);
+}
+
+// Modal de alerta: rubros con presupuesto/límite cargado que ya superaron el 80% de gasto este mes.
+// Se encadena después de modalVencimientos al ingresar a la app (misma lógica de "una vez por sesión").
+function modalPresupuestoLimite() {
+    if(!listaRubros.length) return;
+    const gastado = {};
+    listaCorrientes.filter(c=>c.fechaPago&&!c.esIngreso).forEach(c=>{ gastado[c.rubro]=(gastado[c.rubro]||0)+c.monto; });
+    const superados = listaRubros.map(r=>{
+        const pres = listaPresupRubros[r]||0;
+        const gast = gastado[r]||0;
+        const pct = pres>0 ? Math.round(gast/pres*100) : 0;
+        return { rubro:r, pres, gast, pct };
+    }).filter(x=>x.pres>0 && x.pct>=80).sort((a,b)=>b.pct-a.pct);
+    if(!superados.length) return;
+    const itemsHtml = superados.map(x=>{
+        const critico = x.pct>=100;
+        const claseFila = critico ? 'critico' : 'alerta';
+        const barColor = critico ? '#ef4444' : '#f59e0b';
+        const badgeTxt = critico ? 'SUPERADO' : x.pct+'%';
+        return '<div class="vto-item '+claseFila+'" style="display:block;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+            + '<span class="vto-nombre">'+x.rubro+'</span>'
+            + '<span class="vto-dias">'+badgeTxt+'</span>'
+            + '</div>'
+            + '<div style="height:6px;background:#0f172a;border-radius:3px;overflow:hidden;margin-bottom:6px;">'
+            + '<div style="height:100%;width:'+Math.min(100,x.pct)+'%;background:'+barColor+';"></div>'
+            + '</div>'
+            + '<div class="vto-sub">'+fmt(x.gast)+' de '+fmt(x.pres)+' · '+x.pct+'%</div>'
+            + '</div>';
+    }).join('');
+    const ov = el('div','modal-overlay no-print'); ov.id='modal-presup-alerta';
+    ov.innerHTML = '<div class="modal-box"><div class="modal-header"><span style="font-size:20px;">📊</span><h3>Rubros cerca del límite</h3></div>'
+        + '<div class="modal-body">'+itemsHtml+'</div>'
+        + '<div class="modal-footer"><button class="btn btn-dark" onclick="document.getElementById(\'modal-presup-alerta\').remove()">Entendido</button></div></div>';
     document.body.appendChild(ov);
 }
 
@@ -4045,7 +4081,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.13';
+const APP_VERSION = 'v3.8.15';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
