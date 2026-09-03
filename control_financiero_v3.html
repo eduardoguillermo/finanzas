@@ -98,15 +98,21 @@
         .vto-item.urgente { background: #4a1030; border-color: #ec4899; }
         .vto-item.proximo { background: #3a1229; border-color: #f472b6; }
         .vto-item.cuota { background: #2e1065; border-color: #a78bfa; }
+        .vto-item.critico { background: #450a0a; border-color: #ef4444; }
+        .vto-item.alerta { background: #451a03; border-color: #f59e0b; }
         .vto-nombre { font-weight: bold; font-size: 13px; color: #e2e8f0; }
         .vto-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
         .urgente .vto-sub { color: #f9a8d4; }
         .proximo .vto-sub { color: #f0abfc; }
         .cuota .vto-sub { color: #c4b5fd; }
+        .critico .vto-sub { color: #fca5a5; }
+        .alerta .vto-sub { color: #fcd34d; }
         .vto-fecha { text-align: right; }
         .vto-dias { font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 10px; }
         .urgente .vto-dias { background: #fee2e2; color: #b91c1c; }
         .proximo .vto-dias { background: #fef3c7; color: #92400e; }
+        .critico .vto-dias { background: #fee2e2; color: #b91c1c; }
+        .alerta .vto-dias { background: #fef3c7; color: #92400e; }
         .vto-txt { font-size: 12px; color: #64748b; margin-top: 3px; }
         .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; }
 
@@ -161,7 +167,7 @@
 (function(){
     const vEl = document.getElementById('cf-splash-version');
     const dEl = document.getElementById('cf-splash-datetime');
-    if(vEl) vEl.textContent = 'v3.8.13';
+    if(vEl) vEl.textContent = 'v3.8.15';
 
     function tickReloj(){
         const dt = new Date();
