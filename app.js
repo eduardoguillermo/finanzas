@@ -3487,7 +3487,7 @@ function buildReportes() {
 
     if (reportesSubTab === 'presupuesto') {
     // ── REPORTE 4: CUMPLIMIENTO DE PRESUPUESTO POR RUBRO (6 MESES) ─────────────────
-    buildReporte4Presupuesto(wrap, listaCorrientes, listaRubros);
+    buildReporte4Presupuesto(wrap, listaCorrientes, listaRubros, listaServicios);
     } // fin reportesSubTab === 'presupuesto'
 
     return wrap;
@@ -3497,14 +3497,14 @@ function buildReportes() {
 // Compara, para cada rubro elegido, el gasto real ($) de los últimos 3 meses contra
 // el límite/presupuesto ACTUAL de ese rubro (la app no guarda el límite histórico mes
 // a mes, así que se aplica el de hoy como referencia aproximada a los 3 meses).
-function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual) {
+function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual, serviciosActual) {
     // Hasta 5 meses cerrados más recientes (orden cronológico) + el mes actual en vivo al final = 6 puntos.
     const cerrados = [...historicoMeses].slice(-5);
     const mesesData = cerrados.map(m => ({
         nombre: m.nombre,
-        gasto: gastoPorRubroDeLista(m.datos && m.datos.listaCorrientes || [])
+        gasto: gastoPorRubroDeLista(m.datos && m.datos.listaCorrientes || [], m.datos && m.datos.listaServicios || [])
     }));
-    mesesData.push({ nombre: 'Mes Actual', gasto: gastoPorRubroDeLista(corrientesActual) });
+    mesesData.push({ nombre: 'Mes Actual', gasto: gastoPorRubroDeLista(corrientesActual, serviciosActual) });
 
     // Unión de rubros configurados + rubros con gasto real en alguno de los 3 meses.
     const todosRubros = [...new Set([...rubrosActual, ...mesesData.flatMap(m => Object.keys(m.gasto))])]
@@ -3582,12 +3582,17 @@ function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual) {
     renderR4();
 }
 
-// Suma de gastos por rubro de una lista de corrientes — mismo criterio que Presupuesto y el modal de alerta:
-// solo egresos pagados, excluyendo rubros de tarjeta.
-function gastoPorRubroDeLista(lista) {
+// Suma de gastos por rubro — mismo criterio que la pestaña Presupuesto (que sí combina ambas fuentes):
+// corrientes pagadas (excluyendo tarjeta) + servicios fijos pagados con rubro asignado.
+// Antes solo miraba corrientes, así que un rubro cargado 100% como servicio fijo (cuota, seguro, etc.)
+// aparecía siempre en cero en este reporte aunque tuviera pagos reales todos los meses.
+function gastoPorRubroDeLista(corrientes, servicios) {
     const g = {};
-    (lista || []).filter(c => c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+    (corrientes || []).filter(c => c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
         g[c.rubro] = (g[c.rubro] || 0) + c.monto;
+    });
+    (servicios || []).filter(s => s.rubro && s.pagado > 0).forEach(s => {
+        g[s.rubro] = (g[s.rubro] || 0) + s.pagado;
     });
     return g;
 }
@@ -4288,7 +4293,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.23';
+const APP_VERSION = 'v3.8.24';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
