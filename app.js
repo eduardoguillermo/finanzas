@@ -42,9 +42,12 @@ let listaIngresosPresup = leer(K.ingresosPresup) || [];
 let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
 let listaPagosTarjetaUSD = leer(K.pagosTarjetaUSD) || [];
 let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
+let listaRubroReporte4   = leer('f_rubro_reporte4_v1')   || {}; // rubroNombre -> true/false. Ausente = incluido (default true).
 let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
 let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
+let reportesSubTab = 'resumen'; // 'resumen' | 'rubros12' | 'claseO' | 'presupuesto' — qué reporte se muestra dentro de la pestaña Reportes
+let r4RubrosSel = null; // null = todavía no inicializado (se arma la primera vez que se abre el Reporte 4)
 let movBancoSelId = null; // cuenta bancaria seleccionada en la pestaña Movimientos
 let movMesSelYM = null; // mes (YYYY-MM) seleccionado en la pestaña Movimientos
 let movMoneda = 'ARS'; // 'ARS' | 'USD' — moneda seleccionada en la pestaña Movimientos
@@ -200,6 +203,7 @@ function guardar() {
         localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
         localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
         localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
+        localStorage.setItem('f_rubro_reporte4_v1',    JSON.stringify(listaRubroReporte4));
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
@@ -1330,6 +1334,14 @@ function actualizarPresupRubro(inp) {
     const v = parseFloat(inp.value.replace(/\./g,''))||0;
     if(v>0) listaPresupRubros[r]=v; else delete listaPresupRubros[r];
     guardar(); renderPresupRubros();
+    if(tabActivo==='presupuesto') renderContenido();
+}
+// Ausente en listaRubroReporte4 = incluido por defecto (true).
+function rubroEnReporte4(r) { return listaRubroReporte4[r] !== false; }
+function toggleRubroReporte4(cb) {
+    const r = cb.getAttribute('data-rubro-r4');
+    if(cb.checked) delete listaRubroReporte4[r]; else listaRubroReporte4[r] = false;
+    guardar();
     if(tabActivo==='presupuesto') renderContenido();
 }
 
@@ -3124,6 +3136,9 @@ function buildPresupuesto() {
         card += 'oninput="this.value=this.value.replace(/\\D/g,\'\').replace(/\\B(?=(\\d{3})+(?!\\d))/g,\'.\')" ';
         card += 'data-rubro="'+safeR+'" onchange="actualizarPresupRubro(this)" onblur="actualizarPresupRubro(this)">';
         card += '</div>';
+        card += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#94a3b8;cursor:pointer;margin-top:6px;">';
+        card += '<input type="checkbox" '+(rubroEnReporte4(r)?'checked':'')+' data-rubro-r4="'+safeR+'" onchange="toggleRubroReporte4(this)" style="margin:0;">';
+        card += 'Incluir en Reporte 4 (Cumplimiento de Presupuesto)</label>';
         card += '</div>';
         grid += card;
     });
@@ -3186,6 +3201,25 @@ function buildReportes() {
     hdr.innerHTML=`<div><h2 style="margin:0;font-size:22px;color:#1e293b;">📈 Reportes Financieros</h2><p style="margin:4px 0 0;font-size:12px;color:#64748b;">${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})}</p></div><button onclick="exportarExcel()" class="btn no-print" style="font-size:12px;padding:8px 14px;background:#10b981;color:white;margin-right:6px;">📥 Exportar Excel</button><button onclick="window.print()" class="btn btn-dark no-print" style="font-size:12px;padding:8px 14px;">🖨️ Imprimir</button>`;
     wrap.appendChild(hdr);
 
+    // ── Menú de reportes: elegir cuál ver, en vez de mostrarlos todos apilados ──
+    const menuItems = [
+        { id: 'resumen',     label: '📋 Resumen del Mes' },
+        { id: 'rubros12',    label: '📊 Análisis por Rubro (12 meses)' },
+        { id: 'claseO',      label: '🏷️ Detalle Clase O' },
+        { id: 'presupuesto', label: '🎯 Cumplimiento de Presupuesto' },
+    ];
+    const menu = el('div', 'no-print'); menu.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;';
+    menuItems.forEach(mi => {
+        const on = reportesSubTab === mi.id;
+        const btn = el('button'); btn.className = 'btn';
+        btn.style.cssText = 'font-size:12px;padding:8px 14px;' + (on ? 'background:#4f46e5;color:white;font-weight:bold;' : 'background:#f1f5f9;color:#334155;');
+        btn.innerText = mi.label;
+        btn.onclick = () => { reportesSubTab = mi.id; renderContenido(); };
+        menu.appendChild(btn);
+    });
+    wrap.appendChild(menu);
+
+    if (reportesSubTab === 'resumen') {
     // ── REPORTE 1 ──────────────────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#4f46e5;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 1 · Resumen del Mes Actual</h3>');
 
@@ -3327,6 +3361,9 @@ function buildReportes() {
 
     } else { wrap.insertAdjacentHTML('beforeend','<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Sin datos en dólares para este mes.</div>'); }
 
+    } // fin reportesSubTab === 'resumen'
+
+    if (reportesSubTab === 'rubros12') {
     // ── REPORTE 2: ACUMULADO 12 MESES ─────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#f59e0b;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 2 · Análisis por Rubro · Últimos 12 Meses</h3>');
     const ultimos12=[...historicoMeses].slice(-12);
@@ -3383,6 +3420,9 @@ function buildReportes() {
     }
     renderTablaR2();
 
+    } // fin reportesSubTab === 'rubros12'
+
+    if (reportesSubTab === 'claseO') {
     // ── REPORTE 3: CLASE O ─────────────────────────────
     wrap.insertAdjacentHTML('beforeend','<h3 style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#a855f7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 3 · Detalle Clase O — Mes Actual</h3>');
 
@@ -3442,7 +3482,174 @@ function buildReportes() {
     }
 
     wrap.insertAdjacentHTML('beforeend', rO);
+
+    } // fin reportesSubTab === 'claseO'
+
+    if (reportesSubTab === 'presupuesto') {
+    // ── REPORTE 4: CUMPLIMIENTO DE PRESUPUESTO POR RUBRO (6 MESES) ─────────────────
+    buildReporte4Presupuesto(wrap, listaCorrientes, listaRubros);
+    } // fin reportesSubTab === 'presupuesto'
+
     return wrap;
+}
+
+// ── REPORTE 4: CUMPLIMIENTO DE PRESUPUESTO POR RUBRO — ÚLTIMOS 6 MESES (5 anteriores + mes actual) ──
+// Compara, para cada rubro elegido, el gasto real ($) de los últimos 3 meses contra
+// el límite/presupuesto ACTUAL de ese rubro (la app no guarda el límite histórico mes
+// a mes, así que se aplica el de hoy como referencia aproximada a los 3 meses).
+function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual) {
+    // Hasta 5 meses cerrados más recientes (orden cronológico) + el mes actual en vivo al final = 6 puntos.
+    const cerrados = [...historicoMeses].slice(-5);
+    const mesesData = cerrados.map(m => ({
+        nombre: m.nombre,
+        gasto: gastoPorRubroDeLista(m.datos && m.datos.listaCorrientes || [])
+    }));
+    mesesData.push({ nombre: 'Mes Actual', gasto: gastoPorRubroDeLista(corrientesActual) });
+
+    // Unión de rubros configurados + rubros con gasto real en alguno de los 3 meses.
+    const todosRubros = [...new Set([...rubrosActual, ...mesesData.flatMap(m => Object.keys(m.gasto))])]
+        .filter(r => rubroEnReporte4(r))
+        .sort();
+
+    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 4 · Cumplimiento de Presupuesto por Rubro · ' + mesesData.map(m=>m.nombre).join(' → ') + '</h3>');
+
+    if (!todosRubros.length) {
+        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay rubros ni gastos cargados, o todos los rubros están excluidos de este reporte (se configura desde 🎯 Presupuesto, checkbox "Reporte 4" en cada rubro).</div>');
+        return;
+    }
+
+    // Selección inicial: ningún rubro tildado — el usuario elige cuáles ver.
+    if (r4RubrosSel === null) {
+        r4RubrosSel = new Set();
+    }
+
+    const contR4 = el('div');
+    wrap.appendChild(contR4);
+
+    const renderR4 = () => {
+        let html = '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;margin-bottom:24px;">';
+
+        // Selector de rubros (checklist)
+        html += '<div style="margin-bottom:14px;"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">Rubros a mostrar</div><div style="display:flex;gap:6px;">'
+            + '<button data-r4-all="1" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #cbd5e1;background:white;color:#334155;cursor:pointer;">☑ Tildar todos</button>'
+            + '<button data-r4-none="1" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #cbd5e1;background:white;color:#334155;cursor:pointer;">☐ Destildar todos</button>'
+            + '</div></div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        todosRubros.forEach(r => {
+            const activo = r4RubrosSel.has(r);
+            const col = colorRubro(r);
+            html += `<label style="display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid ${activo?col:'#cbd5e1'};background:${activo?col+'15':'#f8fafc'};color:${activo?col:'#94a3b8'};cursor:pointer;user-select:none;">`
+                + `<input type="checkbox" data-r4-rubro="${escapeAttr(r)}" ${activo?'checked':''} style="accent-color:${col};margin:0;">`
+                + `${r}${listaPresupRubros[r]>0 ? '' : ' <span style="opacity:.6;">(sin límite)</span>'}</label>`;
+        });
+        html += '</div></div>';
+
+        const seleccionados = todosRubros.filter(r => r4RubrosSel.has(r));
+        if (!seleccionados.length) {
+            html += '<div style="text-align:center;color:#94a3b8;padding:24px 0;">Tildá al menos un rubro para ver el gráfico.</div>';
+        } else {
+            html += '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">';
+            seleccionados.forEach((r, i) => {
+                const limite = listaPresupRubros[r] || 0;
+                html += `<div><div style="font-size:12px;font-weight:bold;color:${colorRubro(r)};margin-bottom:6px;">${r}${limite>0?' · límite '+fmt(limite):''}</div><canvas id="r4-canvas-${i}" style="width:100%;height:160px;"></canvas></div>`;
+            });
+            html += '</div>';
+        }
+        html += '</div>';
+        contR4.innerHTML = html;
+
+        // Bind checkboxes
+        contR4.querySelectorAll('[data-r4-rubro]').forEach(cb => {
+            cb.onchange = e => {
+                const r = e.target.getAttribute('data-r4-rubro');
+                if (e.target.checked) r4RubrosSel.add(r); else r4RubrosSel.delete(r);
+                renderR4();
+            };
+        });
+        const btnAll = contR4.querySelector('[data-r4-all]');
+        if (btnAll) btnAll.onclick = () => { r4RubrosSel = new Set(todosRubros); renderR4(); };
+        const btnNone = contR4.querySelector('[data-r4-none]');
+        if (btnNone) btnNone.onclick = () => { r4RubrosSel = new Set(); renderR4(); };
+
+        // Dibujar gráficos
+        setTimeout(() => {
+            seleccionados.forEach((r, i) => {
+                const valores = mesesData.map(m => m.gasto[r] || 0);
+                dibujarLineaRubroR4('r4-canvas-' + i, mesesData.map(m => m.nombre), valores, listaPresupRubros[r] || 0, colorRubro(r));
+            });
+        }, 30);
+    };
+
+    renderR4();
+}
+
+// Suma de gastos por rubro de una lista de corrientes — mismo criterio que Presupuesto y el modal de alerta:
+// solo egresos pagados, excluyendo rubros de tarjeta.
+function gastoPorRubroDeLista(lista) {
+    const g = {};
+    (lista || []).filter(c => c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta'))).forEach(c => {
+        g[c.rubro] = (g[c.rubro] || 0) + c.monto;
+    });
+    return g;
+}
+
+function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+
+// Con 6 puntos en el eje X, el nombre completo ("Marzo de 2026") no entra — se abrevia a "Mar'26".
+function abrevMesR4(nombre) {
+    if (nombre === 'Mes Actual') return nombre;
+    const m = nombre.match(/^(\w+)\s+de\s+(\d{4})$/i);
+    if (!m) return nombre;
+    return m[1].slice(0, 3).replace(/^\w/, c => c.toUpperCase()) + "'" + m[2].slice(2);
+}
+
+// Línea de un solo rubro (3 puntos) + línea punteada horizontal en el límite.
+function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
+    const cv = document.getElementById(canvasId); if (!cv) return;
+    const W = cv.offsetWidth || 280, H = 160;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    const maxV = Math.max(...valores, limite, 1);
+    const pad = { t: 16, r: 12, b: 24, l: 60 };
+    const W2 = W - pad.l - pad.r, H2 = H - pad.t - pad.b;
+    const xPos = i => pad.l + i * (W2 / (valores.length - 1 || 1));
+    const yPos = v => pad.t + H2 - (v / maxV) * H2;
+
+    // Línea de límite (punteada)
+    if (limite > 0) {
+        const yl = yPos(limite);
+        ctx.beginPath(); ctx.setLineDash([5, 4]);
+        ctx.moveTo(pad.l, yl); ctx.lineTo(W - pad.r, yl);
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#64748b'; ctx.font = '10px Arial'; ctx.textAlign = 'left';
+        ctx.fillText('límite ' + fmt(limite), pad.l + 4, yl - 4 < pad.t + 10 ? yl + 12 : yl - 4);
+    }
+
+    // Área + línea del gasto
+    ctx.beginPath(); ctx.moveTo(xPos(0), yPos(valores[0]));
+    valores.forEach((v, i) => { if (i > 0) ctx.lineTo(xPos(i), yPos(v)); });
+    ctx.lineTo(xPos(valores.length - 1), H - pad.b); ctx.lineTo(xPos(0), H - pad.b); ctx.closePath();
+    ctx.fillStyle = color + '22'; ctx.fill();
+
+    ctx.beginPath(); ctx.moveTo(xPos(0), yPos(valores[0]));
+    valores.forEach((v, i) => { if (i > 0) ctx.lineTo(xPos(i), yPos(v)); });
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+
+    // Puntos + valor
+    valores.forEach((v, i) => {
+        const x = xPos(i), y = yPos(v);
+        const superado = limite > 0 && v > limite;
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = superado ? '#dc2626' : color; ctx.fill();
+        ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = superado ? '#dc2626' : '#1e293b';
+        ctx.fillText(fmt(v), x, y - 8 < pad.t + 8 ? y + 16 : y - 8);
+    });
+
+    // Eje X
+    ctx.font = '10px Arial'; ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
+    meses.forEach((m, i) => ctx.fillText(abrevMesR4(m), xPos(i), H - 6));
 }
 
 // ═══════════════════════════════════════════
@@ -4081,7 +4288,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.15';
+const APP_VERSION = 'v3.8.23';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
