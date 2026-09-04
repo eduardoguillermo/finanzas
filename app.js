@@ -48,8 +48,21 @@ let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Se
 let tabActivo = null;
 let reportesMesId = null; // null = Mes Actual; si no, id de un mes en historicoMeses — permite correr Reportes a demanda sobre un mes cerrado
 let reportesSubTab = 'resumen'; // 'resumen' | 'rubros12' | 'claseO' | 'presupuesto' | 'transacciones' — qué reporte se muestra dentro de la pestaña Reportes
-let r4RubrosSel = null; // null = todavía no inicializado (se arma la primera vez que se abre el Reporte 4)
-let r5RubroSel = null;  // rubro elegido para el detalle de transacciones (Reporte 5)
+let reportesMoneda = 'ARS'; // 'ARS' | 'USD' — toggle compartido entre Reporte 4 y Reporte 5
+let r4RubrosSelARS = null; // null = todavía no inicializado (se arma la primera vez que se abre el Reporte 4)
+let r4RubrosSelUSD = null;
+let r5RubroSelARS = null;  // rubro elegido para el detalle de transacciones (Reporte 5)
+let r5RubroSelUSD = null;
+let listaRubroReporte4USD = leer('f_rubro_reporte4_usd_v1') || {}; // igual que listaRubroReporte4 pero para rubros USD
+
+// Ausente en listaRubroReporte4USD = incluido por defecto (true).
+function rubroEnReporte4USD(r) { return listaRubroReporte4USD[r] !== false; }
+function toggleRubroReporte4USD(cb) {
+    const r = cb.getAttribute('data-rubro-r4usd');
+    if(cb.checked) delete listaRubroReporte4USD[r]; else listaRubroReporte4USD[r] = false;
+    guardar();
+    if(tabActivo==='presupuesto') renderContenido();
+}
 let movBancoSelId = null; // cuenta bancaria seleccionada en la pestaña Movimientos
 let movMesSelYM = null; // mes (YYYY-MM) seleccionado en la pestaña Movimientos
 let movMoneda = 'ARS'; // 'ARS' | 'USD' — moneda seleccionada en la pestaña Movimientos
@@ -206,6 +219,7 @@ function guardar() {
         localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
         localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
         localStorage.setItem('f_rubro_reporte4_v1',    JSON.stringify(listaRubroReporte4));
+        localStorage.setItem('f_rubro_reporte4_usd_v1', JSON.stringify(listaRubroReporte4USD));
         localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
         localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
         localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
@@ -3187,7 +3201,11 @@ function buildPresupuesto() {
             card += '<input type="number" min="0" step="0.01" value="'+(pres||'')+'" placeholder="Sin límite" ';
             card += 'style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:white;color:#1e293b;" ';
             card += 'data-rubro="'+safeR+'" onchange="actualizarPresupRubroUSD(this)" onblur="actualizarPresupRubroUSD(this)">';
-            card += '</div></div>';
+            card += '</div>';
+            card += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#94a3b8;cursor:pointer;margin-top:6px;">';
+            card += '<input type="checkbox" '+(rubroEnReporte4USD(r)?'checked':'')+' data-rubro-r4usd="'+safeR+'" onchange="toggleRubroReporte4USD(this)" style="margin:0;">';
+            card += 'Incluir en Reporte 4 (Cumplimiento de Presupuesto)</label>';
+            card += '</div>';
             gridUSD += card;
         });
         gridUSD += '</div>';
@@ -3236,7 +3254,7 @@ function buildReportes() {
     // El reporte 2 (tendencia por rubro entre meses) siempre debe mostrar el mes actual real, sin importar la selección.
     const liveBancos=listaBancos, liveTarjetas=listaTarjetas, liveServicios=listaServicios,
           liveCorrientes=listaCorrientes, liveCorrientesUSD=listaCorrientesUSD, liveCuentasUSD=listaCuentasUSD,
-          liveTarjetasUSD=listaTarjetasUSD, liveServiciosUSD=listaServiciosUSD, liveRubros=listaRubros, liveTipoCambio=tipoCambio;
+          liveTarjetasUSD=listaTarjetasUSD, liveServiciosUSD=listaServiciosUSD, liveRubros=listaRubros, liveRubrosUSD=listaRubrosUSD, liveTipoCambio=tipoCambio;
 
     if(mesSel){
         const d = mesSel.datos || {};
@@ -3523,12 +3541,18 @@ function buildReportes() {
     if (reportesSubTab === 'presupuesto') {
     // ── REPORTE 4: CUMPLIMIENTO DE PRESUPUESTO POR RUBRO (6 MESES) ─────────────────
     // Siempre usa datos EN VIVO (mes actual real), igual que el Reporte 2 — el selector de "mes cerrado" no lo afecta.
-    buildReporte4Presupuesto(wrap, liveCorrientes, liveRubros, liveServicios);
+    buildReporte4Presupuesto(wrap,
+        { corrientes: liveCorrientes, rubros: liveRubros, servicios: liveServicios },
+        { corrientes: liveCorrientesUSD, rubros: liveRubrosUSD, servicios: liveServiciosUSD }
+    );
     } // fin reportesSubTab === 'presupuesto'
 
     if (reportesSubTab === 'transacciones') {
     // ── REPORTE 5: DETALLE DE TRANSACCIONES POR RUBRO (6 MESES) ─────────────────
-    buildReporte5Transacciones(wrap, liveCorrientes, liveRubros, liveServicios);
+    buildReporte5Transacciones(wrap,
+        { corrientes: liveCorrientes, rubros: liveRubros, servicios: liveServicios },
+        { corrientes: liveCorrientesUSD, rubros: liveRubrosUSD, servicios: liveServiciosUSD }
+    );
     } // fin reportesSubTab === 'transacciones'
 
     } finally {
@@ -3545,36 +3569,60 @@ function buildReportes() {
 // Compara, para cada rubro elegido, el gasto real ($) de los últimos 3 meses contra
 // el límite/presupuesto ACTUAL de ese rubro (la app no guarda el límite histórico mes
 // a mes, así que se aplica el de hoy como referencia aproximada a los 3 meses).
-function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual, serviciosActual) {
+function buildReporte4Presupuesto(wrap, datosARS, datosUSD) {
+    const esUSD = reportesMoneda === 'USD';
+    const d = esUSD ? datosUSD : datosARS;
+    const presupMap = esUSD ? listaPresupRubrosUSD : listaPresupRubros;
+    const colorFn = esUSD ? colorRubroUSD : colorRubro;
+    const fmtFn = esUSD ? fmtUSD : fmt;
+    const inclFn = esUSD ? rubroEnReporte4USD : rubroEnReporte4;
+
     // Hasta 5 meses cerrados más recientes (orden cronológico) + el mes actual en vivo al final = 6 puntos.
     const cerrados = [...historicoMeses].slice(-5);
     const mesesData = cerrados.map(m => ({
         nombre: m.nombre,
-        gasto: gastoPorRubroDeLista(m.datos && m.datos.listaCorrientes || [], m.datos && m.datos.listaServicios || [])
+        gasto: gastoPorRubroDeLista(
+            (m.datos && (esUSD ? m.datos.listaCorrientesUSD : m.datos.listaCorrientes)) || [],
+            (m.datos && (esUSD ? m.datos.listaServiciosUSD : m.datos.listaServicios)) || []
+        )
     }));
-    mesesData.push({ nombre: 'Mes Actual', gasto: gastoPorRubroDeLista(corrientesActual, serviciosActual) });
+    mesesData.push({ nombre: 'Mes Actual', gasto: gastoPorRubroDeLista(d.corrientes, d.servicios) });
 
     // Unión de rubros configurados + rubros con gasto real en alguno de los 3 meses.
-    const todosRubros = [...new Set([...rubrosActual, ...mesesData.flatMap(m => Object.keys(m.gasto))])]
-        .filter(r => rubroEnReporte4(r))
+    const todosRubros = [...new Set([...d.rubros, ...mesesData.flatMap(m => Object.keys(m.gasto))])]
+        .filter(r => inclFn(r))
         .sort();
 
-    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 4 · Cumplimiento de Presupuesto por Rubro · ' + mesesData.map(m=>m.nombre).join(' → ') + '</h3>');
+    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#0284c7;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 4 · Cumplimiento de Presupuesto por Rubro' + (esUSD ? ' (USD)' : '') + ' · ' + mesesData.map(m=>m.nombre).join(' → ') + '</h3>');
+
+    // Toggle ARS / USD
+    const toggle = el('div', 'no-print'); toggle.style.cssText = 'display:flex;gap:6px;margin-bottom:16px;';
+    ['ARS','USD'].forEach(m => {
+        const on = reportesMoneda === m;
+        const btn = el('button');
+        btn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid ' + (on?'#0284c7':'#cbd5e1') + ';background:' + (on?'#0284c7':'white') + ';color:' + (on?'white':'#334155') + ';cursor:pointer;font-weight:bold;';
+        btn.innerText = m === 'ARS' ? '$ Pesos' : 'USD Dólares';
+        btn.onclick = () => { reportesMoneda = m; renderContenido(); };
+        toggle.appendChild(btn);
+    });
+    wrap.appendChild(toggle);
 
     if (!todosRubros.length) {
-        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay rubros ni gastos cargados, o todos los rubros están excluidos de este reporte (se configura desde 🎯 Presupuesto, checkbox "Reporte 4" en cada rubro).</div>');
+        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay rubros ni gastos cargados en ' + (esUSD?'dólares':'pesos') + ', o todos los rubros están excluidos de este reporte (se configura desde 🎯 Presupuesto, checkbox "Reporte 4").</div>');
         return;
     }
 
-    // Selección inicial: ningún rubro tildado — el usuario elige cuáles ver.
-    if (r4RubrosSel === null) {
-        r4RubrosSel = new Set();
-    }
+    // Selección inicial (independiente por moneda): ningún rubro tildado — el usuario elige cuáles ver.
+    if (esUSD) { if (r4RubrosSelUSD === null) r4RubrosSelUSD = new Set(); }
+    else { if (r4RubrosSelARS === null) r4RubrosSelARS = new Set(); }
+    const getSel = () => esUSD ? r4RubrosSelUSD : r4RubrosSelARS;
+    const setSel = s => { if (esUSD) r4RubrosSelUSD = s; else r4RubrosSelARS = s; };
 
     const contR4 = el('div');
     wrap.appendChild(contR4);
 
     const renderR4 = () => {
+        const sel = getSel();
         let html = '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0284c7;padding:16px;margin-bottom:24px;">';
 
         // Selector de rubros (checklist)
@@ -3583,22 +3631,22 @@ function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual, servicio
             + '<button data-r4-none="1" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #cbd5e1;background:white;color:#334155;cursor:pointer;">☐ Destildar todos</button>'
             + '</div></div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
         todosRubros.forEach(r => {
-            const activo = r4RubrosSel.has(r);
-            const col = colorRubro(r);
+            const activo = sel.has(r);
+            const col = colorFn(r);
             html += `<label style="display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid ${activo?col:'#cbd5e1'};background:${activo?col+'15':'#f8fafc'};color:${activo?col:'#94a3b8'};cursor:pointer;user-select:none;">`
                 + `<input type="checkbox" data-r4-rubro="${escapeAttr(r)}" ${activo?'checked':''} style="accent-color:${col};margin:0;">`
-                + `${r}${listaPresupRubros[r]>0 ? '' : ' <span style="opacity:.6;">(sin límite)</span>'}</label>`;
+                + `${r}${presupMap[r]>0 ? '' : ' <span style="opacity:.6;">(sin límite)</span>'}</label>`;
         });
         html += '</div></div>';
 
-        const seleccionados = todosRubros.filter(r => r4RubrosSel.has(r));
+        const seleccionados = todosRubros.filter(r => sel.has(r));
         if (!seleccionados.length) {
             html += '<div style="text-align:center;color:#94a3b8;padding:24px 0;">Tildá al menos un rubro para ver el gráfico.</div>';
         } else {
             html += '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">';
             seleccionados.forEach((r, i) => {
-                const limite = listaPresupRubros[r] || 0;
-                html += `<div><div style="font-size:12px;font-weight:bold;color:${colorRubro(r)};margin-bottom:6px;">${r}${limite>0?' · límite '+fmt(limite):''}</div><canvas id="r4-canvas-${i}" style="width:100%;height:160px;"></canvas></div>`;
+                const limite = presupMap[r] || 0;
+                html += `<div><div style="font-size:12px;font-weight:bold;color:${colorFn(r)};margin-bottom:6px;">${r}${limite>0?' · límite '+fmtFn(limite):''}</div><canvas id="r4-canvas-${i}" style="width:100%;height:160px;"></canvas></div>`;
             });
             html += '</div>';
         }
@@ -3609,20 +3657,20 @@ function buildReporte4Presupuesto(wrap, corrientesActual, rubrosActual, servicio
         contR4.querySelectorAll('[data-r4-rubro]').forEach(cb => {
             cb.onchange = e => {
                 const r = e.target.getAttribute('data-r4-rubro');
-                if (e.target.checked) r4RubrosSel.add(r); else r4RubrosSel.delete(r);
+                if (e.target.checked) sel.add(r); else sel.delete(r);
                 renderR4();
             };
         });
         const btnAll = contR4.querySelector('[data-r4-all]');
-        if (btnAll) btnAll.onclick = () => { r4RubrosSel = new Set(todosRubros); renderR4(); };
+        if (btnAll) btnAll.onclick = () => { setSel(new Set(todosRubros)); renderR4(); };
         const btnNone = contR4.querySelector('[data-r4-none]');
-        if (btnNone) btnNone.onclick = () => { r4RubrosSel = new Set(); renderR4(); };
+        if (btnNone) btnNone.onclick = () => { setSel(new Set()); renderR4(); };
 
         // Dibujar gráficos
         setTimeout(() => {
             seleccionados.forEach((r, i) => {
                 const valores = mesesData.map(m => m.gasto[r] || 0);
-                dibujarLineaRubroR4('r4-canvas-' + i, mesesData.map(m => m.nombre), valores, listaPresupRubros[r] || 0, colorRubro(r));
+                dibujarLineaRubroR4('r4-canvas-' + i, mesesData.map(m => m.nombre), valores, presupMap[r] || 0, colorFn(r), fmtFn);
             });
         }, 30);
     };
@@ -3656,7 +3704,8 @@ function abrevMesR4(nombre) {
 }
 
 // Línea de un solo rubro (3 puntos) + línea punteada horizontal en el límite.
-function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
+function dibujarLineaRubroR4(canvasId, meses, valores, limite, color, fmtFn) {
+    fmtFn = fmtFn || fmt;
     const cv = document.getElementById(canvasId); if (!cv) return;
     const W = cv.offsetWidth || 280, H = 160;
     cv.width = W; cv.height = H;
@@ -3677,7 +3726,7 @@ function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
         ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillStyle = '#64748b'; ctx.font = '10px Arial'; ctx.textAlign = 'left';
-        ctx.fillText('límite ' + fmt(limite), pad.l + 4, yl - 4 < pad.t + 10 ? yl + 12 : yl - 4);
+        ctx.fillText('límite ' + fmtFn(limite), pad.l + 4, yl - 4 < pad.t + 10 ? yl + 12 : yl - 4);
     }
 
     // Área + línea del gasto
@@ -3697,7 +3746,7 @@ function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
         ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI);
         ctx.fillStyle = superado ? '#dc2626' : color; ctx.fill();
         ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = superado ? '#dc2626' : '#1e293b';
-        ctx.fillText(fmt(v), x, y - 8 < pad.t + 8 ? y + 16 : y - 8);
+        ctx.fillText(fmtFn(v), x, y - 8 < pad.t + 8 ? y + 16 : y - 8);
     });
 
     // Eje X
@@ -3708,52 +3757,72 @@ function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
 // ── REPORTE 5: DETALLE DE TRANSACCIONES POR RUBRO — mismos 6 meses que el Reporte 4 ──
 // Lista, transacción por transacción, qué compone el gasto de un rubro elegido, mes por mes.
 // Es el "drill-down" del Reporte 4: mismo criterio de datos (corrientes pagadas sin tarjeta + fijos pagados con rubro).
-function buildReporte5Transacciones(wrap, corrientesActual, rubrosActual, serviciosActual) {
+function buildReporte5Transacciones(wrap, datosARS, datosUSD) {
+    const esUSD = reportesMoneda === 'USD';
+    const d = esUSD ? datosUSD : datosARS;
+    const fmtFn = esUSD ? fmtUSD : fmt;
+
     const cerrados = [...historicoMeses].slice(-5);
     const mesesData = cerrados.map(m => ({
         nombre: m.nombre,
-        corrientes: (m.datos && m.datos.listaCorrientes) || [],
-        servicios: (m.datos && m.datos.listaServicios) || [],
+        corrientes: (m.datos && (esUSD ? m.datos.listaCorrientesUSD : m.datos.listaCorrientes)) || [],
+        servicios: (m.datos && (esUSD ? m.datos.listaServiciosUSD : m.datos.listaServicios)) || [],
     }));
-    mesesData.push({ nombre: 'Mes Actual', corrientes: corrientesActual || [], servicios: serviciosActual || [] });
+    mesesData.push({ nombre: 'Mes Actual', corrientes: d.corrientes || [], servicios: d.servicios || [] });
 
     const esCorrienteValida = c => c.fechaPago && !c.esIngreso && !(c.rubro && c.rubro.toLowerCase().includes('tarjeta'));
     const esServicioValido = s => s.rubro && s.pagado > 0;
 
     const todosRubros = [...new Set([
-        ...rubrosActual,
+        ...d.rubros,
         ...mesesData.flatMap(m => [
             ...m.corrientes.filter(esCorrienteValida).map(c => c.rubro),
             ...m.servicios.filter(esServicioValido).map(s => s.rubro),
         ]),
     ])].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
-    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#7c3aed;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 5 · Detalle de Transacciones por Rubro · ' + mesesData.map(m => m.nombre).join(' → ') + '</h3>');
+    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#7c3aed;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 5 · Detalle de Transacciones por Rubro' + (esUSD ? ' (USD)' : '') + ' · ' + mesesData.map(m => m.nombre).join(' → ') + '</h3>');
+
+    // Toggle ARS / USD
+    const toggle = el('div', 'no-print'); toggle.style.cssText = 'display:flex;gap:6px;margin-bottom:16px;';
+    ['ARS','USD'].forEach(m => {
+        const on = reportesMoneda === m;
+        const btn = el('button');
+        btn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid ' + (on?'#7c3aed':'#cbd5e1') + ';background:' + (on?'#7c3aed':'white') + ';color:' + (on?'white':'#334155') + ';cursor:pointer;font-weight:bold;';
+        btn.innerText = m === 'ARS' ? '$ Pesos' : 'USD Dólares';
+        btn.onclick = () => { reportesMoneda = m; renderContenido(); };
+        toggle.appendChild(btn);
+    });
+    wrap.appendChild(toggle);
 
     if (!todosRubros.length) {
-        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay rubros ni gastos cargados.</div>');
+        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay rubros ni gastos cargados en ' + (esUSD?'dólares':'pesos') + '.</div>');
         return;
     }
-    if (r5RubroSel === null || !todosRubros.includes(r5RubroSel)) r5RubroSel = todosRubros[0];
+    if (esUSD) { if (r5RubroSelUSD === null || !todosRubros.includes(r5RubroSelUSD)) r5RubroSelUSD = todosRubros[0]; }
+    else { if (r5RubroSelARS === null || !todosRubros.includes(r5RubroSelARS)) r5RubroSelARS = todosRubros[0]; }
+    const getSel = () => esUSD ? r5RubroSelUSD : r5RubroSelARS;
+    const setSel = v => { if (esUSD) r5RubroSelUSD = v; else r5RubroSelARS = v; };
 
     const cont = el('div');
     wrap.appendChild(cont);
 
     const render5 = () => {
+        const rubroSel = getSel();
         let html = '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #7c3aed;padding:16px;margin-bottom:24px;">';
 
         html += '<div style="margin-bottom:16px;"><label style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;display:block;margin-bottom:6px;">Rubro</label>';
         html += '<select id="r5-rubro-sel" style="font-size:13px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;max-width:320px;">';
-        todosRubros.forEach(r => { html += `<option value="${escapeAttr(r)}" ${r === r5RubroSel ? 'selected' : ''}>${r}</option>`; });
+        todosRubros.forEach(r => { html += `<option value="${escapeAttr(r)}" ${r === rubroSel ? 'selected' : ''}>${r}</option>`; });
         html += '</select></div>';
 
         let totalGeneral = 0;
         const bloquesMes = mesesData.map(m => {
             const items = [];
-            m.corrientes.filter(c => c.rubro === r5RubroSel && esCorrienteValida(c)).forEach(c => {
+            m.corrientes.filter(c => c.rubro === rubroSel && esCorrienteValida(c)).forEach(c => {
                 items.push({ fecha: c.fechaPago, detalle: c.detalle || c.rubro, monto: c.monto, tipo: 'corriente' });
             });
-            m.servicios.filter(s => s.rubro === r5RubroSel && esServicioValido(s)).forEach(s => {
+            m.servicios.filter(s => s.rubro === rubroSel && esServicioValido(s)).forEach(s => {
                 items.push({ fecha: s.fPago || '', detalle: s.nombre, monto: s.pagado, tipo: 'fijo' });
             });
             items.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
@@ -3769,7 +3838,7 @@ function buildReporte5Transacciones(wrap, corrientesActual, rubrosActual, servic
                 html += '<div style="margin-bottom:18px;">';
                 html += '<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #e2e8f0;margin-bottom:6px;">'
                     + '<span style="font-size:13px;font-weight:bold;color:#334155;">' + b.nombre + '</span>'
-                    + '<span style="font-size:12px;font-weight:bold;color:#7c3aed;">' + fmt(b.subtotal) + '</span></div>';
+                    + '<span style="font-size:12px;font-weight:bold;color:#7c3aed;">' + fmtFn(b.subtotal) + '</span></div>';
                 if (!b.items.length) {
                     html += '<div style="font-size:12px;color:#94a3b8;padding:6px 0;">Sin movimientos este mes.</div>';
                 } else {
@@ -3778,18 +3847,18 @@ function buildReporte5Transacciones(wrap, corrientesActual, rubrosActual, servic
                         const tag = it.tipo === 'fijo' ? '<span style="font-size:9px;font-weight:bold;padding:1px 6px;border-radius:999px;background:#fef3c7;color:#92400e;margin-left:6px;">FIJO</span>' : '';
                         html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12.5px;">'
                             + '<span style="color:#475569;">' + fechaLbl + ' — ' + escapeAttr(it.detalle) + tag + '</span>'
-                            + '<span style="color:#1e293b;font-weight:500;">' + fmt(it.monto) + '</span></div>';
+                            + '<span style="color:#1e293b;font-weight:500;">' + fmtFn(it.monto) + '</span></div>';
                     });
                 }
                 html += '</div>';
             });
-            html += '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:2px solid #7c3aed;font-size:13px;font-weight:bold;"><span>Total ' + r5RubroSel + ' (6 meses)</span><span style="color:#7c3aed;">' + fmt(totalGeneral) + '</span></div>';
+            html += '<div style="display:flex;justify-content:space-between;padding-top:10px;border-top:2px solid #7c3aed;font-size:13px;font-weight:bold;"><span>Total ' + rubroSel + ' (6 meses)</span><span style="color:#7c3aed;">' + fmtFn(totalGeneral) + '</span></div>';
         }
 
         html += '</div>';
         cont.innerHTML = html;
         const selR5 = cont.querySelector('#r5-rubro-sel');
-        if (selR5) selR5.onchange = e => { r5RubroSel = e.target.value; render5(); };
+        if (selR5) selR5.onchange = e => { setSel(e.target.value); render5(); };
     };
 
     render5();
@@ -4484,7 +4553,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.28';
+const APP_VERSION = 'v3.8.29';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
