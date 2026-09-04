@@ -3662,7 +3662,7 @@ function dibujarLineaRubroR4(canvasId, meses, valores, limite, color) {
 // ═══════════════════════════════════════════
 function buildHistorico(mes) {
     const db=mes.datos, wrap=el('div');
-    const banner=el('div','hist-banner no-print'); banner.innerHTML=`<span style="font-size:20px;">🗂</span><div><strong>Período Cerrado: ${mes.nombre}</strong><div style="font-size:11px;margin-top:2px;">Vista de sólo lectura</div></div>`; wrap.appendChild(banner);
+    const banner=el('div','hist-banner no-print'); banner.innerHTML=`<span style="font-size:20px;">🗂</span><div><strong>Período Cerrado: ${mes.nombre}</strong><div style="font-size:11px;margin-top:2px;">Vista de sólo lectura — excepto el rubro de cada gasto/servicio, que se puede corregir</div></div>`; wrap.appendChild(banner);
     let sB=0,sT=0,tP=0,fP=0;
     db.listaBancos.forEach(b=>sB+=b.saldo); db.listaTarjetas.forEach(t=>sT+=t.saldo);
     db.listaServicios.forEach(s=>{ tP+=s.pagado; if(s.presupuesto>s.pagado) fP+=(s.presupuesto-s.pagado); });
@@ -3671,7 +3671,7 @@ function buildHistorico(mes) {
     cont.innerHTML=`<div class="grid-dashboard"><div class="card-bal" style="border-left:5px solid #0284c7;"><h4>Efectivo / Banco (Cierre)</h4><p style="color:#0284c7;">${fmt(sB)}</p></div><div class="card-bal" style="border-left:5px solid #a855f7;"><h4>Deuda Tarjetas (Cierre)</h4><p style="color:#a855f7;">${fmt(sT)}</p></div><div class="card-bal" style="border-left:5px solid #10b981;"><h4>Total Egresado</h4><p style="color:#10b981;">${fmt(tP)}</p></div><div class="card-bal" style="border-left:5px solid ${fP>0?'#ef4444':'#10b981'};"><h4>Fijos Pendientes al Cierre</h4><p style="color:${fP>0?'#ef4444':'#10b981'};">${fmt(fP)}</p></div></div>`;
     const gp=el('div','grid-principal');
     const left=el('div'); left.innerHTML=roSimple('🏦 Bancos al Cierre','panel-bancos',['Cuenta','Saldo'],db.listaBancos.map(b=>[b.nombre,fmt(b.saldo)]))+roSimple('💳 Tarjetas al Cierre','panel-tarjetas',['Tarjeta','Deuda'],db.listaTarjetas.map(t=>[t.nombre,fmt(t.saldo)]))+roTransf(db);
-    const right=el('div'); right.innerHTML=roServicios(db)+roCorrientes(db);
+    const right=el('div'); right.innerHTML=roServicios(db,mes.id)+roCorrientes(db,mes.id);
     gp.appendChild(left); gp.appendChild(right); cont.appendChild(gp); wrap.appendChild(cont);
     return wrap;
 }
@@ -3684,14 +3684,35 @@ function roTransf(db) {
     const trs=!(db.listaTransferencias||[]).length?'<tr><td colspan="4" class="tc" style="color:#94a3b8;padding:12px;">Sin transferencias.</td></tr>':db.listaTransferencias.map(t=>`<tr><td class="ro-cell ro-muted">${t.fecha||'—'}</td><td class="ro-cell ro-muted">${t.origenNombre}</td><td class="ro-cell ro-muted">${t.destinoNombre}</td><td class="ro-cell ro-money" style="color:#f59e0b;">${fmt(t.monto)}</td></tr>`).join('');
     return `<div class="panel panel-transf"><h3 class="panel-title">↔️ Transferencias</h3><table><thead><tr><th>Fecha</th><th>Origen</th><th>Destino</th><th class="tr">Monto</th></tr></thead><tbody>${trs}</tbody></table></div>`;
 }
-function roServicios(db) {
+function selectorRubroHistorico(mesId, tipo, itemId, rubroActual) {
+    const opciones = ['<option value="">— sin rubro —</option>']
+        .concat(listaRubros.map(r => `<option value="${r.replace(/"/g,'&quot;')}" ${r===rubroActual?'selected':''}>${r}</option>`));
+    // Si el rubro guardado ya no existe en la lista actual de rubros, lo agrego igual para no perder el dato.
+    if (rubroActual && !listaRubros.includes(rubroActual)) {
+        opciones.push(`<option value="${rubroActual.replace(/"/g,'&quot;')}" selected>${rubroActual} (rubro eliminado)</option>`);
+    }
+    return `<select onchange="cambiarRubroHistorico('${mesId}','${tipo}','${itemId}',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:4px;background:white;color:#1e293b;max-width:100%;">${opciones.join('')}</select>`;
+}
+
+// Cambia el rubro de un ítem (corriente o servicio fijo) dentro del snapshot congelado de un mes ya cerrado.
+function cambiarRubroHistorico(mesId, tipo, itemId, nuevoRubro) {
+    const mes = historicoMeses.find(m => m.id === mesId);
+    if (!mes || !mes.datos) return;
+    const lista = tipo === 'corriente' ? mes.datos.listaCorrientes : mes.datos.listaServicios;
+    const item = (lista || []).find(x => x.id === itemId);
+    if (!item) return;
+    item.rubro = nuevoRubro || '';
+    guardar();
+}
+
+function roServicios(db,mesId) {
     const mNom=id=>{ const b=(db.listaBancos||[]).find(x=>x.id===id); const t=(db.listaTarjetas||[]).find(x=>x.id===id); return b?'🏦 '+b.nombre:t?'💳 '+t.nombre:'—'; };
-    const rows=db.listaServicios.map(s=>{ let ec='#c5221f',et='PENDIENTE'; if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';et='PAGADO';} else if(s.pagado>0){ec='#b06000';et='PARCIAL';} return `<tr><td class="ro-cell"><b>${s.nombre}</b></td><td class="ro-cell ro-muted">${s.rubro||'—'}</td><td class="ro-cell ro-muted">${s.fVto||'—'}</td><td class="ro-cell ro-money">${fmt(s.presupuesto)}</td><td class="ro-cell ro-money">${fmt(s.pagado)}</td><td class="ro-cell ro-muted tc">${s.fPago||'—'}</td><td class="ro-cell ro-muted">${mNom(s.medioPagoId)}</td><td class="tc"><span style="font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;background:${ec}22;color:${ec}">${et}</span></td></tr>`; }).join()||'<tr><td colspan="8" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios</td></tr>';
+    const rows=db.listaServicios.map(s=>{ let ec='#c5221f',et='PENDIENTE'; if(s.pagado>=s.presupuesto&&s.presupuesto>0){ec='#137333';et='PAGADO';} else if(s.pagado>0){ec='#b06000';et='PARCIAL';} return `<tr><td class="ro-cell"><b>${s.nombre}</b></td><td class="ro-cell">${selectorRubroHistorico(mesId,'servicio',s.id,s.rubro||'')}</td><td class="ro-cell ro-muted">${s.fVto||'—'}</td><td class="ro-cell ro-money">${fmt(s.presupuesto)}</td><td class="ro-cell ro-money">${fmt(s.pagado)}</td><td class="ro-cell ro-muted tc">${s.fPago||'—'}</td><td class="ro-cell ro-muted">${mNom(s.medioPagoId)}</td><td class="tc"><span style="font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;background:${ec}22;color:${ec}">${et}</span></td></tr>`; }).join()||'<tr><td colspan="8" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios</td></tr>';
     return `<div class="panel panel-servicios"><h3 class="panel-title">📋 Servicios Fijos</h3><table><thead><tr><th style="width:18%">Servicio</th><th style="width:12%">Rubro</th><th style="width:10%">Vto.</th><th style="width:11%" class="tr">Presup.</th><th style="width:11%" class="tr">Pagado</th><th style="width:11%" class="tc">F.Pago</th><th style="width:16%">Medio</th><th style="width:11%" class="tc">Estado</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-function roCorrientes(db) {
+function roCorrientes(db,mesId) {
     const mNom=id=>{ const b=(db.listaBancos||[]).find(x=>x.id===id); const t=(db.listaTarjetas||[]).find(x=>x.id===id); return b?'🏦 '+b.nombre:t?'💳 '+t.nombre:'—'; };
-    const rows=!db.listaCorrientes.length?'<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin egresos.</td></tr>':db.listaCorrientes.map(c=>`<tr><td class="ro-cell">${c.rubro}</td><td class="ro-cell">${c.detalle}</td><td class="ro-cell ro-muted">${mNom(c.medioPagoId)}</td><td class="ro-cell ro-muted tc">${c.fechaPago||'—'}</td><td class="ro-cell ro-green tr">${fmt(c.monto)}</td></tr>`).join('');
+    const rows=!db.listaCorrientes.length?'<tr><td colspan="5" class="tc" style="color:#94a3b8;padding:12px;">Sin egresos.</td></tr>':db.listaCorrientes.map(c=>`<tr><td class="ro-cell">${selectorRubroHistorico(mesId,'corriente',c.id,c.rubro||'')}</td><td class="ro-cell">${c.detalle}</td><td class="ro-cell ro-muted">${mNom(c.medioPagoId)}</td><td class="ro-cell ro-muted tc">${c.fechaPago||'—'}</td><td class="ro-cell ro-green tr">${fmt(c.monto)}</td></tr>`).join('');
     return `<div class="panel panel-corrientes"><h3 class="panel-title">🛍️ Gastos Corrientes</h3><table><thead><tr><th style="width:22%">Rubro</th><th style="width:28%">Detalle</th><th style="width:23%">Medio</th><th style="width:12%" class="tc">F.Pago</th><th style="width:15%" class="tr">Monto</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -4293,7 +4314,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.24';
+const APP_VERSION = 'v3.8.25';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
