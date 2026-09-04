@@ -755,6 +755,9 @@
     <h2>Configurar un límite</h2>
     <p>Para cada rubro se puede definir un monto máximo mensual. La app muestra el gasto actual vs el límite con una barra de progreso y una indicación de porcentaje.</p>
 
+    <h2>Incluir/excluir del Reporte 4 <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Cada rubro tiene, junto al límite, un checkbox "Incluir en Reporte 4". Controla si ese rubro aparece como opción elegible en <a href="#reportes">🎯 Cumplimiento de Presupuesto</a>. Viene tildado por defecto — destildarlo saca al rubro de la lista de chips de ese reporte (útil para rubros que no tiene sentido trackear ahí, sin tener que ignorarlo cada vez).</p>
+
     <h2>Indicadores visuales</h2>
     <ul>
       <li><span class="badge badge-green">Verde</span> — Dentro del presupuesto</li>
@@ -781,19 +784,27 @@
       <span class="section-icon">📈</span>
       <div>
         <div class="section-title">Reportes</div>
-        <div class="section-subtitle">Análisis y visualización del período actual</div>
+        <div class="section-subtitle">5 reportes con menú de navegación <span class="badge badge-purple">Actualizado</span></div>
       </div>
     </div>
-    <p>La pestaña Reportes muestra gráficos y resúmenes del período en curso para analizar la distribución de gastos.</p>
+    <p>La pestaña Reportes tiene un menú de botones arriba para elegir cuál ver — se muestra uno solo a la vez, no todos apilados.</p>
 
-    <h2>Contenido</h2>
-    <ul>
-      <li>Distribución de gastos corrientes por rubro</li>
-      <li>Comparativa entre presupuesto y gasto real por categoría</li>
-      <li>Resumen de servicios fijos pagados vs pendientes</li>
-      <li>Totales por medio de pago</li>
-      <li>Comparativa entre períodos (si hay historial)</li>
-    </ul>
+    <h2>📋 Resumen del Mes</h2>
+    <p>Distribución de gastos corrientes por rubro, comparativa entre presupuesto y gasto real, servicios fijos pagados vs. pendientes, totales por medio de pago y equivalente en dólares.</p>
+
+    <h2>📊 Análisis por Rubro (12 meses)</h2>
+    <p>Tabla comparativa de gasto por rubro a lo largo de los últimos 12 períodos cerrados, para ver tendencias.</p>
+
+    <h2>🏷️ Detalle Clase O</h2>
+    <p>Desglose específico de los gastos y servicios marcados como Clase O (fuera del presupuesto habitual) del mes en curso.</p>
+
+    <h2>🎯 Cumplimiento de Presupuesto <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Un gráfico de líneas por rubro (grilla de hasta 4 por fila) mostrando el gasto real de los últimos 6 meses (5 cerrados + el actual) contra una línea punteada de referencia con el límite configurado en 🎯 Presupuesto. El punto se pinta en rojo si ese mes superó el límite.</p>
+    <p>Ningún rubro viene tildado por defecto — se eligen a mano con los chips de arriba (hay botones "Tildar todos" / "Destildar todos" para hacerlo rápido). Cada rubro tiene además un check propio en la pestaña 🎯 Presupuesto ("Incluir en Reporte 4") para sacarlo directamente de la lista de opciones si no interesa trackearlo ahí.</p>
+    <div class="note">📌 El gasto de cada mes suma tanto Gastos Corrientes como Servicios Fijos pagados con ese rubro asignado — no solo corrientes.</div>
+
+    <h2>🧾 Detalle de Transacciones por Rubro <span class="badge badge-purple">Nuevo</span></h2>
+    <p>El "drill-down" del reporte anterior: elegís un rubro y ves, mes por mes (los mismos 6 meses), cada transacción individual que lo compone — fecha, detalle y monto, con las que vienen de Servicios Fijos marcadas "FIJO". Subtotal por mes y total general al pie. Los números coinciden exactamente con los del gráfico de Cumplimiento de Presupuesto, porque usa el mismo criterio de datos.</p>
   </section>
 
   <!-- INVERSIONES -->
@@ -839,7 +850,7 @@
       <span class="section-icon">🗂</span>
       <div>
         <div class="section-title">Períodos Cerrados</div>
-        <div class="section-subtitle">Historial de meses anteriores (solo lectura)</div>
+        <div class="section-subtitle">Historial de meses anteriores (solo lectura, con una excepción) <span class="badge badge-purple">Actualizado</span></div>
       </div>
     </div>
     <p>Cada vez que se abre un Nuevo Mes, el período actual se archiva y queda disponible desde el botón <strong>📅 Meses cerrados</strong> del header (muestra un contador con la cantidad de meses archivados). Al tocarlo se despliega la lista, del más reciente al más viejo; tocar un mes lo abre en modo solo lectura, mostrando el estado exacto al momento del cierre.</p>
@@ -852,6 +863,10 @@
       <li>Gastos corrientes del período</li>
       <li>Transferencias</li>
     </ul>
+
+    <h2>Corregir el rubro de un gasto ya archivado</h2>
+    <p>En las tablas de <strong>Gastos Corrientes</strong> y <strong>Servicios Fijos</strong> de un período cerrado, el rubro se muestra como un desplegable editable — es la única excepción al modo solo lectura. Elegir otra opción actualiza el rubro de esa transacción en el archivo del mes al instante, sin botón de guardar aparte. Sirve para corregir una categorización que quedó mal cargada sin tener que reabrir el mes.</p>
+    <div class="tip">💡 Esto afecta directamente los números de <a href="#reportes">🎯 Cumplimiento de Presupuesto</a> y 🧾 Detalle de Transacciones por Rubro, ya que ambos leen el rubro directamente del archivo de cada período cerrado.</div>
 
     <h2>Eliminar un período</h2>
     <p>Dentro del desplegable "📅 Meses cerrados", tocar la ✕ junto al mes. Pide confirmación. Esta acción es irreversible.</p>
@@ -1156,6 +1171,18 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.25</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Reportes: menú de navegación (elegís cuál ver, ya no se muestran los 4-5 apilados uno tras otro)</li>
+        <li>Nuevo Reporte 4 · Cumplimiento de Presupuesto: gráfico de líneas por rubro, últimos 6 meses, con línea de referencia del límite. Rubros seleccionables a mano (chips + Tildar/Destildar todos), grilla fija de 4 columnas</li>
+        <li>Nuevo Reporte 5 · Detalle de Transacciones por Rubro: el drill-down del anterior, transacción por transacción agrupadas por mes</li>
+        <li>Nuevo checkbox "Incluir en Reporte 4" en cada rubro de la pestaña Presupuesto</li>
+        <li>Fix: el gasto por rubro en estos reportes ahora suma también Servicios Fijos pagados (antes solo miraba Gastos Corrientes, así que un rubro cargado 100% como fijo daba siempre cero)</li>
+        <li>Vista Histórica: el rubro de cada Gasto Corriente y Servicio Fijo de un mes cerrado ahora es editable (antes todo el período era 100% solo lectura) — corrige directamente los números de los reportes anteriores</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.13</span><span class="changelog-tag tag-feature">feature</span></div>
