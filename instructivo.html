@@ -593,9 +593,12 @@
       <span class="badge badge-red">✗ PENDIENTE</span>
     </div>
 
+    <h2>Comprobante (link a factura) <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Cada servicio tiene una columna con un ícono 📎 para guardar el link a su comprobante (factura en PDF, foto, lo que sea que hayas subido a Drive u otro lado). Si no tiene nada cargado se ve un "+" tenue: al tocarlo pide pegar el link. Una vez cargado, un clic sobre el 📎 abre el link en una pestaña nueva; click derecho (o mantener presionado en el celular) para cambiarlo o borrarlo — dejando el campo vacío lo quita. Por ahora es un solo link por servicio, no una lista.</p>
+
     <div class="tip">💡 Con el módulo Gmail activo, los pagos de servicios fijos se pueden asentar automáticamente cuando llega el mail de débito de Santander, sin necesidad de hacerlo manualmente.</div>
 
-    <div class="note">📌 Al abrir un Nuevo Mes, todos los servicios se resetean: el monto pagado vuelve a 0, la fecha de pago se borra y la fecha de vencimiento también se limpia (para ingresarla nuevamente para el nuevo mes).</div>
+    <div class="note">📌 Al abrir un Nuevo Mes, todos los servicios se resetean: el monto pagado vuelve a 0, la fecha de pago se borra y la fecha de vencimiento también se limpia (para ingresarla nuevamente para el nuevo mes). El comprobante queda guardado tal cual estaba en el momento del cierre.</div>
   </section>
 
   <!-- GASTOS CORRIENTES -->
@@ -626,6 +629,9 @@
       <li><strong>O</strong> — Oma</li>
       <li><strong>X</strong> — Otros / Extraordinario</li>
     </ul>
+
+    <h2>Comprobante (link a factura) <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Igual que en Servicios Fijos: cada gasto corriente tiene una columna 📎 para pegar el link a su comprobante (ya subido a Drive u otro lado por tu cuenta — la app no sube archivos). "+" tenue si no hay nada cargado; click en el 📎 abre el link, click derecho lo edita o lo borra.</p>
 
     <div class="tip">💡 Con el módulo Gmail, los consumos de tarjeta de crédito detectados en los mails de Santander se registran automáticamente como gastos corrientes si no coinciden con un servicio fijo.</div>
   </section>
@@ -856,7 +862,7 @@
       <span class="section-icon">🗂</span>
       <div>
         <div class="section-title">Períodos Cerrados</div>
-        <div class="section-subtitle">Historial de meses anteriores (solo lectura, con una excepción) <span class="badge badge-purple">Actualizado</span></div>
+        <div class="section-subtitle">Historial de meses anteriores (solo lectura, con dos excepciones) <span class="badge badge-purple">Actualizado</span></div>
       </div>
     </div>
     <p>Cada vez que se abre un Nuevo Mes, el período actual se archiva y queda disponible desde el botón <strong>📅 Meses cerrados</strong> del header (muestra un contador con la cantidad de meses archivados). Al tocarlo se despliega la lista, del más reciente al más viejo; tocar un mes lo abre en modo solo lectura, mostrando el estado exacto al momento del cierre.</p>
@@ -874,8 +880,11 @@
     <p>En las tablas de <strong>Gastos Corrientes</strong> y <strong>Servicios Fijos</strong> de un período cerrado, el rubro se muestra como un desplegable editable — es la única excepción al modo solo lectura. Elegir otra opción actualiza el rubro de esa transacción en el archivo del mes al instante, sin botón de guardar aparte. Sirve para corregir una categorización que quedó mal cargada sin tener que reabrir el mes.</p>
     <div class="tip">💡 Esto afecta directamente los números de <a href="#reportes">🎯 Cumplimiento de Presupuesto</a> y 🧾 Detalle de Transacciones por Rubro, ya que ambos leen el rubro directamente del archivo de cada período cerrado.</div>
 
+    <h2>Comprobante de un gasto ya archivado <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Igual que el rubro, el ícono 📎 de comprobante también es editable en un mes cerrado — otra excepción al modo solo lectura. Sirve para agregar el link a una factura que en su momento no cargaste, o para corregirlo, sin tener que reabrir el mes.</p>
+
     <h2>Sección en dólares <span class="badge badge-purple">Nuevo</span></h2>
-    <p>Si ese mes tuvo algún dato en USD (cuentas, tarjetas, servicios o gastos corrientes), aparece un bloque aparte "💵 Dólares al Cierre" debajo del de pesos, con las mismas cuatro tablas (Cuentas, Tarjetas, Servicios Fijos y Gastos Corrientes, todas en USD) y el mismo rubro editable — contra la lista de rubros USD, que es independiente de la de pesos. Si no hubo nada cargado en dólares ese mes, el bloque directamente no se muestra.</p>
+    <p>Si ese mes tuvo algún dato en USD (cuentas, tarjetas, servicios o gastos corrientes), aparece un bloque aparte "💵 Dólares al Cierre" debajo del de pesos, con las mismas cuatro tablas (Cuentas, Tarjetas, Servicios Fijos y Gastos Corrientes, todas en USD) y el mismo rubro y comprobante editables — contra la lista de rubros USD, que es independiente de la de pesos. Si no hubo nada cargado en dólares ese mes, el bloque directamente no se muestra.</p>
 
     <h2>Eliminar un período</h2>
     <p>Dentro del desplegable "📅 Meses cerrados", tocar la ✕ junto al mes. Pide confirmación. Esta acción es irreversible.</p>
@@ -1180,6 +1189,15 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.32</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Comprobante (link a factura): ícono 📎 nuevo en Gastos Corrientes y Servicios Fijos, en pesos y en dólares — se pega un link (a Drive u otro lado) sin subir archivos. Click abre el link, click derecho lo cambia o lo borra</li>
+        <li>El comprobante también es editable en meses cerrados (Vista Histórica), igual que ya pasaba con el rubro — segunda excepción al modo solo lectura</li>
+        <li>Por ahora es un solo link por gasto, no una lista de varios</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.30</span><span class="changelog-tag tag-feature">feature</span></div>
