@@ -2271,6 +2271,7 @@ function buildMovimientos() {
         vistos.add(ym);
         addOpt(selMes, ym, '📅 ' + historicoMeses[i].nombre, movMesSelYM === ym);
     }
+    if (historicoMeses.length) addOpt(selMes, 'TODOS', '📚 Todos los meses (acumulado)', movMesSelYM === 'TODOS');
     selMes.onchange = e => { movMesSelYM = e.target.value; renderMovimientosDetalle(); };
     selRow.appendChild(selMes);
     wrap.appendChild(selRow);
@@ -2322,6 +2323,9 @@ function renderMovimientosDetalleGenerico(cfg) {
 
     const mesActualYM = cfFechaLocal().slice(0,7);
     const targetYM = movMesSelYM || mesActualYM;
+
+    if (targetYM === 'TODOS') { renderMovimientosAcumulado(cfg, cuenta); return; }
+
     const esMesActual = targetYM === mesActualYM;
     const fmt2 = cfg.formatFn;
     const saldoRef = cfg.getSaldo(cuenta.id, targetYM);
@@ -2377,6 +2381,85 @@ function renderMovimientosDetalleGenerico(cfg) {
             filas += '<tr style="background:' + bgFila + ';"><td style="padding:5px 10px 5px 20px;font-size:12px;color:#1e293b;">' + m.detalle + '</td>' +
                 '<td style="padding:5px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + colorMonto + ';">' + signo + fmt2(m.monto) + '</td>' +
                 '<td style="padding:5px 10px;text-align:right;font-size:12px;color:#64748b;">' + fmt2(running) + '</td></tr>';
+        });
+        filas += '<tr style="background:' + cfg.bgTema + ';"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';border-top:2px solid ' + cfg.borderTema + ';">' + lblSaldoActual + '</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + cfg.colorTema + ';border-top:2px solid ' + cfg.borderTema + ';">' + fmt2(saldoRef) + '</td></tr>';
+        tablaHtml = '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><tbody>' + filas + '</tbody></table></div>';
+    }
+
+    det.innerHTML = cards + tablaHtml;
+}
+
+// Modo "Todos los meses": encadena el historial completo (todos los meses cerrados + el actual) en un
+// único listado continuo, con saldo corrido de punta a punta. Reutiliza cfg.computeMov mes a mes.
+function renderMovimientosAcumulado(cfg, cuenta) {
+    const det = document.getElementById('mov-detalle');
+    const fmt2 = cfg.formatFn;
+    const mesActualYM = cfFechaLocal().slice(0,7);
+    const lblSaldoInicio  = cfg.lblSaldoInicio  || 'Saldo inicio de mes';
+    const lblPositivo     = cfg.lblPositivo     || 'Ingresos del mes';
+    const lblNegativo     = cfg.lblNegativo     || 'Egresos del mes';
+    const colorPositivo   = cfg.colorPositivo   || '#16a34a';
+    const bgPositivo      = cfg.bgPositivo      || '#f0fdf4';
+    const borderPositivo  = cfg.borderPositivo  || '#bbf7d0';
+    const colorNegativo   = cfg.colorNegativo   || '#dc2626';
+    const bgNegativo      = cfg.bgNegativo      || '#fef2f2';
+    const borderNegativo  = cfg.borderNegativo  || '#fecaca';
+    const lblSaldoActual  = (cfg.lblActualPrefix || 'Saldo') + ' actual';
+
+    // Meses con datos, del más viejo al más nuevo (historicoMeses ya está en ese orden) + el mes actual al final.
+    const meses = [];
+    historicoMeses.forEach(m => { const ym = mesNombreToYM(m.nombre); if (ym) meses.push({ ym, nombre: m.nombre }); });
+    if (!meses.some(m => m.ym === mesActualYM)) meses.push({ ym: mesActualYM, nombre: 'Mes Actual' });
+
+    const bloques = meses.map(m => ({ nombre: m.nombre, mov: cfg.computeMov(cuenta.id, m.ym) }));
+
+    // Saldo al inicio de todo el historial: saldo de cierre del mes más viejo, menos lo que se movió ese mes.
+    const saldoCierrePrimerMes = cfg.getSaldo(cuenta.id, meses[0].ym);
+    const totalMovPrimerMes = bloques[0].mov.reduce((a, m) => a + m.monto, 0);
+    const saldoInicio = saldoCierrePrimerMes === null ? 0 : Math.round((saldoCierrePrimerMes - totalMovPrimerMes) * 100) / 100;
+    const saldoRef = cfg.getSaldo(cuenta.id, mesActualYM); // saldo real de hoy — el final de la cadena
+
+    const todosMov = bloques.flatMap(b => b.mov);
+    const totalIngresos = todosMov.filter(m => m.monto > 0).reduce((a, m) => a + m.monto, 0);
+    const totalEgresos = todosMov.filter(m => m.monto < 0).reduce((a, m) => a + m.monto, 0);
+
+    let cards = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">';
+    cards += '<div style="background:white;border:1px solid #cbd5e1;border-top:4px solid #64748b;border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;">' + lblSaldoInicio.replace('mes', 'del historial') + '</span><br><span style="font-size:20px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</span></div>';
+    cards += '<div style="background:' + bgPositivo + ';border:1px solid ' + borderPositivo + ';border-top:4px solid ' + colorPositivo + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + colorPositivo + ';text-transform:uppercase;">' + lblPositivo.replace('del mes', 'acumulados') + '</span><br><span style="font-size:20px;font-weight:bold;color:' + colorPositivo + ';">+' + fmt2(totalIngresos) + '</span></div>';
+    cards += '<div style="background:' + bgNegativo + ';border:1px solid ' + borderNegativo + ';border-top:4px solid ' + colorNegativo + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + colorNegativo + ';text-transform:uppercase;">' + lblNegativo.replace('del mes', 'acumulados') + '</span><br><span style="font-size:20px;font-weight:bold;color:' + colorNegativo + ';">' + fmt2(totalEgresos) + '</span></div>';
+    cards += '<div style="background:' + cfg.bgTema + ';border:1px solid ' + cfg.borderTema + ';border-top:4px solid ' + cfg.colorTema + ';border-radius:8px;padding:14px;"><span style="font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';text-transform:uppercase;">' + lblSaldoActual + '</span><br><span style="font-size:20px;font-weight:bold;color:' + cfg.colorTema + ';">' + fmt2(saldoRef) + '</span></div>';
+    cards += '</div>';
+
+    let tablaHtml;
+    if (!todosMov.length) {
+        tablaHtml = '<div style="background:white;border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:13px;">Sin movimientos registrados en ningún mes para esta cuenta.</div>';
+    } else {
+        let filas = '';
+        let running = saldoInicio;
+        let filaIdx = 0;
+        filas += '<tr style="background:#f8fafc;"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:#64748b;">' + lblSaldoInicio.replace('mes', 'del historial') + '</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:#1e293b;">' + fmt2(saldoInicio) + '</td></tr>';
+        bloques.forEach(b => {
+            filas += '<tr><td colspan="3" style="padding:12px 4px 4px;font-size:12px;font-weight:bold;color:white;background:' + cfg.colorTema + ';border-radius:4px;">📅 ' + b.nombre + '</td></tr>';
+            if (!b.mov.length) {
+                filas += '<tr><td colspan="3" style="padding:6px 20px;font-size:11px;color:#94a3b8;">Sin movimientos este mes.</td></tr>';
+                return;
+            }
+            let fechaAnterior = null;
+            b.mov.forEach(m => {
+                running = Math.round((running + m.monto) * 100) / 100;
+                const fechaLbl = m.fecha ? m.fecha.split('-').reverse().join('/') : '—';
+                if (m.fecha !== fechaAnterior) {
+                    filas += '<tr><td colspan="3" style="padding:8px 4px 2px;font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';">' + fechaLbl + '</td></tr>';
+                    fechaAnterior = m.fecha;
+                }
+                const colorMonto = m.monto >= 0 ? colorPositivo : colorNegativo;
+                const signo = m.monto >= 0 ? '+' : '';
+                const bgFila = (filaIdx % 2 === 0) ? '#ffffff' : '#cbd5e1';
+                filaIdx++;
+                filas += '<tr style="background:' + bgFila + ';"><td style="padding:5px 10px 5px 20px;font-size:12px;color:#1e293b;">' + m.detalle + '</td>' +
+                    '<td style="padding:5px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + colorMonto + ';">' + signo + fmt2(m.monto) + '</td>' +
+                    '<td style="padding:5px 10px;text-align:right;font-size:12px;color:#64748b;">' + fmt2(running) + '</td></tr>';
+            });
         });
         filas += '<tr style="background:' + cfg.bgTema + ';"><td colspan="2" style="padding:6px 10px;font-size:11px;font-weight:bold;color:' + cfg.colorTema + ';border-top:2px solid ' + cfg.borderTema + ';">' + lblSaldoActual + '</td><td style="padding:6px 10px;text-align:right;font-size:12px;font-weight:bold;color:' + cfg.colorTema + ';border-top:2px solid ' + cfg.borderTema + ';">' + fmt2(saldoRef) + '</td></tr>';
         tablaHtml = '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:16px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><tbody>' + filas + '</tbody></table></div>';
@@ -4553,7 +4636,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.29';
+const APP_VERSION = 'v3.8.30';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
