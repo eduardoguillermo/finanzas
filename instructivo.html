@@ -518,6 +518,9 @@
     <h2>Meses cerrados</h2>
     <p>El selector de mes incluye el mes actual y todos los meses ya archivados con "🔄 Abrir Nuevo Mes". Para un mes cerrado, la tabla se arma con la foto que quedó guardada al cierre de ese período — no con las listas en vivo — así que el detalle diario y el saldo (o deuda) de cierre siguen disponibles aunque hayan pasado varios meses. Los pagos a tarjeta no se archivan por mes (como los ingresos): siempre están disponibles y se filtran por su fecha.</p>
 
+    <h2>Todos los meses (acumulado) <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Si hay al menos un mes cerrado, el selector suma una última opción "📚 Todos los meses (acumulado)". En vez de mostrar un mes a la vez, encadena el historial completo de esa cuenta o tarjeta — desde el mes más viejo archivado hasta el actual — en un único listado continuo, con el saldo corrido de punta a punta sin cortarse en cada cierre. Cada mes aparece con su propio separador dentro del listado para ubicarse. El "saldo inicio" que se muestra ahí es el del comienzo de todo el historial, y el final es el saldo (o deuda) real de hoy.</p>
+
     <h2>Saldo al inicio del mes</h2>
     <p>No es un dato que se guarde aparte: se calcula restándole al valor de referencia del mes (el actual, o el de cierre si es un mes pasado) la suma de todos los movimientos de ese período. Por eso siempre es consistente con el valor que corresponde a ese mes.</p>
 
@@ -805,6 +808,9 @@
 
     <h2>🧾 Detalle de Transacciones por Rubro <span class="badge badge-purple">Nuevo</span></h2>
     <p>El "drill-down" del reporte anterior: elegís un rubro y ves, mes por mes (los mismos 6 meses), cada transacción individual que lo compone — fecha, detalle y monto, con las que vienen de Servicios Fijos marcadas "FIJO". Subtotal por mes y total general al pie. Los números coinciden exactamente con los del gráfico de Cumplimiento de Presupuesto, porque usa el mismo criterio de datos.</p>
+
+    <h2>Toggle $ Pesos / USD Dólares <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Tanto Cumplimiento de Presupuesto como Detalle de Transacciones tienen un botón para elegir la moneda. Es un solo interruptor compartido entre los dos reportes — si lo cambiás a USD en uno, el otro también se abre en USD. Cada moneda tiene su propia selección de rubros (elegís distintos chips en pesos que en dólares, sin que se pisen entre sí) y usa el límite/checklist de rubros configurado en la sección USD de 🎯 Presupuesto.</p>
   </section>
 
   <!-- INVERSIONES -->
@@ -867,6 +873,9 @@
     <h2>Corregir el rubro de un gasto ya archivado</h2>
     <p>En las tablas de <strong>Gastos Corrientes</strong> y <strong>Servicios Fijos</strong> de un período cerrado, el rubro se muestra como un desplegable editable — es la única excepción al modo solo lectura. Elegir otra opción actualiza el rubro de esa transacción en el archivo del mes al instante, sin botón de guardar aparte. Sirve para corregir una categorización que quedó mal cargada sin tener que reabrir el mes.</p>
     <div class="tip">💡 Esto afecta directamente los números de <a href="#reportes">🎯 Cumplimiento de Presupuesto</a> y 🧾 Detalle de Transacciones por Rubro, ya que ambos leen el rubro directamente del archivo de cada período cerrado.</div>
+
+    <h2>Sección en dólares <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Si ese mes tuvo algún dato en USD (cuentas, tarjetas, servicios o gastos corrientes), aparece un bloque aparte "💵 Dólares al Cierre" debajo del de pesos, con las mismas cuatro tablas (Cuentas, Tarjetas, Servicios Fijos y Gastos Corrientes, todas en USD) y el mismo rubro editable — contra la lista de rubros USD, que es independiente de la de pesos. Si no hubo nada cargado en dólares ese mes, el bloque directamente no se muestra.</p>
 
     <h2>Eliminar un período</h2>
     <p>Dentro del desplegable "📅 Meses cerrados", tocar la ✕ junto al mes. Pide confirmación. Esta acción es irreversible.</p>
@@ -1171,6 +1180,15 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.30</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Movimientos: opción "Todos los meses (acumulado)" en el selector — encadena el historial completo de una cuenta/tarjeta en un único listado continuo, con saldo corrido de punta a punta</li>
+        <li>Vista Histórica: sección "💵 Dólares al Cierre" (cuentas, tarjetas, servicios y gastos corrientes en USD) para los meses que tuvieron datos en dólares — antes esa vista era 100% en pesos</li>
+        <li>Reporte 4 y 5: toggle $ Pesos / USD Dólares, compartido entre ambos, con selección de rubros y checklist independiente por moneda</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.25</span><span class="changelog-tag tag-feature">feature</span></div>
