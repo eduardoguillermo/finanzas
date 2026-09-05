@@ -778,6 +778,35 @@ function medioNom(id) {
     const t=listaTarjetas.find(x=>x.id===id); if(t) return '💳 '+t.nombre;
     return '—';
 }
+
+// ── Comprobante (link a factura/PDF, ej. en Drive) — Opción A: campo de link manual ──
+// Sirve para Gastos Corrientes y Servicios Fijos, en pesos y en dólares. No se sube ningún
+// archivo: solo se guarda la URL que el usuario pega (ya subida a Drive u otro lado por su cuenta).
+function editarComprobante(item, refrescarFn) {
+    const nuevo = prompt('Link al comprobante (factura en Drive, etc.) — dejalo vacío para quitarlo:', item.comprobante || '');
+    if (nuevo === null) return; // canceló
+    item.comprobante = nuevo.trim();
+    guardar();
+    refrescarFn();
+}
+function tdComprobante(item, refrescarFn) {
+    const td = el('td', 'tc');
+    const span = el('span');
+    if (item.comprobante) {
+        span.innerText = '📎';
+        span.title = 'Ver comprobante · click derecho para cambiar o quitar';
+        span.style.cssText = 'cursor:pointer;font-size:15px;';
+        span.onclick = () => window.open(item.comprobante, '_blank', 'noopener');
+        span.oncontextmenu = e => { e.preventDefault(); editarComprobante(item, refrescarFn); };
+    } else {
+        span.innerText = '+';
+        span.title = 'Agregar comprobante (link)';
+        span.style.cssText = 'cursor:pointer;font-size:12px;color:#cbd5e1;border:1px dashed #cbd5e1;border-radius:4px;padding:1px 6px;';
+        span.onclick = () => editarComprobante(item, refrescarFn);
+    }
+    td.appendChild(span);
+    return td;
+}
 function esCuentaLiq(id) {
     const b=listaBancos.find(x=>x.id===id);
     return b ? (b.autoDescontar===true) : false;
@@ -1028,10 +1057,10 @@ function buildMesActual() {
               </form>
             </div>
             <table><thead><tr>
-              <th style="width:16%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:10%" class="tc">Rubro</th><th style="width:10%" class="tc">Vto.</th>
+              <th style="width:15%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:9%" class="tc">Rubro</th><th style="width:9%" class="tc">Vto.</th>
               <th style="width:10%" class="tr">Presup.</th><th style="width:10%" class="tr">Pagado</th>
-              <th style="width:11%" class="tc">F.Pago</th><th style="width:14%">Medio</th>
-              <th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th>
+              <th style="width:10%" class="tc">F.Pago</th><th style="width:13%">Medio</th>
+              <th style="width:8%" class="tc">Estado</th><th style="width:4%" class="tc no-print">📎</th><th style="width:4%" class="no-print"></th>
             </tr></thead><tbody id="t-servicios"></tbody><tfoot id="t-servicios-foot"></tfoot></table>
           </div>
           <div class="panel panel-corrientes">
@@ -1217,6 +1246,7 @@ function render() {
          tdPag, tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
          (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{ s.medioPagoId=v; guardar(); calcDash(); })); return td; })(),
          tdEst,
+         tdComprobante(s, render),
          (()=>{ const td=el('td','tc no-print'); td.style.whiteSpace='nowrap';
                 const bDup=el('button','btn'); bDup.style.cssText='background:#f1f5f9;color:#334155;padding:3px 7px;font-size:11px;margin-right:3px;'; bDup.innerText='\u29c9'; bDup.title='Duplicar servicio';
                 bDup.onclick=()=>{ const copia=Object.assign({},clon(s),{id:'s_'+Date.now(),nombre:s.nombre+' (copia)',pagado:0,fPago:''}); listaServicios.push(copia); guardar(); render(); };
@@ -1247,7 +1277,7 @@ function render() {
     if(wC){
         wC.innerHTML='';
         const tbl=el('table'); tbl.style.cssText='width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;';
-        const thead=el('thead'); thead.innerHTML='<tr><th style="width:6%" class="tc">Clase</th><th style="width:18%">Rubro</th><th style="width:23%">Detalle</th><th style="width:15%">Medio</th><th style="width:12%;text-align:center;">F. Pago</th><th style="width:14%;text-align:right;">Monto ($)</th><th style="width:6%" class="no-print"></th></tr>';
+        const thead=el('thead'); thead.innerHTML='<tr><th style="width:6%" class="tc">Clase</th><th style="width:16%">Rubro</th><th style="width:20%">Detalle</th><th style="width:13%">Medio</th><th style="width:11%;text-align:center;">F. Pago</th><th style="width:13%;text-align:right;">Monto ($)</th><th style="width:5%" class="tc no-print">📎</th><th style="width:6%" class="no-print"></th></tr>';
         const tbody=el('tbody');
         if(!listaCorrientes.length) { tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin egresos corrientes.</td></tr>'; }
         else { listaCorrientes.filter(c=>(!filtroCorrientes||(c.rubro+' '+c.detalle).toLowerCase().includes(filtroCorrientes))&&(!filtroClase||(c.clase||'M')===filtroClase)).forEach(c=>{
@@ -1278,7 +1308,7 @@ function render() {
             const tdFP=el('td','tc'); tdFP.appendChild(inpFP);
             const tdMon=el('td','tr'); tdMon.appendChild(inpM);
             const tdX=el('td','tc no-print'); const bX=el('button','btn-del'); bX.innerText='✕'; bX.onclick=()=>elimCorriente(c.id); tdX.appendChild(bX);
-            const tr=el('tr'); [tdCl,tdR,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
+            const tr=el('tr'); [tdCl,tdR,tdD,tdM,tdFP,tdMon,tdComprobante(c, render),tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
         }); }
         tbl.appendChild(thead); tbl.appendChild(tbody); wC.appendChild(tbl);
 
@@ -2588,7 +2618,7 @@ function buildDolares() {
                 <button type="submit" class="btn btn-add" style="background:#4f46e5;">Configurar Servicio USD</button>
               </form>
             </div>
-            <table><thead><tr><th style="width:22%">Servicio</th><th style="width:13%" class="tc">Vto.</th><th style="width:12%" class="tr">Presup.</th><th style="width:12%" class="tr">Pagado</th><th style="width:12%" class="tc">F.Pago</th><th style="width:15%">Medio</th><th style="width:9%" class="tc">Estado</th><th style="width:4%" class="no-print"></th></tr></thead><tbody id="t-susd"></tbody></table>
+            <table><thead><tr><th style="width:20%">Servicio</th><th style="width:12%" class="tc">Vto.</th><th style="width:11%" class="tr">Presup.</th><th style="width:11%" class="tr">Pagado</th><th style="width:11%" class="tc">F.Pago</th><th style="width:14%">Medio</th><th style="width:8%" class="tc">Estado</th><th style="width:4%" class="tc no-print">📎</th><th style="width:4%" class="no-print"></th></tr></thead><tbody id="t-susd"></tbody></table>
           </div>
           <div class="panel" style="border-top:4px solid #10b981;">
             <h3 class="panel-title" style="display:flex;align-items:center;">🛍️ Gastos Corrientes en USD ${btnAyuda('dolares')}</h3>
@@ -2866,7 +2896,7 @@ function renderDolares() {
             })); return td; })(),
          tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
          (()=>{ const td=el('td'); td.appendChild(medSel); return td; })(),
-         tdEst, tdBtn('✕',()=>elimServicioUSD(s.id))
+         tdEst, tdComprobante(s, renderDolares), tdBtn('✕',()=>elimServicioUSD(s.id))
         ].forEach(td=>tr.appendChild(td));
         tSU.appendChild(tr);
     });
@@ -2876,7 +2906,7 @@ function renderDolares() {
     if(wCU){
         wCU.innerHTML='';
         const tbl=el('table'); tbl.style.cssText='width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;';
-        const thead=el('thead'); thead.innerHTML='<tr><th style="width:20%">Rubro</th><th style="width:27%">Detalle</th><th style="width:17%">Medio</th><th style="width:13%;text-align:center;">F. Pago</th><th style="width:15%;text-align:right;">Monto (USD)</th><th style="width:8%" class="no-print"></th></tr>';
+        const thead=el('thead'); thead.innerHTML='<tr><th style="width:18%">Rubro</th><th style="width:24%">Detalle</th><th style="width:15%">Medio</th><th style="width:12%;text-align:center;">F. Pago</th><th style="width:13%;text-align:right;">Monto (USD)</th><th style="width:5%" class="tc no-print">📎</th><th style="width:8%" class="no-print"></th></tr>';
         const tbody=el('tbody');
         if(!listaCorrientesUSD.length){ tbody.innerHTML='<tr><td colspan="6" class="tc" style="color:#94a3b8;padding:15px;">Sin gastos corrientes en USD.</td></tr>'; }
         else { listaCorrientesUSD.forEach(c=>{
@@ -2898,7 +2928,7 @@ function renderDolares() {
             const tdFP=el('td','tc'); tdFP.appendChild(inpFP);
             const tdMon=el('td','tr'); tdMon.appendChild(inpM);
             const tdX=el('td','tc no-print'); const bX=el('button','btn-del'); bX.innerText='✕'; bX.onclick=()=>elimCorrienteUSD(c.id); tdX.appendChild(bX);
-            const tr=el('tr'); [tdR2,tdD,tdM,tdFP,tdMon,tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
+            const tr=el('tr'); [tdR2,tdD,tdM,tdFP,tdMon,tdComprobante(c, renderDolares),tdX].forEach(td=>tr.appendChild(td)); tbody.appendChild(tr);
         }); }
         tbl.appendChild(thead); tbl.appendChild(tbody); wCU.appendChild(tbl);
     }
@@ -4636,7 +4666,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.30';
+const APP_VERSION = 'v3.8.31';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
