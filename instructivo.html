@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.13</p>
+    <p>Manual de usuario · v3.8.40</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.13</span>
+      <span class="badge badge-green">✓ v3.8.40</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -577,7 +577,7 @@
       <tr><th>Campo</th><th>Descripción</th></tr>
       <tr><td>Nombre</td><td>Identificador del servicio (ej. "Edemsa", "Claro", "Spotify")</td></tr>
       <tr><td>Presupuesto</td><td>Monto estimado que se pagará este mes</td></tr>
-      <tr><td>Vencimiento</td><td>Fecha límite de pago (se limpia al abrir nuevo mes)</td></tr>
+      <tr><td>Vencimiento</td><td>Fecha límite de pago. Al abrir nuevo mes se recalcula sola: mismo día del mes siguiente a la fecha de pago cargada ese mes (ver "Abrir Nuevo Mes")</td></tr>
       <tr><td>Medio de pago</td><td>Tarjeta o cuenta con la que se paga</td></tr>
       <tr><td>Clase</td><td>M=Mío, O=Oma, X=Otros (para filtrado)</td></tr>
       <tr><td>Rubro</td><td>Categoría del gasto</td></tr>
@@ -597,6 +597,9 @@
     <p>Cada servicio tiene una columna con un ícono 📎 para guardar el link a su comprobante (factura en PDF, foto, lo que sea que hayas subido a Drive u otro lado). Si no tiene nada cargado se ve un "+" tenue: al tocarlo pide pegar el link. Una vez cargado, un clic sobre el 📎 abre el link en una pestaña nueva; click derecho (o mantener presionado en el celular) para cambiarlo o borrarlo — dejando el campo vacío lo quita. Por ahora es un solo link por servicio, no una lista.</p>
 
     <div class="tip">💡 Con el módulo Gmail activo, los pagos de servicios fijos se pueden asentar automáticamente cuando llega el mail de débito de Santander, sin necesidad de hacerlo manualmente.</div>
+
+    <h2>Actualizar vencimientos (mes actual) <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Botón junto a "🔄 Abrir Nuevo Mes" pensado para el mes que ya está abierto (sin cerrarlo). Para cada servicio fijo que <b>todavía no esté pagado</b> este mes, toma el último mes archivado en el Historial, busca la fecha de pago que tuvo ese mismo servicio, y le calcula el vencimiento (mismo día del mes siguiente a esa fecha). Los servicios ya pagados este mes no se tocan. Pensado para completar vencimientos de un mes que se abrió antes de que existiera el cálculo automático — en el uso normal no hace falta usarlo, "Abrir Nuevo Mes" ya lo hace solo.</p>
 
     <div class="note">📌 Al abrir un Nuevo Mes, todos los servicios se resetean: el monto pagado vuelve a 0, la fecha de pago se borra y la fecha de vencimiento también se limpia (para ingresarla nuevamente para el nuevo mes). El comprobante queda guardado tal cual estaba en el momento del cierre.</div>
   </section>
@@ -910,7 +913,14 @@
       <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Consolida la deuda de tarjetas (pesos y USD):</strong> suma al saldo base de cada tarjeta los servicios pagados y los gastos corrientes con fecha de pago cargada durante el mes, dejando ese consumo incorporado al saldo antes de vaciar las listas. Así el saldo de la tarjeta arranca el nuevo mes reflejando lo realmente consumido.</div></div>
       <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Fija presupuestos automáticos por rubro:</strong> para los rubros (pesos y USD) que no tienen un límite de presupuesto cargado a mano, usa el gasto real de ese rubro en el mes que cierra como presupuesto sugerido del nuevo mes (excluye rubros con "tarjeta" en el nombre).</div></div>
       <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Limpia los gastos corrientes:</strong> se vacían tanto los gastos corrientes en pesos como en USD.</div></div>
-      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Resetea los servicios fijos (pesos y USD):</strong> el monto pagado vuelve a 0, la fecha de pago se borra, y el vencimiento se borra salvo que sea una cuota de una compra en cuotas (esas conservan su fecha). Nombre, presupuesto y medio de pago se mantienen.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Resetea los servicios fijos (pesos y USD):</strong> el monto pagado vuelve a 0 y la fecha de pago se borra. El vencimiento se recalcula solo, salvo que sea una cuota de una compra en cuotas (esas conservan su fecha):
+        <ul style="margin:8px 0 0; padding-left:20px;">
+          <li>Si el servicio tenía fecha de pago cargada este mes: el nuevo vencimiento queda en el <b>mismo día del mes siguiente</b> a esa fecha (ej: pagado 3/9 → vence 3/10).</li>
+          <li>Si estaba pagado (monto&gt;0) pero sin fecha de pago cargada: usa el vencimiento anterior como base y lo corre un mes.</li>
+          <li>Si no estaba pagado: el vencimiento queda como estaba, no se toca.</li>
+        </ul>
+        Nombre, presupuesto y medio de pago se mantienen.
+      </div></div>
       <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Avanza las cuotas:</strong> por cada compra en cuotas todavía activa, genera el servicio de la siguiente cuota (N/Total) y la agrega a Servicios Fijos.</div></div>
       <div class="step"><div class="step-num">7</div><div class="step-body"><strong>Limpia transferencias y compras de USD:</strong> se vacían las transferencias en pesos, las transferencias USD y el registro de compras de dólares del período.</div></div>
     </div>
@@ -1189,6 +1199,16 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.40</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Vencimiento de Servicios Fijos ahora se calcula solo al abrir nuevo mes: mismo día del mes siguiente a la fecha de pago cargada (pesos y USD). Antes quedaba en blanco.</li>
+        <li>Si el servicio estaba pagado pero sin fecha de pago cargada, usa el vencimiento anterior como base. Si no estaba pagado, el vencimiento no se toca.</li>
+        <li>Botón nuevo "📅 Actualizar vencimientos (mes actual)" junto a "Abrir Nuevo Mes", para completar vencimientos de un mes ya abierto sin tener que cerrarlo, tomando como base el último mes archivado.</li>
+        <li>Fix: el service worker ahora fuerza el chequeo de actualización al cargar la app, para que las versiones nuevas se apliquen sin demora.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.32</span><span class="changelog-tag tag-feature">feature</span></div>
