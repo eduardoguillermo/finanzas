@@ -243,6 +243,40 @@ function guardar() {
 // ═══════════════════════════════════════════
 function fmt(n) { return '$ ' + Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function cfFechaLocal(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function cfSumarMes(fechaYMD) { const d = new Date(fechaYMD+'T00:00:00'); d.setMonth(d.getMonth()+1); return cfFechaLocal(d); }
+function cfVencimientoDesdePago(fechaPagoYMD) { return cfSumarMes(fechaPagoYMD); }
+function cfActualizarVencimientosDesdeUltimoMes(){
+    if(!historicoMeses.length){ alert('⚠️ No hay ningún mes cerrado todavía — no hay de dónde tomar la base.'); return; }
+    const ultimo = historicoMeses[historicoMeses.length-1];
+    const archArs = (ultimo.datos && ultimo.datos.listaServicios) || [];
+    const archUsd = (ultimo.datos && ultimo.datos.listaServiciosUSD) || [];
+    let actualizados = 0, sinBase = 0;
+    const aplicar = (listaActual, listaArchivada) => {
+        listaActual.forEach(s=>{
+            if(s.esCuota) return;
+            if(s.pagado>0) return;
+            const prev = listaArchivada.find(p=>p.id===s.id);
+            if(prev && prev.fPago){ s.fVto = cfSumarMes(prev.fPago); actualizados++; }
+            else if(prev) sinBase++;
+        });
+    };
+    aplicar(listaServicios, archArs);
+    aplicar(listaServiciosUSD, archUsd);
+    guardar(); render();
+    alert('✅ Vencimientos actualizados: '+actualizados+' servicio(s), usando como base "'+ultimo.nombre+'".'+(sinBase?(' ('+sinBase+' sin fecha de pago registrada ese mes, no se tocaron.)'):''));
+}
+function cfTestVencimientos(){
+    const preview = (lista, moneda) => lista.filter(s=>!s.esCuota).map(s=>{
+        let nuevo;
+        if(s.fPago) nuevo = cfVencimientoDesdePago(s.fPago) + ' (desde fecha de pago)';
+        else if(s.pagado>0 && s.fVto) nuevo = cfSumarMes(s.fVto) + ' (desde vencimiento anterior, sin fecha de pago)';
+        else nuevo = (s.fVto || '(vacío)') + ' (sin cambio: no pagado)';
+        return s.nombre+' ['+moneda+'] | pagado: '+(s.pagado||0)+' | fPago: '+(s.fPago||'-')+' | fVto actual: '+(s.fVto||'-')+'  =>  nuevo: '+nuevo;
+    });
+    const out = preview(listaServicios,'ARS').concat(preview(listaServiciosUSD,'USD')).join('\n');
+    console.log(out);
+    alert(out || 'No hay servicios cargados.');
+}
 function fmtN(n)   { return Math.round(n).toLocaleString('es-AR',{maximumFractionDigits:0}); }
 function fmtUSD(n) { return 'USD ' + (Math.round(n*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function clon(x)   { return JSON.parse(JSON.stringify(x)); }
@@ -886,6 +920,7 @@ function buildMesActual() {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-mes"   id="btn-nuevo-mes">🔄 Abrir Nuevo Mes</button>
+          <button class="btn"   id="btn-actualizar-vtos" style="background:#334155;color:#f1f5f9;">📅 Actualizar vencimientos (mes actual)</button>
           <button class="btn" id="btn-chequear-mails" onclick="cfRevisarPendientes()" style="background:#0f766e;color:white;font-size:12px;padding:7px 12px;">📧 Chequear mails</button>
           <button class="btn" id="btn-mas-mes" style="background:#475569;color:white;font-size:12px;padding:7px 12px;">⋯ Más</button>
           <input type="file" id="input-backup" accept=".json" style="display:none;">
@@ -1111,6 +1146,7 @@ function bindMesActual() {
     g('form-rubro')?.addEventListener('submit', altaRubro);
     g('input-backup')?.addEventListener('change', importar);
     g('btn-nuevo-mes')?.addEventListener('click', () => nuevoMes());
+    g('btn-actualizar-vtos')?.addEventListener('click', () => cfActualizarVencimientosDesdeUltimoMes());
     g('btn-mas-mes')?.addEventListener('click', (e)=>{ e.stopPropagation(); cfToggleMenuMasMes(); });
     g('cuota-total')?.addEventListener('input', previewCuota);
     g('cuota-cant')?.addEventListener('input', previewCuota);
@@ -1894,7 +1930,7 @@ function nuevoMes(opts) {
         if(!(listaPresupRubrosUSD[r]>0) && gastadoMesUSD[r]>0) listaPresupRubrosUSD[r]=Math.round(gastadoMesUSD[r]*100)/100;
     });
     // Limpiar pesos
-    listaServicios.forEach(s=>{ s.pagado=0; s.fPago=''; if(!s.esCuota) s.fVto=''; });
+    listaServicios.forEach(s=>{ if(!s.esCuota){ if(s.fPago){ s.fVto = cfVencimientoDesdePago(s.fPago); } else if(s.pagado>0 && s.fVto){ s.fVto = cfSumarMes(s.fVto); } } s.pagado=0; s.fPago=''; });
     listaCorrientes=listaCorrientes.filter(c=>!c.fechaPago);
     listaTransferencias=[];
     // Generar cuotas
@@ -1906,7 +1942,7 @@ function nuevoMes(opts) {
     listaCorrientesUSD.forEach(c=>{ if(mDU[c.medioPagoId]!==undefined) mDU[c.medioPagoId]+=c.monto*(c.esIngreso?-1:1); });
     listaTarjetasUSD.forEach(t=>{ t.saldo=Math.round((t.saldo+(mDU[t.id]||0))*100)/100; });
     // Limpiar USD
-    listaServiciosUSD.forEach(s=>{ s.pagado=0; s.fPago=''; if(!s.esCuota) s.fVto=''; });
+    listaServiciosUSD.forEach(s=>{ if(!s.esCuota){ if(s.fPago){ s.fVto = cfVencimientoDesdePago(s.fPago); } else if(s.pagado>0 && s.fVto){ s.fVto = cfSumarMes(s.fVto); } } s.pagado=0; s.fPago=''; });
     listaCorrientesUSD=[];
     listaTransferenciasUSD=[];
     listaComprasUSD=[];
@@ -4689,7 +4725,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.32';
+const APP_VERSION = 'v3.8.39';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
