@@ -408,12 +408,16 @@ async function syncAlSalir() {
         driveLinea = '⚠️ Drive: sin autenticar, no se sincronizó';
     }
 
+    let cierreOk = null;
+    if (gToken) { cierreOk = await driveBackupCierre(); }
+
     const lineas = [
         '📦 Backup al salir',
         '',
         (snapOk ? '✅' : '❌') + ' Snapshot local: ' + (snapOk ? 'guardado' : 'error'),
         (carpetaEstado === null ? '➖ Carpeta local: no vinculada' : (carpetaEstado ? '✅ Carpeta local: guardado' : '❌ Carpeta local: error')),
-        driveLinea
+        driveLinea,
+        (cierreOk === null ? '➖ Backup de cierre (Drive): sin sesión' : (cierreOk ? '✅ Backup de cierre (Drive): guardado' : '❌ Backup de cierre (Drive): error'))
     ];
     alert(lineas.join('\n'));
     window.close();
@@ -4726,7 +4730,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.41';
+const APP_VERSION = 'v3.8.42';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -4820,9 +4824,10 @@ function driveSubir() {
 // timestamp por cada cierre y conserva solo los últimos CF_DRIVE_MAX_CIERRES,
 // a diferencia de backup_autosync.json que se sobreescribe siempre.
 const CF_DRIVE_MAX_CIERRES = 7;
-function driveBackupCierre() {
-    if (!gToken) return;
-    driveEnsureFolder(gToken, folderId => {
+async function driveBackupCierre() {
+    if (!gToken) return false;
+    try {
+        const folderId = await new Promise(res => driveEnsureFolder(gToken, res));
         const a=new Date(), ts=a.getFullYear()+String(a.getMonth()+1).padStart(2,'0')+String(a.getDate()).padStart(2,'0')+'_'+String(a.getHours()).padStart(2,'0')+String(a.getMinutes()).padStart(2,'0');
         const nombre='cf_cierre_'+ts+'.json';
         const groqKey = localStorage.getItem('groq_api_key')||'';
@@ -4832,19 +4837,18 @@ function driveBackupCierre() {
         const form=new FormData();
         form.append('metadata',new Blob([meta],{type:'application/json'}));
         form.append('file',new Blob([data],{type:'application/json'}));
-        fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+gToken},body:form})
-        .then(r=>r.json()).then(f=>{
-            if(!f.id) return;
-            const q=encodeURIComponent(`name contains 'cf_cierre_' and '${folderId}' in parents and trashed=false`);
-            fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,{headers:{Authorization:'Bearer '+gToken}})
-            .then(r=>r.json()).then(listD=>{
-                const files=(listD.files||[]).sort((a,b)=>b.name.localeCompare(a.name));
-                files.slice(CF_DRIVE_MAX_CIERRES).forEach(old=>{
-                    fetch(`https://www.googleapis.com/drive/v3/files/${old.id}`,{method:'DELETE',headers:{Authorization:'Bearer '+gToken}}).catch(()=>{});
-                });
-            }).catch(()=>{});
-        }).catch(()=>{});
-    });
+        const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+gToken},body:form});
+        const f = await resp.json();
+        if(!f.id) return false;
+        const q=encodeURIComponent(`name contains 'cf_cierre_' and '${folderId}' in parents and trashed=false`);
+        const listR = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,{headers:{Authorization:'Bearer '+gToken}});
+        const listD = await listR.json();
+        const files=(listD.files||[]).sort((a,b)=>b.name.localeCompare(a.name));
+        for (const old of files.slice(CF_DRIVE_MAX_CIERRES)) {
+            try { await fetch(`https://www.googleapis.com/drive/v3/files/${old.id}`,{method:'DELETE',headers:{Authorization:'Bearer '+gToken}}); } catch(e) {}
+        }
+        return true;
+    } catch(e) { console.warn('driveBackupCierre:', e); return false; }
 }
 function driveRestaurar() {
     driveGetToken(token=>{
