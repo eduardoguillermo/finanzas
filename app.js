@@ -19,32 +19,32 @@ const K = {
     pagosTarjetaUSD:'f_pagosTarjetaUSD_v1',
     cotizacionesManual:'f_cotizacionesManual_v1'
 };
-let listaRubros        = leer(K.rubros)        || ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
-let listaBancos        = leer(K.bancos)        || [];
-let listaTarjetas      = leer(K.tarjetas)      || [];
-let listaServicios     = leer(K.servicios)     || [];
-let listaCorrientes    = leer(K.corrientes)    || [];
-let listaTransferencias= leer(K.transferencias)|| [];
-let listaTransferenciasUSD = leer(K.transferenciasUSD) || [];
-let listaCuotas        = leer(K.cuotas)        || [];
-let historicoMeses     = leer(K.historico)     || [];
-let listaCuentasUSD    = leer(K.cuentasUSD)    || [];
-let listaComprasUSD    = leer(K.comprasUSD)    || [];
-let listaTarjetasUSD   = leer(K.tarjetasUSD)   || [];
-let listaServiciosUSD  = leer(K.serviciosUSD)  || [];
-let listaCorrientesUSD = leer(K.corrientesUSD) || [];
-let tipoCambio         = leer(K.tipoCambio)    || 1200;
-let listaInstrumentos  = leer(K.instrumentos)  || [];
-let listaAcciones      = leer(K.acciones)      || [];
-let listaIngresos      = leer(K.ingresos)      || [];
-let listaIngresosUSD   = leer(K.ingresosUSD)   || [];
-let listaIngresosPresup = leer(K.ingresosPresup) || [];
-let listaPagosTarjeta  = leer(K.pagosTarjeta)  || [];
-let listaPagosTarjetaUSD = leer(K.pagosTarjetaUSD) || [];
-let listaPresupRubros    = leer('f_presup_rubros_v1')    || {};
-let listaRubroReporte4   = leer('f_rubro_reporte4_v1')   || {}; // rubroNombre -> true/false. Ausente = incluido (default true).
-let listaPresupRubrosUSD = leer('f_presup_rubros_usd_v1') || {};
-let listaRubrosUSD       = leer('f_rubros_usd_v1')        || ['Electrónica','Servicios Online','Transferencias','Varios USD'];
+let listaRubros        = ["Carnicería / Verdulería","Supermercado / Almacén","Gastos Auto / Combustible"];
+let listaBancos        = [];
+let listaTarjetas      = [];
+let listaServicios     = [];
+let listaCorrientes    = [];
+let listaTransferencias= [];
+let listaTransferenciasUSD = [];
+let listaCuotas        = [];
+let historicoMeses     = [];
+let listaCuentasUSD    = [];
+let listaComprasUSD    = [];
+let listaTarjetasUSD   = [];
+let listaServiciosUSD  = [];
+let listaCorrientesUSD = [];
+let tipoCambio         = 1200;
+let listaInstrumentos  = [];
+let listaAcciones      = [];
+let listaIngresos      = [];
+let listaIngresosUSD   = [];
+let listaIngresosPresup = [];
+let listaPagosTarjeta  = [];
+let listaPagosTarjetaUSD = [];
+let listaPresupRubros    = {};
+let listaRubroReporte4   = {}; // rubroNombre -> true/false. Ausente = incluido (default true).
+let listaPresupRubrosUSD = {};
+let listaRubrosUSD       = ['Electrónica','Servicios Online','Transferencias','Varios USD'];
 let tabActivo = null;
 let reportesMesId = null; // null = Mes Actual; si no, id de un mes en historicoMeses — permite correr Reportes a demanda sobre un mes cerrado
 let reportesSubTab = 'resumen'; // 'resumen' | 'rubros12' | 'claseO' | 'presupuesto' | 'transacciones' — qué reporte se muestra dentro de la pestaña Reportes
@@ -53,7 +53,7 @@ let r4RubrosSelARS = null; // null = todavía no inicializado (se arma la primer
 let r4RubrosSelUSD = null;
 let r5RubroSelARS = null;  // rubro elegido para el detalle de transacciones (Reporte 5)
 let r5RubroSelUSD = null;
-let listaRubroReporte4USD = leer('f_rubro_reporte4_usd_v1') || {}; // igual que listaRubroReporte4 pero para rubros USD
+let listaRubroReporte4USD = {}; // igual que listaRubroReporte4 pero para rubros USD
 
 // Ausente en listaRubroReporte4USD = incluido por defecto (true).
 function rubroEnReporte4USD(r) { return listaRubroReporte4USD[r] !== false; }
@@ -198,42 +198,143 @@ function cfMostrarSnapshots() {
 }
 
 function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } }
+
+// ═══════════════════════════════════════════
+//  STORAGE — IndexedDB (reemplaza localStorage para el dataset grande)
+//  Un solo object store 'kv' {k, v}. K_ALL lista todas las claves que antes
+//  vivían en localStorage. Migración automática y única la primera vez que
+//  se detecta IndexedDB vacía pero localStorage con datos viejos, más
+//  auto-limpieza en cada arranque por si algo quedó a medio migrar.
+// ═══════════════════════════════════════════
+const CF_DB_NAME = 'cf-data-db';
+const K_ALL = [
+    K.rubros, K.bancos, K.tarjetas, K.servicios, K.corrientes, K.transferencias,
+    K.transferenciasUSD, K.comprasUSD, K.cuotas, K.historico, K.cuentasUSD,
+    K.tarjetasUSD, K.serviciosUSD, K.corrientesUSD, K.tipoCambio, K.instrumentos,
+    K.acciones, K.ingresos, K.ingresosUSD, K.ingresosPresup, K.pagosTarjeta,
+    K.pagosTarjetaUSD, K.cotizacionesManual,
+    'f_presup_rubros_v1', 'f_rubro_reporte4_v1', 'f_rubro_reporte4_usd_v1',
+    'f_presup_rubros_usd_v1', 'f_rubros_usd_v1'
+];
+function cfDbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(CF_DB_NAME, 1);
+        req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv', { keyPath: 'k' });
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+    });
+}
+function cfDbGetAll(db) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readonly');
+        const req = tx.objectStore('kv').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = e => reject(e.target.error);
+    });
+}
+function cfDbPutAll(db, entries) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        entries.forEach(([k, v]) => tx.objectStore('kv').put({ k, v }));
+        tx.oncomplete = () => resolve();
+        tx.onerror = e => reject(e.target.error);
+    });
+}
+// Vuelca cada valor cargado (de IndexedDB o migrado de localStorage) a su variable global.
+// Si una clave no tiene valor guardado, se deja el default ya asignado al declarar la variable.
+function cfAplicarEstado(mapa) {
+    const get = k => mapa.has(k) ? mapa.get(k) : undefined;
+    if (get(K.rubros)         !== undefined) listaRubros         = get(K.rubros);
+    if (get(K.bancos)         !== undefined) listaBancos         = get(K.bancos);
+    if (get(K.tarjetas)       !== undefined) listaTarjetas       = get(K.tarjetas);
+    if (get(K.servicios)      !== undefined) listaServicios      = get(K.servicios);
+    if (get(K.corrientes)     !== undefined) listaCorrientes     = get(K.corrientes);
+    if (get(K.transferencias) !== undefined) listaTransferencias = get(K.transferencias);
+    if (get(K.transferenciasUSD) !== undefined) listaTransferenciasUSD = get(K.transferenciasUSD);
+    if (get(K.comprasUSD)     !== undefined) listaComprasUSD     = get(K.comprasUSD);
+    if (get(K.cuotas)         !== undefined) listaCuotas         = get(K.cuotas);
+    if (get(K.historico)      !== undefined) historicoMeses      = get(K.historico);
+    if (get(K.cuentasUSD)     !== undefined) listaCuentasUSD     = get(K.cuentasUSD);
+    if (get(K.tarjetasUSD)    !== undefined) listaTarjetasUSD    = get(K.tarjetasUSD);
+    if (get(K.serviciosUSD)   !== undefined) listaServiciosUSD   = get(K.serviciosUSD);
+    if (get(K.corrientesUSD)  !== undefined) listaCorrientesUSD  = get(K.corrientesUSD);
+    if (get(K.tipoCambio)     !== undefined) tipoCambio          = get(K.tipoCambio);
+    if (get(K.instrumentos)   !== undefined) listaInstrumentos   = get(K.instrumentos);
+    if (get(K.acciones)       !== undefined) listaAcciones       = get(K.acciones);
+    if (get(K.ingresos)       !== undefined) listaIngresos       = get(K.ingresos);
+    if (get(K.ingresosUSD)    !== undefined) listaIngresosUSD    = get(K.ingresosUSD);
+    if (get(K.ingresosPresup) !== undefined) listaIngresosPresup = get(K.ingresosPresup);
+    if (get(K.pagosTarjeta)   !== undefined) listaPagosTarjeta   = get(K.pagosTarjeta);
+    if (get(K.pagosTarjetaUSD)!== undefined) listaPagosTarjetaUSD= get(K.pagosTarjetaUSD);
+    if (get(K.cotizacionesManual) !== undefined) cotizacionesManual = get(K.cotizacionesManual);
+    if (get('f_presup_rubros_v1')     !== undefined) listaPresupRubros    = get('f_presup_rubros_v1');
+    if (get('f_rubro_reporte4_v1')    !== undefined) listaRubroReporte4  = get('f_rubro_reporte4_v1');
+    if (get('f_rubro_reporte4_usd_v1')!== undefined) listaRubroReporte4USD = get('f_rubro_reporte4_usd_v1');
+    if (get('f_presup_rubros_usd_v1') !== undefined) listaPresupRubrosUSD = get('f_presup_rubros_usd_v1');
+    if (get('f_rubros_usd_v1')        !== undefined) listaRubrosUSD       = get('f_rubros_usd_v1');
+}
+// Se llama una sola vez al arrancar, antes de renderTabs()/renderContenido().
+async function cfCargarEstadoInicial() {
+    try {
+        const db = await cfDbOpen();
+        window._cfDb = db;
+        let filas = await cfDbGetAll(db);
+        if (!filas.length) {
+            // IndexedDB vacía: buscar datos viejos en localStorage y migrarlos una sola vez.
+            const migrados = [];
+            K_ALL.forEach(k => {
+                const raw = localStorage.getItem(k);
+                if (raw !== null) {
+                    try { migrados.push([k, JSON.parse(raw)]); } catch(e) {}
+                }
+            });
+            if (migrados.length) {
+                await cfDbPutAll(db, migrados);
+                K_ALL.forEach(k => localStorage.removeItem(k));
+                filas = migrados.map(([k, v]) => ({ k, v }));
+                console.info('cfCargarEstadoInicial: migradas', migrados.length, 'claves de localStorage a IndexedDB');
+            }
+        }
+        const mapa = new Map(filas.map(f => [f.k, f.v]));
+        cfAplicarEstado(mapa);
+        // Auto-corrección: si algo ya vive en IndexedDB pero quedó también una copia
+        // vieja en localStorage (por ejemplo, si el borrado inicial no se completó),
+        // se limpia sola en cada arranque — no depende de que la migración haya sido perfecta.
+        K_ALL.forEach(k => {
+            if (mapa.has(k) && localStorage.getItem(k) !== null) {
+                try { localStorage.removeItem(k); } catch(e) {}
+            }
+        });
+    } catch(e) { console.warn('cfCargarEstadoInicial:', e); }
+}
 function guardar() {
     try {
-        localStorage.setItem(K.rubros,         JSON.stringify(listaRubros));
-        localStorage.setItem(K.bancos,         JSON.stringify(listaBancos));
-        localStorage.setItem(K.tarjetas,       JSON.stringify(listaTarjetas));
-        localStorage.setItem(K.servicios,      JSON.stringify(listaServicios));
-        localStorage.setItem(K.corrientes,     JSON.stringify(listaCorrientes));
-        localStorage.setItem(K.transferencias, JSON.stringify(listaTransferencias));
-        localStorage.setItem(K.transferenciasUSD, JSON.stringify(listaTransferenciasUSD));
-        localStorage.setItem(K.comprasUSD,     JSON.stringify(listaComprasUSD));
-        localStorage.setItem(K.cuotas,         JSON.stringify(listaCuotas));
-        localStorage.setItem(K.historico,      JSON.stringify(historicoMeses));
-        localStorage.setItem(K.cuentasUSD,     JSON.stringify(listaCuentasUSD));
-        localStorage.setItem(K.tarjetasUSD,    JSON.stringify(listaTarjetasUSD));
-        localStorage.setItem(K.serviciosUSD,   JSON.stringify(listaServiciosUSD));
-        localStorage.setItem(K.corrientesUSD,  JSON.stringify(listaCorrientesUSD));
-        localStorage.setItem(K.tipoCambio,     JSON.stringify(tipoCambio));
-        localStorage.setItem(K.instrumentos,   JSON.stringify(listaInstrumentos));
-        localStorage.setItem(K.acciones,       JSON.stringify(listaAcciones));
-        localStorage.setItem('f_presup_rubros_v1',     JSON.stringify(listaPresupRubros));
-        localStorage.setItem('f_rubro_reporte4_v1',    JSON.stringify(listaRubroReporte4));
-        localStorage.setItem('f_rubro_reporte4_usd_v1', JSON.stringify(listaRubroReporte4USD));
-        localStorage.setItem('f_presup_rubros_usd_v1', JSON.stringify(listaPresupRubrosUSD));
-        localStorage.setItem('f_rubros_usd_v1',         JSON.stringify(listaRubrosUSD));
-        localStorage.setItem(K.ingresos,       JSON.stringify(listaIngresos));
-        localStorage.setItem(K.ingresosUSD,    JSON.stringify(listaIngresosUSD));
-        localStorage.setItem(K.ingresosPresup, JSON.stringify(listaIngresosPresup));
-        localStorage.setItem(K.pagosTarjeta,   JSON.stringify(listaPagosTarjeta));
-        localStorage.setItem(K.pagosTarjetaUSD,JSON.stringify(listaPagosTarjetaUSD));
-        localStorage.setItem(K.cotizacionesManual,JSON.stringify(cotizacionesManual));
+        const entries = [
+            [K.rubros, listaRubros], [K.bancos, listaBancos], [K.tarjetas, listaTarjetas],
+            [K.servicios, listaServicios], [K.corrientes, listaCorrientes],
+            [K.transferencias, listaTransferencias], [K.transferenciasUSD, listaTransferenciasUSD],
+            [K.comprasUSD, listaComprasUSD], [K.cuotas, listaCuotas], [K.historico, historicoMeses],
+            [K.cuentasUSD, listaCuentasUSD], [K.tarjetasUSD, listaTarjetasUSD],
+            [K.serviciosUSD, listaServiciosUSD], [K.corrientesUSD, listaCorrientesUSD],
+            [K.tipoCambio, tipoCambio], [K.instrumentos, listaInstrumentos], [K.acciones, listaAcciones],
+            ['f_presup_rubros_v1', listaPresupRubros], ['f_rubro_reporte4_v1', listaRubroReporte4],
+            ['f_rubro_reporte4_usd_v1', listaRubroReporte4USD], ['f_presup_rubros_usd_v1', listaPresupRubrosUSD],
+            ['f_rubros_usd_v1', listaRubrosUSD],
+            [K.ingresos, listaIngresos], [K.ingresosUSD, listaIngresosUSD], [K.ingresosPresup, listaIngresosPresup],
+            [K.pagosTarjeta, listaPagosTarjeta], [K.pagosTarjetaUSD, listaPagosTarjetaUSD],
+            [K.cotizacionesManual, cotizacionesManual]
+        ];
+        (async () => {
+            try {
+                if (!window._cfDb) window._cfDb = await cfDbOpen();
+                await cfDbPutAll(window._cfDb, entries);
+            } catch(e) { console.error('Error al guardar en IndexedDB:', e); }
+        })();
         syncDebounce();
-    } catch(e) {
-        if(e.name==='QuotaExceededError'||e.code===22||e.code===1014) {
-            alert('⚠️ Almacenamiento local lleno. Exportá un backup ahora y considerá eliminar meses históricos antiguos.');
-        } else { console.error('Error al guardar:', e); }
-    }
+    } catch(e) { console.error('Error al guardar:', e); }
     // Backup automático en carpeta local si está vinculada
     if (window._cfFolderHandle) cfBackupEnCarpeta(window._cfFolderHandle);
 }
@@ -695,13 +796,16 @@ function cfToggleMenuMasMes() {
 
 
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     document.title = 'Control Financiero ' + APP_VERSION;
     // Pedir almacenamiento persistente: evita que el navegador evicte IndexedDB
     // (y con eso el handle de la carpeta local) por presión de espacio o inactividad.
     if (navigator.storage && navigator.storage.persist) {
         navigator.storage.persist().catch(()=>{});
     }
+    // Cargar el dataset grande desde IndexedDB (o migrarlo desde localStorage la
+    // primera vez) ANTES de renderizar — evita mostrar la app vacía por un instante.
+    await cfCargarEstadoInicial();
     // Reconecta/renueva el token de Drive en silencio al abrir (sin popup), para que
     // al tocar Salir el backup a Drive sea instantáneo y no se pierda el permiso
     // del navegador para cerrar la ventana con window.close().
@@ -4138,7 +4242,7 @@ function roCorrientesUSD(db,mesId) {
 // ═══════════════════════════════════════════
 let _cotizaciones = {};
 let _cotizacionesError = {}; // ticker -> true si la última actualización falló (para ofrecer carga manual)
-let cotizacionesManual = leer(K.cotizacionesManual) || {}; // ticker -> {precio, fecha} — override manual cuando los proxies fallan
+let cotizacionesManual = {}; // ticker -> {precio, fecha} — override manual cuando los proxies fallan
 let _dolarOficial = 0;
 let _ypfCache = null; // {precioARS, dolar, horaStr, fuera} del último fetch exitoso
 
@@ -4730,7 +4834,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.42';
+const APP_VERSION = 'v3.8.43';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
