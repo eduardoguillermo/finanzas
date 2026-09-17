@@ -4155,7 +4155,7 @@ function buildReporte6PorDia(wrap, datosARS, datosUSD) {
     });
     wrap.appendChild(toggle);
 
-    const fijosPagados = (d.servicios || []).filter(s => s.pagado > 0);
+    const fijosPagados = (d.servicios || []).filter(s => s.pagado > 0 && s.fPago);
     const corrientesValidas = (d.corrientes || []).filter(c => c.fechaPago && !c.esIngreso && !esPagoTarjeta(c.rubro));
 
     if (!fijosPagados.length && !corrientesValidas.length) {
@@ -4165,7 +4165,7 @@ function buildReporte6PorDia(wrap, datosARS, datosUSD) {
 
     const porDia = {};
     fijosPagados.forEach(s => {
-        const f = s.fPago || 'Sin fecha';
+        const f = s.fPago;
         if (!porDia[f]) porDia[f] = { fijo: 0, corriente: 0 };
         porDia[f].fijo += s.pagado;
     });
@@ -4175,16 +4175,15 @@ function buildReporte6PorDia(wrap, datosARS, datosUSD) {
         porDia[f].corriente += c.monto;
     });
 
-    // Orden descendente (día más reciente primero); "Sin fecha" siempre al final.
-    const conFecha = Object.keys(porDia).filter(f => f !== 'Sin fecha').sort((a, b) => b.localeCompare(a));
-    const diasOrdenados = conFecha.concat(porDia['Sin fecha'] ? ['Sin fecha'] : []);
+    // Orden descendente (día más reciente primero).
+    const diasOrdenados = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
 
     let totFijo = 0, totCorr = 0, filas = '';
     diasOrdenados.forEach((f, i) => {
         const it = porDia[f];
         const totalDia = it.fijo + it.corriente;
         totFijo += it.fijo; totCorr += it.corriente;
-        const fechaLbl = f === 'Sin fecha' ? 'Sin fecha' : f.split('-').reverse().join('/');
+        const fechaLbl = f.split('-').reverse().join('/');
         filas += '<tr style="background:' + (i % 2 === 0 ? 'white' : '#f8fafc') + ';border-bottom:1px solid #f1f5f9;">'
             + '<td style="padding:6px 8px;font-weight:bold;">' + fechaLbl + '</td>'
             + '<td style="padding:6px 8px;text-align:right;color:#f59e0b;">' + (it.fijo ? fmtFn(it.fijo) : '—') + '</td>'
@@ -4922,7 +4921,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.44';
+const APP_VERSION = 'v3.8.45';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
