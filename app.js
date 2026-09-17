@@ -3496,6 +3496,7 @@ function buildReportes() {
         { id: 'claseO',      label: '🏷️ Detalle Clase O' },
         { id: 'presupuesto', label: '🎯 Cumplimiento de Presupuesto' },
         { id: 'transacciones', label: '🧾 Detalle de Transacciones por Rubro' },
+        { id: 'porDia',      label: '📅 Gastos por Día (Fijos y Corrientes)' },
     ];
     const menu = el('div', 'no-print'); menu.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;';
     menuItems.forEach(mi => {
@@ -3813,6 +3814,15 @@ function buildReportes() {
     );
     } // fin reportesSubTab === 'transacciones'
 
+    if (reportesSubTab === 'porDia') {
+    // ── REPORTE 6: GASTOS TOTALES POR DÍA (FIJOS + CORRIENTES) ─────────────────
+    // Respeta el selector de mes (usa listaServicios/listaCorrientes ya sea en vivo o del snapshot elegido arriba).
+    buildReporte6PorDia(wrap,
+        { corrientes: listaCorrientes, servicios: listaServicios },
+        { corrientes: listaCorrientesUSD, servicios: listaServiciosUSD }
+    );
+    } // fin reportesSubTab === 'porDia'
+
     } finally {
         // Restaurar siempre los valores en vivo, incluso si algo falló arriba
         listaBancos=liveBancos; listaTarjetas=liveTarjetas; listaServicios=liveServicios; listaCorrientes=liveCorrientes;
@@ -4120,6 +4130,84 @@ function buildReporte5Transacciones(wrap, datosARS, datosUSD) {
     };
 
     render5();
+}
+
+// ── REPORTE 6: GASTOS TOTALES POR DÍA (FIJOS + CORRIENTES) ──
+// Suma, para cada día calendario, el gasto de Servicios Fijos pagados (fPago) + Gastos
+// Corrientes confirmados (fechaPago, sin ingresos ni pagos de tarjeta que ya se cuentan como fijo).
+function buildReporte6PorDia(wrap, datosARS, datosUSD) {
+    const esUSD = reportesMoneda === 'USD';
+    const d = esUSD ? datosUSD : datosARS;
+    const fmtFn = esUSD ? fmtUSD : fmt;
+    const esPagoTarjeta = r => r && r.toLowerCase().includes('tarjeta');
+
+    wrap.insertAdjacentHTML('beforeend', '<h3 style="margin:32px 0 16px;font-size:16px;font-weight:bold;color:#0891b2;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #e2e8f0;">Reporte 6 · Gastos Totales por Día (Fijos y Corrientes)' + (esUSD ? ' (USD)' : '') + '</h3>');
+
+    // Toggle ARS / USD
+    const toggle = el('div', 'no-print'); toggle.style.cssText = 'display:flex;gap:6px;margin-bottom:16px;';
+    ['ARS','USD'].forEach(m => {
+        const on = reportesMoneda === m;
+        const btn = el('button');
+        btn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid ' + (on?'#0891b2':'#cbd5e1') + ';background:' + (on?'#0891b2':'white') + ';color:' + (on?'white':'#334155') + ';cursor:pointer;font-weight:bold;';
+        btn.innerText = m === 'ARS' ? '$ Pesos' : 'USD Dólares';
+        btn.onclick = () => { reportesMoneda = m; renderContenido(); };
+        toggle.appendChild(btn);
+    });
+    wrap.appendChild(toggle);
+
+    const fijosPagados = (d.servicios || []).filter(s => s.pagado > 0);
+    const corrientesValidas = (d.corrientes || []).filter(c => c.fechaPago && !c.esIngreso && !esPagoTarjeta(c.rubro));
+
+    if (!fijosPagados.length && !corrientesValidas.length) {
+        wrap.insertAdjacentHTML('beforeend', '<div style="background:white;border:1px solid #cbd5e1;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;margin-bottom:24px;">Todavía no hay gastos fijos ni corrientes registrados en ' + (esUSD?'dólares':'pesos') + ' para este período.</div>');
+        return;
+    }
+
+    const porDia = {};
+    fijosPagados.forEach(s => {
+        const f = s.fPago || 'Sin fecha';
+        if (!porDia[f]) porDia[f] = { fijo: 0, corriente: 0 };
+        porDia[f].fijo += s.pagado;
+    });
+    corrientesValidas.forEach(c => {
+        const f = c.fechaPago;
+        if (!porDia[f]) porDia[f] = { fijo: 0, corriente: 0 };
+        porDia[f].corriente += c.monto;
+    });
+
+    // Orden descendente (día más reciente primero); "Sin fecha" siempre al final.
+    const conFecha = Object.keys(porDia).filter(f => f !== 'Sin fecha').sort((a, b) => b.localeCompare(a));
+    const diasOrdenados = conFecha.concat(porDia['Sin fecha'] ? ['Sin fecha'] : []);
+
+    let totFijo = 0, totCorr = 0, filas = '';
+    diasOrdenados.forEach((f, i) => {
+        const it = porDia[f];
+        const totalDia = it.fijo + it.corriente;
+        totFijo += it.fijo; totCorr += it.corriente;
+        const fechaLbl = f === 'Sin fecha' ? 'Sin fecha' : f.split('-').reverse().join('/');
+        filas += '<tr style="background:' + (i % 2 === 0 ? 'white' : '#f8fafc') + ';border-bottom:1px solid #f1f5f9;">'
+            + '<td style="padding:6px 8px;font-weight:bold;">' + fechaLbl + '</td>'
+            + '<td style="padding:6px 8px;text-align:right;color:#f59e0b;">' + (it.fijo ? fmtFn(it.fijo) : '—') + '</td>'
+            + '<td style="padding:6px 8px;text-align:right;color:#10b981;">' + (it.corriente ? fmtFn(it.corriente) : '—') + '</td>'
+            + '<td style="padding:6px 8px;text-align:right;font-weight:bold;color:#0891b2;">' + fmtFn(totalDia) + '</td>'
+            + '</tr>';
+    });
+    const totGeneral = totFijo + totCorr;
+
+    const resumen = el('div'); resumen.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;';
+    resumen.innerHTML =
+        '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #f59e0b;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Total Gastos Fijos</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#f59e0b;">' + fmtFn(totFijo) + '</p></div>'
+        + '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #10b981;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Total Gastos Corrientes</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#10b981;">' + fmtFn(totCorr) + '</p></div>'
+        + '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-left:5px solid #0891b2;padding:16px;"><h4 style="margin:0 0 8px;font-size:11px;color:#64748b;text-transform:uppercase;">Total General</h4><p style="margin:0;font-size:20px;font-weight:bold;color:#0891b2;">' + fmtFn(totGeneral) + '</p></div>';
+    wrap.appendChild(resumen);
+
+    const tabla = '<div style="background:white;color:#1e293b;border-radius:8px;border:1px solid #cbd5e1;border-top:4px solid #0891b2;padding:16px;margin-bottom:24px;overflow-x:auto;">'
+        + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+        + '<tr style="background:#f8fafc;"><th style="padding:6px 8px;text-align:left;">Día</th><th style="padding:6px 8px;text-align:right;">Fijos</th><th style="padding:6px 8px;text-align:right;">Corrientes</th><th style="padding:6px 8px;text-align:right;">Total del Día</th></tr>'
+        + filas
+        + '<tr style="background:#f1f5f9;font-weight:bold;border-top:2px solid #0891b2;"><td style="padding:6px 8px;">TOTAL</td><td style="padding:6px 8px;text-align:right;color:#f59e0b;">' + fmtFn(totFijo) + '</td><td style="padding:6px 8px;text-align:right;color:#10b981;">' + fmtFn(totCorr) + '</td><td style="padding:6px 8px;text-align:right;color:#0891b2;">' + fmtFn(totGeneral) + '</td></tr>'
+        + '</table></div>';
+    wrap.insertAdjacentHTML('beforeend', tabla);
 }
 
 function cambiarMesReportes(id) {
@@ -4834,7 +4922,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.43';
+const APP_VERSION = 'v3.8.44';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
