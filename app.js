@@ -1389,7 +1389,15 @@ function render() {
         [tdNom, tdCl, tdRub, tdInpDate(s.fVto,v=>{ s.fVto=v; guardar(); }),
          tdInpNum(s.presupuesto,v=>{ s.presupuesto=v; guardar(); calcDash(); },'tr'),
          tdPag, tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
-         (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{ s.medioPagoId=v; guardar(); calcDash(); })); return td; })(),
+         (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{
+             if(v!==s.medioPagoId && s.pagado>0){
+                 const bkOld=listaBancos.find(b=>b.id===s.medioPagoId), tkOld=listaTarjetas.find(t=>t.id===s.medioPagoId);
+                 if(bkOld) bkOld.saldo+=s.pagado; else if(tkOld) tkOld.saldo-=s.pagado;
+                 const bkNew=listaBancos.find(b=>b.id===v), tkNew=listaTarjetas.find(t=>t.id===v);
+                 if(bkNew) bkNew.saldo-=s.pagado; else if(tkNew) tkNew.saldo+=s.pagado;
+             }
+             s.medioPagoId=v; guardar(); calcDash(); render();
+         })); return td; })(),
          tdEst,
          tdComprobante(s, render),
          (()=>{ const td=el('td','tc no-print'); td.style.whiteSpace='nowrap';
@@ -3027,7 +3035,16 @@ function renderDolares() {
         const medSel=el('select'); medSel.className='inp';
         listaTarjetasUSD.forEach(t=>addOpt(medSel,t.id,'💳 '+t.nombre,t.id===s.medioPagoId));
         listaCuentasUSD.forEach(c=>addOpt(medSel,c.id,'🏦 '+c.nombre,c.id===s.medioPagoId));
-        medSel.onchange=e=>{ s.medioPagoId=e.target.value; guardar(); calcDashUSD(); };
+        medSel.onchange=e=>{
+            const v=e.target.value;
+            if(v!==s.medioPagoId && s.pagado>0){
+                const tkOld=listaTarjetasUSD.find(t=>t.id===s.medioPagoId), ckOld=listaCuentasUSD.find(c=>c.id===s.medioPagoId);
+                if(tkOld) tkOld.saldo-=s.pagado; else if(ckOld) ckOld.saldo+=s.pagado;
+                const tkNew=listaTarjetasUSD.find(t=>t.id===v), ckNew=listaCuentasUSD.find(c=>c.id===v);
+                if(tkNew) tkNew.saldo+=s.pagado; else if(ckNew) ckNew.saldo-=s.pagado;
+            }
+            s.medioPagoId=v; guardar(); calcDashUSD(); renderDolares();
+        };
         const estSpan=el('span'); estSpan.id='estu-'+s.id; estSpan.style.cssText='font-size:10px;font-weight:bold;padding:3px 6px;border-radius:4px;';
         const tdEst=el('td','tc'); tdEst.appendChild(estSpan);
         const tr=el('tr');
