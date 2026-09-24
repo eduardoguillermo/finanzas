@@ -4979,7 +4979,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.51';
+const APP_VERSION = 'v3.8.52';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -5301,12 +5301,19 @@ function buildContextoApp() {
     const corrUSDIng  = listaCorrientesUSD.filter(function(c){ return c.fechaPago&&c.esIngreso; }).reduce(function(a,c){ return a+c.monto; }, 0);
     const servUSDPag  = listaServiciosUSD.filter(function(s){ return s.pagado>0; }).reduce(function(a,s){ return a+s.pagado; }, 0);
     const cuotasActivas = listaCuotas.filter(function(c){ return c.cuotaActual<=c.totalCuotas; });
-    const hist3 = historicoMeses.slice(-3).map(function(m){ return {
-        nombre: m.nombre,
-        banco: (m.datos.listaBancos||[]).reduce(function(a,b){ return a+b.saldo; },0),
-        egresado: (m.datos.listaCorrientes||[]).filter(function(c){ return c.fechaPago&&!c.esIngreso; }).reduce(function(a,c){ return a+c.monto; },0) +
-                  (m.datos.listaServicios||[]).filter(function(s){ return s.pagado>0; }).reduce(function(a,s){ return a+s.pagado; },0)
-    }; });
+    const hist3 = historicoMeses.slice(-3).map(function(m){
+        const corr = (m.datos.listaCorrientes||[]).filter(function(c){ return c.fechaPago&&!c.esIngreso; });
+        const serv = (m.datos.listaServicios||[]).filter(function(s){ return s.pagado>0; });
+        const porRubroMes = {};
+        corr.forEach(function(c){ porRubroMes[c.rubro]=(porRubroMes[c.rubro]||0)+c.monto; });
+        serv.forEach(function(s){ if(s.rubro) porRubroMes[s.rubro]=(porRubroMes[s.rubro]||0)+s.pagado; });
+        return {
+            nombre: m.nombre,
+            banco: (m.datos.listaBancos||[]).reduce(function(a,b){ return a+b.saldo; },0),
+            egresado: corr.reduce(function(a,c){ return a+c.monto; },0) + serv.reduce(function(a,s){ return a+s.pagado; },0),
+            porRubro: porRubroMes
+        };
+    });
 
     var lines = [];
     lines.push('Sos un asistente financiero personal. Respondé en español, de forma concisa y directa. Usá números con formato local argentino.');
@@ -5347,7 +5354,12 @@ function buildContextoApp() {
     lines.push('- Servicios USD pagados: ' + servUSDPag.toFixed(2));
     lines.push('');
     lines.push('HISTORICO 3 MESES:');
-    hist3.forEach(function(m){ lines.push('- ' + m.nombre + ': banco $' + m.banco.toLocaleString('es-AR') + ' | egresado $' + m.egresado.toLocaleString('es-AR')); });
+    hist3.forEach(function(m){
+        lines.push('- ' + m.nombre + ': banco $' + m.banco.toLocaleString('es-AR') + ' | egresado $' + m.egresado.toLocaleString('es-AR'));
+        Object.entries(m.porRubro).sort(function(a,b){ return b[1]-a[1]; }).forEach(function(e){
+            lines.push('    · ' + e[0] + ': $' + e[1].toLocaleString('es-AR'));
+        });
+    });
     lines.push('');
     lines.push('PRESUPUESTOS POR RUBRO:');
     Object.entries(listaPresupRubros).filter(function(e){ return e[1]>0; }).forEach(function(e){ lines.push('- ' + e[0] + ': $' + e[1].toLocaleString('es-AR')); });
