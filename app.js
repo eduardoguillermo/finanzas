@@ -1179,6 +1179,15 @@ function buildMesActual() {
                 <button type="submit" class="btn" style="background:#64748b;color:white;">Crear Rubro</button>
               </form>
             </div>
+            <div class="form-block" style="margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;">
+              <div style="font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:6px;">Fusionar rubro</div>
+              <form id="form-fusion-rubro" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
+                <div><label style="font-size:11px;">Rubro origen</label><select id="fusion-origen" class="inp"></select></div>
+                <div><label style="font-size:11px;">Se convierte en</label><select id="fusion-destino" class="inp"></select></div>
+                <button type="submit" class="btn" style="background:#0284c7;color:white;">Fusionar</button>
+              </form>
+              <small style="font-size:10px;color:#94a3b8;display:block;margin-top:4px;">Mueve todos los servicios y corrientes del mes actual del rubro origen al destino, suma los presupuestos, y borra el rubro origen. No toca los meses históricos ya cerrados.</small>
+            </div>
             <div id="rubros-lista" class="rubros-wrap"></div>
           </div>
         </div>
@@ -1253,6 +1262,7 @@ function bindMesActual() {
     g('form-transf')?.addEventListener('submit', altaTransferencia);
     g('form-cuota')?.addEventListener('submit', altaCuota);
     g('form-rubro')?.addEventListener('submit', altaRubro);
+    g('form-fusion-rubro')?.addEventListener('submit', fusionarRubro);
     g('input-backup')?.addEventListener('change', importar);
     g('btn-nuevo-mes')?.addEventListener('click', () => nuevoMes());
     g('btn-actualizar-vtos')?.addEventListener('click', () => cfActualizarVencimientosDesdeUltimoMes());
@@ -1278,6 +1288,11 @@ function render() {
     if(sRubro){ sRubro.innerHTML=''; [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>addOpt(sRubro,r,r)); }
     const sSrvRubro=document.getElementById('srv-rubro');
     if(sSrvRubro){ sSrvRubro.innerHTML='<option value="">— Sin rubro —</option>'; [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>addOpt(sSrvRubro,r,r)); }
+    const sFusOrig=document.getElementById('fusion-origen'), sFusDest=document.getElementById('fusion-destino');
+    if(sFusOrig && sFusDest){
+        sFusOrig.innerHTML=''; sFusDest.innerHTML='';
+        [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>{ addOpt(sFusOrig,r,r); addOpt(sFusDest,r,r); });
+    }
     [...listaRubros].sort((a,b)=>a.localeCompare(b,'es')).forEach(r=>{
         const b=el('div','rubro-badge'); 
         const col=colorRubro(r);
@@ -1929,6 +1944,22 @@ function elimCuota(id)   {
     listaCuotas=listaCuotas.filter(c=>c.id!==id); listaServicios=listaServicios.filter(s=>s.cuotaId!==id); guardar(); render();
 }
 function elimRubro(r)    { if(listaCorrientes.some(c=>c.rubro===r) || listaServicios.some(s=>s.rubro===r)){alert('Rubro en uso.');return;} listaRubros=listaRubros.filter(x=>x!==r); guardar(); render(); }
+function fusionarRubro(e) {
+    e.preventDefault();
+    const origen = vGet('fusion-origen'), destino = vGet('fusion-destino');
+    if(!origen || !destino || origen===destino){ alert('Elegí dos rubros distintos.'); return; }
+    if(!confirm('¿Mover todo "'+origen+'" a "'+destino+'" y borrar "'+origen+'"? Esta acción no se puede deshacer.')) return;
+
+    listaServicios.filter(s=>s.rubro===origen).forEach(s=>{ s.rubro=destino; });
+    listaCorrientes.filter(c=>c.rubro===origen).forEach(c=>{ c.rubro=destino; });
+    if(listaPresupRubros[origen]){
+        listaPresupRubros[destino] = (listaPresupRubros[destino]||0) + listaPresupRubros[origen];
+        delete listaPresupRubros[origen];
+    }
+    listaRubros = listaRubros.filter(r=>r!==origen);
+    guardar(); render();
+    alert('Fusión completa: "'+origen+'" ahora es "'+destino+'".');
+}
 function elimCorriente(id) {
     const c=listaCorrientes.find(x=>x.id===id);
     if(c&&c.fechaPago&&esCuentaLiq(c.medioPagoId)){ const bk=listaBancos.find(b=>b.id===c.medioPagoId); if(bk) bk.saldo+=c.esIngreso?-c.monto:c.monto; }
@@ -4942,7 +4973,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.48';
+const APP_VERSION = 'v3.8.49';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
