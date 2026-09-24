@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.40</p>
+    <p>Manual de usuario · v3.8.52</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -311,7 +311,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.40</span>
+      <span class="badge badge-green">✓ v3.8.52</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -1199,6 +1199,48 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.52</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Consulta IA: el contexto histórico de los últimos 3 meses ahora incluye el desglose de gasto por rubro de cada mes, no solo el total egresado — permite responder preguntas como "¿cuánto gasté en Salud en julio?".</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.51</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Fix: la Consulta IA dejó de funcionar porque Groq discontinuó el modelo <code>llama-3.3-70b-versatile</code> el 16 de agosto de 2026. Actualizado a <code>openai/gpt-oss-120b</code>, el reemplazo recomendado por Groq.</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.50</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo buscador en el panel "Servicios y Vencimientos Fijos" (por nombre o rubro), igual al que ya existía en Gastos Corrientes.</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.49</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nueva función "Fusionar rubro" en el panel de Rubros: mueve todos los servicios y corrientes del mes actual de un rubro origen a un rubro destino, suma los presupuestos, y borra el rubro origen. No afecta meses históricos ya cerrados.</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.48</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>La tarjeta "Saldo Proyectado" ahora muestra un subtotal al final de cada lista de pendientes (Fijos pendientes y Corrientes sin pagar), además del detalle línea por línea.</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.47</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Fix: cambiar el banco/tarjeta de un servicio ya pagado desde el desplegable de "Medio de pago" no transfería el saldo entre cuentas — la cuenta vieja quedaba sin el reembolso y la nueva sin el descuento. Corregido en pesos y en dólares.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.40</span><span class="changelog-tag tag-feature">feature</span></div>
