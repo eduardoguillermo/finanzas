@@ -296,6 +296,7 @@
   <a href="#nuevo-mes">🔄 Nuevo Mes</a>
   <a href="#cierre-automatico">⏰ Cierre Automático</a>
   <a href="#gmail">📧 Módulo Gmail</a>
+  <a href="#consulta-ia">🤖 Consulta IA</a>
   <a href="#carpeta">📂 Backup en carpeta</a>
   <a href="#drive">☁️ Sincronización Drive</a>
   <a href="#impresion">🖨️ Impresión / PDF</a>
@@ -439,7 +440,7 @@
         <div class="value" style="color: #10b981;">Cotización USD</div>
       </div>
     </div>
-    <p>El <strong>Saldo Proyectado</strong> es interactivo: hacer clic en él despliega el detalle de cómo se calcula (banco disponible menos fijos pendientes y gastos corrientes).</p>
+    <p>El <strong>Saldo Proyectado</strong> es interactivo: hacer clic en él despliega el detalle de cómo se calcula (banco disponible menos fijos pendientes y gastos corrientes), con un subtotal al pie de cada lista (Fijos pendientes y Corrientes sin pagar).</p>
 
     <h2>Botones del header</h2>
     <table>
@@ -472,6 +473,16 @@
 
     <h2>Actualizar un saldo</h2>
     <p>Tocar el ✏️ al lado del saldo, en la tabla. Se abre un modal con el nombre de la cuenta y un campo "Nuevo saldo ($)" precargado con el valor actual — se edita ahí y se confirma con "✓ Guardar" (el saldo se redondea al peso).</p>
+    <div class="note">📌 Esta edición es <b>silenciosa</b>: sobreescribe el número directamente, sin dejar ningún registro visible en Movimientos Bancarios. Útil para una corrección rápida, pero si querés que quede rastro de por qué cambió el saldo, usar "💰 Ingresar Fondos" en su lugar.</div>
+
+    <h2>💰 Ingresar Fondos</h2>
+    <p>Registra un ingreso de dinero que entra a la app desde afuera (sueldo, aporte, cobro, corrección de saldo, etc.) directamente a una cuenta en pesos, dejando rastro visible en <a href="#movimientos">🏦 Movimientos Bancarios</a>.</p>
+    <ul>
+      <li><b>Cuenta destino</b>: banco que recibe el monto.</li>
+      <li><b>Monto ($)</b> y <b>Descripción</b> (ej. "Sueldo", "Corrección — pago mal asignado").</li>
+    </ul>
+    <div class="note">📌 El monto tiene que ser mayor a cero — no admite ajustes negativos. Para restar un saldo, usar "Actualizar un saldo" (edición silenciosa) en su lugar.</div>
+    <p>Cada ingreso queda con opción de deshacer, y revierte el monto del saldo de la cuenta si se borra.</p>
 
     <h2>Eliminar una cuenta</h2>
     <p>Hacer clic en el botón 🗑 de la fila correspondiente. La app pedirá confirmación.</p>
@@ -583,8 +594,13 @@
       <tr><td>Rubro</td><td>Categoría del gasto</td></tr>
     </table>
 
+    <h2>Buscar un servicio <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Campo de búsqueda arriba de la tabla para filtrar por nombre o rubro (ej. escribir "Claro" o "Servicios Casa"). El botón ✕ limpia el filtro.</p>
+
     <h2>Registrar un pago</h2>
     <p>Al pagar un servicio, hacer clic en la celda de "F.Pago" (fecha de pago) en la tabla y seleccionar la fecha. El sistema marca automáticamente el servicio como pagado y actualiza el indicador de "Fijos Pendientes" en el dashboard.</p>
+
+    <div class="tip">💡 Si cambiás el "Medio de pago" de un servicio que ya está pagado, la app transfiere automáticamente el monto entre la cuenta/tarjeta vieja y la nueva — no hace falta ajustar los saldos a mano.</div>
 
     <h2>Estados de un servicio</h2>
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
@@ -700,6 +716,13 @@
 
     <h2>Eliminar un rubro</h2>
     <p>Hacer clic en el botón 🗑 junto al rubro. Si el rubro está en uso por algún gasto corriente o servicio fijo, la app lo bloquea con el aviso "Rubro en uso" — hay que reasignar o eliminar esos gastos/servicios primero.</p>
+
+    <h2>Fusionar dos rubros <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Para unificar dos rubros que en realidad son lo mismo (ej. "Gastos médicos" y "Salud"), usar el bloque "Fusionar rubro" debajo del alta: elegir el <strong>rubro origen</strong> (el que va a desaparecer) y el <strong>rubro destino</strong> (el que va a quedar), y hacer clic en "Fusionar".</p>
+    <div class="step"><div class="step-num">1</div><div class="step-body">Todos los servicios y gastos corrientes del <strong>mes actual</strong> que tenían el rubro origen pasan a tener el rubro destino.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">Si ambos rubros tenían presupuesto mensual cargado, se suman en el rubro destino.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">El rubro origen se borra de la lista.</div></div>
+    <div class="note">📌 La fusión solo afecta el mes actual (en curso). Los meses históricos ya cerrados conservan el rubro que tenían en el momento del cierre — no se reescriben.</div>
 
     <div class="note">📌 Los rubros son independientes para pesos y dólares. Cada moneda tiene su propia lista de rubros.</div>
   </section>
@@ -961,7 +984,6 @@
 
     <div class="warning">⚠️ Mientras el cierre esté pendiente, los movimientos que sigas cargando se mezclan con los del mes vencido (todo cae en las mismas listas en vivo). Conviene resolver el aviso apenas aparece.</div>
   </section>
-  </section>
 
   <!-- GMAIL -->
   <section class="section" id="gmail">
@@ -1081,6 +1103,49 @@ localStorage.removeItem('cf_gmail_processed'); cfGmailChequear()</pre>
     <div class="note">📌 El token de Gmail dura aproximadamente 1 hora, pero la app intenta renovarlo en silencio automáticamente (sin popup) mientras esté abierta, y también al abrirla si venció. Si tu sesión de Google también expiró, vas a ver un cartel abajo a la derecha pidiendo que reautentiques con el botón 📧 Gmail.</div>
 
     <div class="note">📌 Al tocar <strong>✕ Cancelar</strong> en el modal de "Gasto detectado" o "Pago de servicio fijo", el mail <strong>no</strong> se marca como procesado — va a volver a aparecer en el próximo chequeo. Útil por ejemplo si cancelás porque el nombre del comercio de un fijo no coincidía, corregís el fijo, y querés que la app te lo vuelva a ofrecer.</div>
+  </section>
+
+  <!-- CONSULTA IA -->
+  <section class="section" id="consulta-ia">
+    <div class="section-header">
+      <span class="section-icon">🤖</span>
+      <div>
+        <div class="section-title">Consulta IA</div>
+        <div class="section-subtitle">Preguntale a un asistente sobre tus propios datos financieros</div>
+      </div>
+    </div>
+    <p>Panel lateral (ícono 🤖 en el header) que permite hacer preguntas en lenguaje natural sobre la situación financiera actual — saldos, gastos por rubro, cuotas activas, comparación con presupuesto, etc. Funciona con el modelo <code>openai/gpt-oss-120b</code> de Groq.</p>
+
+    <h2>Configurar la API key</h2>
+    <div class="step"><div class="step-num">1</div><div class="step-body">Crear una cuenta gratuita en <a href="https://console.groq.com" target="_blank">console.groq.com</a> (no pide tarjeta) y generar una API key.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body">La primera vez que se usa la Consulta IA, la app pide pegar la key con un prompt. Se guarda sola en este dispositivo (<code>localStorage</code>) y no hace falta volver a pedirla.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body">Si la key es inválida o expiró, la app la borra sola y vuelve a pedirla en la próxima consulta.</div></div>
+
+    <h2>Qué información tiene disponible</h2>
+    <table>
+      <tr><th>Dato</th><th>Alcance</th></tr>
+      <tr><td>Bancos, tarjetas, efectivo</td><td>Saldos actuales completos</td></tr>
+      <tr><td>Servicios fijos</td><td>Mes actual: cada uno con presupuesto, pagado y pendiente</td></tr>
+      <tr><td>Gastos corrientes</td><td>Mes actual: detalle línea por línea, y totales por rubro</td></tr>
+      <tr><td>Ingresos</td><td>Mes actual</td></tr>
+      <tr><td>Cuotas activas</td><td>Todas, con progreso (cuota actual / total)</td></tr>
+      <tr><td>Dólares</td><td>Cotización, cuentas USD, gastos/ingresos USD del mes</td></tr>
+      <tr><td>Meses históricos</td><td>Últimos 3 meses cerrados: saldo bancario, total egresado, y desglose de gasto por rubro de cada mes</td></tr>
+      <tr><td>Presupuestos por rubro</td><td>Los límites mensuales configurados</td></tr>
+    </table>
+    <div class="note">📌 Solo ve los últimos 3 meses históricos, no todo el archivo completo — si preguntás por un mes más viejo que eso, no va a tener el dato.</div>
+
+    <h2>Ejemplos de preguntas</h2>
+    <ul class="changelog-list">
+      <li>¿Cuánto gasté en supermercado este mes?</li>
+      <li>¿Cuál es mi rubro más caro?</li>
+      <li>¿Cuánto me queda después de pagar todo?</li>
+      <li>Compará mis gastos vs el presupuesto</li>
+      <li>¿Cuánto debo en cuotas?</li>
+      <li>¿Cómo viene mi tendencia de gasto en los últimos meses?</li>
+    </ul>
+
+    <div class="tip">💡 La conversación mantiene contexto dentro del panel abierto (podés hacer preguntas de seguimiento), pero se reinicia cada vez que cerrás y volvés a abrir el panel.</div>
   </section>
 
   <!-- CARPETA -->
