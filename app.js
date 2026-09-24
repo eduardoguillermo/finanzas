@@ -72,6 +72,7 @@ let movTarjetaSelId = null; // tarjeta ARS seleccionada
 let movTarjetaUSDSelId = null; // tarjeta USD seleccionada
 let filtroCorrientes = '';
 let filtroClase = '';
+let filtroServicios = '';
 let _syncTimer = null;
 let _syncPendiente = false;
 let _syncActivo = false;
@@ -1209,6 +1210,10 @@ function buildMesActual() {
                 <button type="submit" class="btn btn-add btn-indigo">Configurar Servicio Fijo</button>
               </form>
             </div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;" class="no-print">
+              <input type="text" id="filtro-servicios" placeholder="🔍 Buscar por nombre o rubro..." style="flex:1;min-width:180px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;" oninput="filtroServicios=this.value.toLowerCase();render();">
+              <button class="btn" style="background:#f1f5f9;color:#334155;padding:7px 12px;font-size:12px;flex-shrink:0;" onclick="filtroServicios='';document.getElementById('filtro-servicios').value='';render();">✕</button>
+            </div>
             <table><thead><tr>
               <th style="width:15%">Servicio</th><th style="width:6%" class="tc">Clase</th><th style="width:9%" class="tc">Rubro</th><th style="width:9%" class="tc">Vto.</th>
               <th style="width:10%" class="tr">Presup.</th><th style="width:10%" class="tr">Pagado</th>
@@ -1361,8 +1366,8 @@ function render() {
         const tdM=el('td','tr'); tdM.style.cssText='font-weight:bold;color:#f59e0b;'; tdM.innerText=fmt(t.monto);
         tTr.appendChild(fila([tdTxt(t.fecha||'—'),tdTxt(t.origenNombre),tdTxt(t.destinoNombre),tdM,tdBtn('✕',()=>elimTransferencia(t.id))]));
     }); }
-    // Servicios (ordenados)
-    [...listaServicios].sort((a,b)=>{ const est=s=>s.pagado>=s.presupuesto&&s.presupuesto>0?2:s.pagado>0?1:0; return est(a)!==est(b)?est(a)-est(b):a.nombre.localeCompare(b.nombre,'es'); }).forEach(s=>{
+    // Servicios (ordenados, filtrados)
+    [...listaServicios].filter(s=>!filtroServicios||(s.nombre+' '+(s.rubro||'')).toLowerCase().includes(filtroServicios)).sort((a,b)=>{ const est=s=>s.pagado>=s.presupuesto&&s.presupuesto>0?2:s.pagado>0?1:0; return est(a)!==est(b)?est(a)-est(b):a.nombre.localeCompare(b.nombre,'es'); }).forEach(s=>{
         const selCl=el('select'); selCl.className='inp';
         ['M','O','X'].forEach(op=>{ const o=el('option'); o.value=op; o.innerText=op; if((s.clase||'M')===op) o.selected=true; selCl.appendChild(o); });
         selCl.onchange=e=>{ s.clase=e.target.value; guardar(); };
@@ -1423,7 +1428,8 @@ function render() {
         ].forEach(td=>tr.appendChild(td));
         tS.appendChild(tr);
     });
-    if(!listaServicios.length) tS.innerHTML='<tr><td colspan="10" class="tc" style="color:#94a3b8;padding:12px;">Sin servicios.</td></tr>';
+    const serviciosFiltrados = listaServicios.filter(s=>!filtroServicios||(s.nombre+' '+(s.rubro||'')).toLowerCase().includes(filtroServicios));
+    if(!serviciosFiltrados.length) tS.innerHTML='<tr><td colspan="10" class="tc" style="color:#94a3b8;padding:12px;">'+(listaServicios.length?'Sin resultados para ese filtro.':'Sin servicios.')+'</td></tr>';
     // Totales fila servicios
     const tSFoot = document.getElementById('t-servicios-foot');
     if(tSFoot) {
@@ -4973,7 +4979,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.49';
+const APP_VERSION = 'v3.8.50';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
