@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.53</p>
+    <p>Manual de usuario · v3.8.55</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -312,7 +312,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.53</span>
+      <span class="badge badge-green">✓ v3.8.55</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -565,11 +565,20 @@
     <h2>Saldo total vs. Vencimiento</h2>
     <p>Como el cierre de la tarjeta opera antes de fin de mes, el <b>Saldo total</b> incluye consumos que todavía no entraron al resumen actual. El campo <b>Vencimiento</b> es el importe puntual que hay que pagar ahora (el del resumen), y se actualiza a mano cada vez que llega un resumen nuevo.</p>
 
+    <h2>Cómo se calcula el Saldo total <span class="badge badge-purple">Nuevo</span></h2>
+    <p>El <b>Saldo total</b> de la tabla es la suma de dos partes:</p>
+    <ul>
+      <li><b>Arrastre</b> — lo que la tarjeta ya traía de meses anteriores, menos los pagos que hiciste.</li>
+      <li><b>Consumos del mes</b> — los servicios fijos pagados con esa tarjeta y los gastos corrientes con fecha de pago, sumados solos (los ingresos o devoluciones restan).</li>
+    </ul>
+    <p>Los consumos del mes pasan al arrastre recién al <b>abrir nuevo mes</b>. Hasta entonces se suman en pantalla sin tocar el arrastre, para que nada se cuente dos veces.</p>
+
     <h2>Actualizar saldo o vencimiento</h2>
-    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline, tanto en la columna Saldo total como en Vencimiento.</p>
+    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline, tanto en la columna Saldo total como en Vencimiento. Al corregir el <b>Saldo total</b>, escribí el <b>total real que muestra el resumen del banco</b>: la app descuenta sola los consumos del mes y guarda solo el arrastre, así que lo que escribís es lo que ves.</p>
+    <div class="tip">💡 Si una tarjeta quedó con un total mayor al real (las versiones anteriores a la v3.8.54 sumaban dos veces los servicios pagados con tarjeta), corregí su Saldo total una sola vez con el valor del resumen real.</div>
 
     <h2>Pagar la tarjeta</h2>
-    <p>El botón "💳 Pagar" precarga el modal con el monto del <b>Vencimiento</b> (no el saldo total), ya que normalmente eso es lo que se paga. Al confirmar, se descuenta del banco de origen y del saldo total de la tarjeta, y el Vencimiento baja en la misma proporción (nunca queda negativo).</p>
+    <p>El botón "💳 Pagar" precarga el modal con el monto del <b>Vencimiento</b> (no el saldo total), ya que normalmente eso es lo que se paga. Al confirmar, se descuenta del banco de origen y del saldo total de la tarjeta, y el Vencimiento baja en la misma proporción (nunca queda negativo). Si después deshacés el pago, el Vencimiento vuelve exactamente a lo que era: cuando el pago superaba el vencimiento, solo se restituye lo que realmente se había descontado.</p>
   </section>
 
   <!-- SERVICIOS FIJOS -->
@@ -598,9 +607,18 @@
     <p>Arriba de la tabla hay un campo de búsqueda para filtrar por nombre o rubro (ej. escribir "Claro" o "Servicios Casa") y un desplegable <strong>Medio de pago</strong> para ver solo los servicios de un banco o tarjeta puntual. Los dos se combinan entre sí, y el botón ✕ limpia ambos.</p>
 
     <h2>Registrar un pago</h2>
-    <p>Al pagar un servicio, hacer clic en la celda de "F.Pago" (fecha de pago) en la tabla y seleccionar la fecha. El sistema marca automáticamente el servicio como pagado y actualiza el indicador de "Fijos Pendientes" en el dashboard.</p>
+    <p>Al pagar un servicio, escribir el importe abonado en la columna <b>Pagado</b> de la tabla y, si querés dejar constancia, la fecha en <b>F.Pago</b>. El estado pasa solo a PAGADO o PARCIAL según lo que hayas cargado, y se actualiza el indicador de "Fijos Pendientes" en el dashboard.</p>
+    <p>Qué pasa con los saldos según el <b>Medio de pago</b>:</p>
+    <ul>
+      <li><b>Banco o cuenta</b> — el importe se descuenta del saldo al instante; si lo bajás o borrás el servicio, se devuelve.</li>
+      <li><b>Tarjeta</b> — no se toca ningún banco: el importe se suma a los consumos del mes de esa tarjeta (Saldo total) y pasa al arrastre al abrir nuevo mes.</li>
+    </ul>
 
-    <div class="tip">💡 Si cambiás el "Medio de pago" de un servicio que ya está pagado, la app transfiere automáticamente el monto entre la cuenta/tarjeta vieja y la nueva — no hace falta ajustar los saldos a mano.</div>
+    <div class="tip">💡 Si cambiás el "Medio de pago" de un servicio que ya está pagado, el importe se traslada solo: el banco viejo lo recupera y el nuevo lo descuenta; si alguno es una tarjeta, el consumo pasa de una a otra en su Saldo total. No hace falta ajustar nada a mano.</div>
+    <div class="tip">💡 En las tablas podés escribir los importes como <code>150000</code>, <code>150.000</code> o <code>1.234,56</code>. Un punto seguido de tres dígitos se toma como separador de miles (150.000 = 150 mil); con uno o dos dígitos, como decimal (1500.50 se redondea a $ 1.501).</div>
+
+    <h2>Eliminar un servicio <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Con la ✕ de la fila. La app pide confirmación y te dice qué se revierte (por ejemplo, "se devuelve a Santander" si estaba pagado con un banco).</p>
 
     <h2>Estados de un servicio</h2>
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
@@ -661,6 +679,9 @@
     <h2>Comprobante (link a factura) <span class="badge badge-purple">Nuevo</span></h2>
     <p>Igual que en Servicios Fijos: cada gasto corriente tiene una columna 📎 para pegar el link a su comprobante (ya subido a Drive u otro lado por tu cuenta — la app no sube archivos). "+" tenue si no hay nada cargado; click en el 📎 abre el link, click derecho lo edita o lo borra.</p>
 
+    <h2>Eliminar un gasto <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Con la ✕ de la fila. La app pide confirmación; si el gasto ya estaba pagado desde un banco, indica cuánto se devuelve (o se descuenta, si era un ingreso).</p>
+
     <div class="tip">💡 Con el módulo Gmail, los consumos de tarjeta de crédito detectados en los mails de Santander se registran automáticamente como gastos corrientes si no coinciden con un servicio fijo.</div>
   </section>
 
@@ -693,10 +714,10 @@
       <span class="section-icon">↔️</span>
       <div>
         <div class="section-title">Transferencias entre Cuentas</div>
-        <div class="section-subtitle">Movimientos internos entre bancos y tarjetas</div>
+        <div class="section-subtitle">Movimientos internos entre cuentas bancarias</div>
       </div>
     </div>
-    <p>Panel para registrar transferencias de fondos entre cuentas propias: de banco a banco, de banco a tarjeta (pago de tarjeta), etc.</p>
+    <p>Panel para registrar transferencias de fondos entre cuentas propias (de banco a banco). Las tarjetas no se ofrecen acá: para pagar una tarjeta usá el botón <b>💳 Pagar</b> de la sección Tarjetas, que descuenta del banco y baja la deuda y el vencimiento.</p>
 
     <h2>Cómo registrar una transferencia</h2>
     <div class="steps">
@@ -706,7 +727,7 @@
       <div class="step"><div class="step-num">4</div><div class="step-body">Ingresar la <strong>fecha</strong>.</div></div>
       <div class="step"><div class="step-num">5</div><div class="step-body">Hacer clic en "+ Registrar".</div></div>
     </div>
-    <div class="info">ℹ️ Al confirmar, la app descuenta el monto de la cuenta Origen y lo suma a la cuenta Destino automáticamente — no hace falta ajustar los saldos a mano. La transferencia queda registrada en el historial hasta el próximo cierre de mes.</div>
+    <div class="info">ℹ️ Al confirmar, la app descuenta el monto de la cuenta Origen y lo suma a la cuenta Destino automáticamente — no hace falta ajustar los saldos a mano. La transferencia queda registrada en el historial hasta el próximo cierre de mes. Al borrarla con la ✕ la app pide confirmación y revierte el monto en ambas cuentas (las transferencias viejas hacia tarjetas también se pueden borrar).</div>
   </section>
 
   <!-- RUBROS -->
@@ -724,7 +745,7 @@
     <p>Ingresar el nombre del rubro en el campo de texto y hacer clic en "+ Agregar".</p>
 
     <h2>Eliminar un rubro</h2>
-    <p>Hacer clic en el botón 🗑 junto al rubro. Si el rubro está en uso por algún gasto corriente o servicio fijo, la app lo bloquea con el aviso "Rubro en uso" — hay que reasignar o eliminar esos gastos/servicios primero.</p>
+    <p>Hacer clic en el botón 🗑 junto al rubro. Si el rubro está en uso por algún gasto corriente o servicio fijo, la app lo bloquea con el aviso "Rubro en uso" — hay que reasignar o eliminar esos gastos/servicios primero. Si no está en uso, pide confirmación antes de borrarlo.</p>
 
     <h2>Fusionar dos rubros <span class="badge badge-purple">Nuevo</span></h2>
     <p>Para unificar dos rubros que en realidad son lo mismo (ej. "Gastos médicos" y "Salud"), usar el bloque "Fusionar rubro" debajo del alta: elegir el <strong>rubro origen</strong> (el que va a desaparecer) y el <strong>rubro destino</strong> (el que va a quedar), y hacer clic en "Fusionar".</p>
@@ -753,7 +774,7 @@
       <tr><td>🏦 Cuentas en USD</td><td>Cuentas bancarias y efectivo en dólares</td></tr>
       <tr><td>💰 Ingresar Fondos (USD)</td><td>Registra un ingreso externo a una cuenta USD, con historial y opción de deshacer <span class="badge badge-purple">Nuevo</span></td></tr>
       <tr><td>💳 Tarjetas en USD</td><td>Tarjetas de crédito con saldo en USD (ej. Visa Internacional)</td></tr>
-      <tr><td>↔️ Transferencias USD</td><td>Mueve saldo entre cuentas/tarjetas en USD, sin tocar pesos</td></tr>
+      <tr><td>↔️ Transferencias USD</td><td>Mueve saldo entre cuentas en USD, sin tocar pesos (para pagar una tarjeta USD está el botón 💳 Pagar)</td></tr>
       <tr><td>💱 Comprar Dólares</td><td>Compra USD debitando una cuenta en pesos, con tipo de cambio manual</td></tr>
       <tr><td>📋 Servicios Fijos en USD</td><td>Suscripciones y servicios que se cobran en dólares (ej. Spotify, Netflix, Claude)</td></tr>
       <tr><td>🛍️ Gastos Corrientes en USD</td><td>Gastos variables en dólares</td></tr>
@@ -1273,6 +1294,26 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.55</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Los borrados con ✕ de servicios, gastos, transferencias, compras de dólares, instrumentos, acciones y rubros ahora piden confirmación y avisan qué se revierte.</li>
+        <li>Fix: deshacer un pago de tarjeta que superaba el vencimiento devolvía de más al Vencimiento. Ahora restituye exactamente lo que se había descontado (pesos y USD).</li>
+        <li>Fix: las transferencias ya no ofrecen tarjetas como origen o destino, porque sumaban deuda a la tarjeta en lugar de pagarla. Para pagar una tarjeta se usa 💳 Pagar. Las transferencias viejas siguen pudiéndose borrar y revertir.</li>
+        <li>Se quitó de la app un archivo viejo sin uso (main.js) que se descargaba en cada instalación: unos 346 KB menos.</li>
+      </ul>
+    </div>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.54</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Fix: un servicio pagado con tarjeta se contaba dos veces en el saldo de la tarjeta (al pagarlo y otra vez al cerrar el mes), en pesos y en dólares. Ahora se suma una sola vez, igual que los gastos corrientes.</li>
+        <li>Fix: el campo Saldo total de una tarjeta mostraba saldo + consumos del mes, pero al editarlo guardaba solo lo tipeado y al recalcular volvía a sumar los consumos. Ahora lo que escribís es lo que ves.</li>
+        <li>Fix: un gasto detectado por Gmail sin fecha ahora toma la fecha de hoy; antes se descontaba dos veces al cargarle la fecha después.</li>
+        <li>Fix: los importes con punto decimal en las tablas (ej. 1500.50) se interpretaban como 150.050. Ahora se entienden bien, y lo mismo en el presupuesto por rubro.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.53</span><span class="changelog-tag tag-feature">feature</span></div>
