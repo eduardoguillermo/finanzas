@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.56</p>
+    <p>Manual de usuario · v3.8.57</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -313,7 +313,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.56</span>
+      <span class="badge badge-green">✓ v3.8.57</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -703,6 +703,10 @@
       <div class="step"><div class="step-num">5</div><div class="step-body">Completar la <strong>Fecha</strong> de pago.</div></div>
       <div class="step"><div class="step-num">6</div><div class="step-body">Hacer clic en "+ Registrar gasto".</div></div>
     </div>
+
+    <h2>Fecha de pago <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Un gasto o ingreso corriente cargado a mano nace <b>pagado, con la fecha de hoy</b>: descuenta (o suma) el saldo de la cuenta al instante, sin necesidad de tocar nada más. Si en realidad corresponde a otro día, se puede cambiar la fecha después haciendo clic en la columna "F.Pago" — el saldo no se vuelve a tocar, solo cambia la fecha con la que queda registrado. Funciona igual en pesos y en dólares.</p>
+    <div class="tip">💡 Si necesitás cargar un gasto que todavía no está pagado (para que no impacte en el saldo hasta que corresponda), vaciá el campo de fecha después de crearlo: eso devuelve el monto a la cuenta y lo deja pendiente, igual que antes.</div>
 
     <h2>Buscar y filtrar <span class="badge badge-purple">Nuevo</span></h2>
     <p>Arriba de la tabla hay tres filtros que se pueden combinar entre sí:</p>
@@ -1340,6 +1344,13 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.57</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Fix: un gasto o ingreso corriente cargado a mano (pesos o USD) no descontaba ni sumaba nada hasta poner la fecha de pago a mano. Ahora nace pagado con la fecha de hoy, igual que ya hacía el módulo Gmail. Se puede cambiar la fecha o vaciarla después sin duplicar el efecto en el saldo.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.56</span><span class="changelog-tag tag-feature">feature</span></div>
