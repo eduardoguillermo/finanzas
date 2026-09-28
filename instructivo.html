@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.52</p>
+    <p>Manual de usuario · v3.8.53</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -312,7 +312,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.52</span>
+      <span class="badge badge-green">✓ v3.8.53</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -595,7 +595,7 @@
     </table>
 
     <h2>Buscar un servicio <span class="badge badge-purple">Nuevo</span></h2>
-    <p>Campo de búsqueda arriba de la tabla para filtrar por nombre o rubro (ej. escribir "Claro" o "Servicios Casa"). El botón ✕ limpia el filtro.</p>
+    <p>Arriba de la tabla hay un campo de búsqueda para filtrar por nombre o rubro (ej. escribir "Claro" o "Servicios Casa") y un desplegable <strong>Medio de pago</strong> para ver solo los servicios de un banco o tarjeta puntual. Los dos se combinan entre sí, y el botón ✕ limpia ambos.</p>
 
     <h2>Registrar un pago</h2>
     <p>Al pagar un servicio, hacer clic en la celda de "F.Pago" (fecha de pago) en la tabla y seleccionar la fecha. El sistema marca automáticamente el servicio como pagado y actualiza el indicador de "Fijos Pendientes" en el dashboard.</p>
@@ -640,6 +640,15 @@
       <div class="step"><div class="step-num">5</div><div class="step-body">Completar la <strong>Fecha</strong> de pago.</div></div>
       <div class="step"><div class="step-num">6</div><div class="step-body">Hacer clic en "+ Registrar gasto".</div></div>
     </div>
+
+    <h2>Buscar y filtrar <span class="badge badge-purple">Nuevo</span></h2>
+    <p>Arriba de la tabla hay tres filtros que se pueden combinar entre sí:</p>
+    <ul>
+      <li><strong>Búsqueda de texto</strong> — por rubro o detalle (ej. "YPF" o "Salud").</li>
+      <li><strong>Clase</strong> — M, O o X.</li>
+      <li><strong>Medio de pago</strong> — un banco o tarjeta puntual (ej. ver solo lo cargado a la Visa).</li>
+    </ul>
+    <p>El botón ✕ limpia los tres a la vez. Mientras hay un filtro activo, debajo de la tabla aparece una barra con el total de egresos, ingresos y pagado de lo filtrado, junto con la cantidad de registros, y muestra qué filtros están aplicados (incluido el medio de pago).</p>
 
     <h2>Clasificación</h2>
     <p>Cada gasto se clasifica opcionalmente con una clase:</p>
@@ -1264,6 +1273,14 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.53</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo filtro por medio de pago (banco o tarjeta) en Servicios y Vencimientos Fijos y en Gastos Corrientes. Se combina con la búsqueda de texto y con la clase, y el botón ✕ limpia todo.</li>
+        <li>En Gastos Corrientes, la barra de subtotal de lo filtrado ahora indica también el medio de pago elegido.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.52</span><span class="changelog-tag tag-feature">feature</span></div>
