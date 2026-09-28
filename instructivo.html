@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.55</p>
+    <p>Manual de usuario · v3.8.56</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -276,6 +276,7 @@
   <div class="section-label">Secciones principales</div>
   <a href="#mes-actual">📊 Mes Actual</a>
   <a href="#movimientos">🏦 Movimientos Bancarios</a>
+  <a href="#ajustes-saldo">⚖️ Ajustes de saldo</a>
   <a href="#bancos">🏦 Bancos y efectivo</a>
   <a href="#tarjetas">💳 Tarjetas</a>
   <a href="#servicios">📋 Servicios fijos</a>
@@ -312,7 +313,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.55</span>
+      <span class="badge badge-green">✓ v3.8.56</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -472,16 +473,16 @@
     </div>
 
     <h2>Actualizar un saldo</h2>
-    <p>Tocar el ✏️ al lado del saldo, en la tabla. Se abre un modal con el nombre de la cuenta y un campo "Nuevo saldo ($)" precargado con el valor actual — se edita ahí y se confirma con "✓ Guardar" (el saldo se redondea al peso).</p>
-    <div class="note">📌 Esta edición es <b>silenciosa</b>: sobreescribe el número directamente, sin dejar ningún registro visible en Movimientos Bancarios. Útil para una corrección rápida, pero si querés que quede rastro de por qué cambió el saldo, usar "💰 Ingresar Fondos" en su lugar.</div>
+    <p>Tocar el ✏️ al lado del saldo, en la tabla. Se abre un modal con el nombre de la cuenta y un campo "Nuevo saldo ($)" precargado con el valor actual — se edita ahí junto con el <b>Motivo del ajuste</b> (obligatorio) y se confirma con "✓ Guardar" (el saldo se redondea al peso).</p>
+    <div class="note">📌 Cada ajuste queda registrado —fecha, cuenta, saldo anterior y nuevo, y el motivo— en el <a href="#ajustes-saldo">historial de ajustes de saldo</a> y aparece como una fila en <a href="#movimientos">Movimientos</a>. No cuenta como ingreso ni como gasto, y sirve tanto para subir como para bajar un saldo.</div>
 
     <h2>💰 Ingresar Fondos</h2>
-    <p>Registra un ingreso de dinero que entra a la app desde afuera (sueldo, aporte, cobro, corrección de saldo, etc.) directamente a una cuenta en pesos, dejando rastro visible en <a href="#movimientos">🏦 Movimientos Bancarios</a>.</p>
+    <p>Registra un ingreso de dinero que entra a la app desde afuera (sueldo, aporte, cobro, etc.) directamente a una cuenta en pesos, dejando rastro visible en <a href="#movimientos">🏦 Movimientos Bancarios</a>.</p>
     <ul>
       <li><b>Cuenta destino</b>: banco que recibe el monto.</li>
-      <li><b>Monto ($)</b> y <b>Descripción</b> (ej. "Sueldo", "Corrección — pago mal asignado").</li>
+      <li><b>Monto ($)</b> y <b>Descripción</b> (ej. "Sueldo", "Cobro de un cliente").</li>
     </ul>
-    <div class="note">📌 El monto tiene que ser mayor a cero — no admite ajustes negativos. Para restar un saldo, usar "Actualizar un saldo" (edición silenciosa) en su lugar.</div>
+    <div class="note">📌 El monto tiene que ser mayor a cero — no admite ajustes negativos. Para restar un saldo, usar ✏️ "Actualizar un saldo", que también deja el ajuste registrado con su motivo.</div>
     <p>Cada ingreso queda con opción de deshacer, y revierte el monto del saldo de la cuenta si se borra.</p>
 
     <h2>Eliminar una cuenta</h2>
@@ -523,7 +524,9 @@
       <li><b>🛒 / ⬆ Consumos</b> — gastos corrientes cargados a esa tarjeta como medio de pago, con fecha</li>
       <li><b>📋 Servicios fijos pagados</b> — con esa tarjeta como medio de pago</li>
       <li><b>💳 Pagos</b> — pagos hechos a la tarjeta desde una cuenta, cargados con el botón "💳 Pagar"</li>
+      <li><b>⚖️ Ajustes</b> — correcciones manuales del saldo, con su motivo (no cuentan como consumos ni como pagos)</li>
     </ul>
+    <p>El valor de referencia de la tarjeta es la <b>deuda total</b> (arrastre + consumos del mes), la misma que ves en el dashboard, así que "Deuda inicio de mes" y "Deuda actual" coinciden con ella.</p>
     <p>Funciona igual en ARS y en USD.</p>
 
     <h2>Meses cerrados</h2>
@@ -534,11 +537,53 @@
 
     <h2>Saldo al inicio del mes</h2>
     <p>No es un dato que se guarde aparte: se calcula restándole al valor de referencia del mes (el actual, o el de cierre si es un mes pasado) la suma de todos los movimientos de ese período. Por eso siempre es consistente con el valor que corresponde a ese mes.</p>
+    <p>Los <b>⚖️ ajustes manuales de saldo</b> entran en ese cálculo: corregir un saldo <b>no</b> mueve el saldo de inicio del mes, sino que aparece como una fila propia con su motivo. No se suman a los totales de ingresos y egresos (o consumos y pagos) del período; un aviso arriba de la tabla indica cuánto suman.</p>
 
     <h2>Lectura de la tabla</h2>
     <p>Los movimientos están agrupados por día, con el saldo acumulado al lado de cada uno para poder seguir la evolución. Las filas se muestran con fondo alternado para facilitar la lectura en pantallas anchas. En el mes actual la última fila dice "Saldo actual"; en un mes cerrado dice "Saldo al cierre".</p>
 
     <div class="tip">💡 Si elegís un mes cerrado y la cuenta no existía todavía en ese cierre, la app te avisa que no hay datos archivados para esa combinación en vez de mostrar información incorrecta.</div>
+  </section>
+
+  <!-- AJUSTES DE SALDO -->
+  <section class="section" id="ajustes-saldo">
+    <div class="section-header">
+      <span class="section-icon">⚖️</span>
+      <div>
+        <div class="section-title">Ajustes de saldo</div>
+        <div class="section-subtitle">Corregir un saldo a mano dejando registrado el porqué</div>
+      </div>
+    </div>
+    <p>Cuando el saldo de la app no coincide con el del banco o el resumen, se puede corregir a mano. Cada corrección queda guardada con su <b>motivo</b> para poder explicar más adelante por qué cambió un saldo, y aparece en <a href="#movimientos">Movimientos</a> sin alterar el saldo de inicio del mes.</p>
+
+    <h2>Dónde se puede ajustar</h2>
+    <table>
+      <tr><th>Qué</th><th>Cómo</th></tr>
+      <tr><td>🏦 Bancos y efectivo (pesos)</td><td>El botón ✏️ al lado del saldo: abre un modal con "Nuevo saldo" y "Motivo del ajuste"</td></tr>
+      <tr><td>💳 Tarjetas (pesos)</td><td>Clic en el <b>Saldo total</b> de la tarjeta y escribir el total real del resumen; la app pregunta el motivo</td></tr>
+      <tr><td>🏦 Cuentas en USD</td><td>Clic en el saldo de la cuenta; la app pregunta el motivo</td></tr>
+      <tr><td>💳 Tarjetas en USD</td><td>Clic en el saldo de la tarjeta; la app pregunta el motivo</td></tr>
+    </table>
+
+    <h2>El motivo es obligatorio</h2>
+    <p>Si dejás el motivo vacío, la app no guarda el cambio y vuelve a preguntar. Si cancelás, el ajuste se descarta y el saldo queda como estaba. Si el valor nuevo es igual al actual, no se registra nada.</p>
+
+    <h2>Qué queda guardado</h2>
+    <ul>
+      <li>Fecha y hora del ajuste (hora argentina, formato 24 h)</li>
+      <li>Cuenta o tarjeta, y de qué tipo es</li>
+      <li>Saldo anterior, saldo nuevo y la diferencia</li>
+      <li>El motivo que escribiste</li>
+    </ul>
+
+    <h2>Dónde verlos</h2>
+    <ul>
+      <li>En <b>Movimientos</b>, como una fila <b>⚖️ Ajuste de saldo — motivo</b> dentro del día en que se hizo.</li>
+      <li>Al pie de esa misma pestaña, en el <b>Historial de ajustes de saldo</b>: todos los ajustes de todas las cuentas, del más reciente al más viejo.</li>
+    </ul>
+
+    <div class="note">📌 Un ajuste <b>no es un ingreso ni un gasto</b>: no se suma a esos totales ni a los del período en Movimientos (un aviso arriba de la tabla indica cuánto suman). Tampoco se archiva al abrir nuevo mes, y viaja en los backups (Drive, archivo y carpeta local).</div>
+    <div class="tip">💡 Los ajustes no se editan ni se borran, para que el historial sea confiable. Si te equivocaste, hacé otro ajuste que lo corrija, explicándolo en el motivo.</div>
   </section>
 
   <!-- TARJETAS -->
@@ -574,8 +619,8 @@
     <p>Los consumos del mes pasan al arrastre recién al <b>abrir nuevo mes</b>. Hasta entonces se suman en pantalla sin tocar el arrastre, para que nada se cuente dos veces.</p>
 
     <h2>Actualizar saldo o vencimiento</h2>
-    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline, tanto en la columna Saldo total como en Vencimiento. Al corregir el <b>Saldo total</b>, escribí el <b>total real que muestra el resumen del banco</b>: la app descuenta sola los consumos del mes y guarda solo el arrastre, así que lo que escribís es lo que ves.</p>
-    <div class="tip">💡 Si una tarjeta quedó con un total mayor al real (las versiones anteriores a la v3.8.54 sumaban dos veces los servicios pagados con tarjeta), corregí su Saldo total una sola vez con el valor del resumen real.</div>
+    <p>Igual que en Bancos: hacer clic en el valor para editarlo inline, tanto en la columna Saldo total como en Vencimiento. Al corregir el <b>Saldo total</b>, escribí el <b>total real que muestra el resumen del banco</b>: la app descuenta sola los consumos del mes y guarda solo el arrastre, así que lo que escribís es lo que ves. La app te pide el <b>motivo</b> del ajuste (obligatorio; si cancelás, el cambio se descarta).</p>
+    <div class="tip">💡 Si una tarjeta quedó con un total mayor al real (las versiones anteriores a la v3.8.54 sumaban dos veces los servicios pagados con tarjeta), corregí su Saldo total una sola vez con el valor del resumen real (como motivo alcanza con algo como "Conciliación con el resumen").</div>
 
     <h2>Pagar la tarjeta</h2>
     <p>El botón "💳 Pagar" precarga el modal con el monto del <b>Vencimiento</b> (no el saldo total), ya que normalmente eso es lo que se paga. Al confirmar, se descuenta del banco de origen y del saldo total de la tarjeta, y el Vencimiento baja en la misma proporción (nunca queda negativo). Si después deshacés el pago, el Vencimiento vuelve exactamente a lo que era: cuando el pago superaba el vencimiento, solo se restituye lo que realmente se había descontado.</p>
@@ -779,6 +824,7 @@
       <tr><td>📋 Servicios Fijos en USD</td><td>Suscripciones y servicios que se cobran en dólares (ej. Spotify, Netflix, Claude)</td></tr>
       <tr><td>🛍️ Gastos Corrientes en USD</td><td>Gastos variables en dólares</td></tr>
     </table>
+    <div class="tip">💡 Para corregir a mano el saldo de una cuenta o de una tarjeta en USD, hacer clic en el valor: la app pide el motivo (obligatorio) y lo deja en el <a href="#ajustes-saldo">historial de ajustes de saldo</a>.</div>
 
     <h2>💰 Ingresar Fondos (USD) <span class="badge badge-purple">Nuevo</span></h2>
     <p>Registra un ingreso de dinero que entra a la app desde afuera (cobro, sueldo en dólares, etc.) directamente a una cuenta en USD — análogo al botón "Ingreso" que ya existía para cuentas en pesos.</p>
@@ -1294,6 +1340,17 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.56</span><span class="changelog-tag tag-feature">feature</span></div>
+      <ul class="changelog-list">
+        <li>Nuevo historial de ajustes de saldo: cada corrección manual de un saldo (bancos, tarjetas, cuentas USD y tarjetas USD) exige un motivo y queda registrada con fecha, hora, saldo anterior, saldo nuevo y diferencia.</li>
+        <li>Los ajustes aparecen en Movimientos como una fila propia y no alteran el saldo de inicio del mes. No cuentan como ingresos ni egresos. El historial completo está al pie de esa pestaña.</li>
+        <li>El ✏️ "Editar saldo" de los bancos ahora pide el motivo (antes corregía el saldo sin dejar rastro).</li>
+        <li>Los ajustes se incluyen en los backups (Drive, archivo, carpeta local y snapshots) y no se borran al abrir nuevo mes.</li>
+        <li>Fix: en Movimientos, "Deuda inicio de mes" y "Deuda actual" de una tarjeta no incluían los consumos del mes y mostraban menos deuda que el dashboard. Ahora coinciden (pesos y USD).</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.55</span><span class="changelog-tag tag-feature">feature</span></div>
