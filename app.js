@@ -967,11 +967,11 @@ function inpNum(val, onChange) {
     inp.value=fmtN(last);
     inp.addEventListener('focus', ()=>{ inp.value=last; });
     inp.addEventListener('change', e=>{
-        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        const v=Math.round(parseNum(e.target.value));
         last=v; onChange(v); inp.value=fmtN(v);
     });
     inp.addEventListener('blur', e=>{
-        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        const v=Math.round(parseNum(e.target.value));
         if(v!==last){ last=v; onChange(v); }
         inp.value=fmtN(last);
     });
@@ -984,11 +984,11 @@ function inpNumPagado(val, onChange) {
     inp.value = last===0 ? '' : fmtN(last);
     inp.addEventListener('focus', ()=>{ inp.value = last===0 ? '' : last; });
     inp.addEventListener('change', e=>{
-        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        const v=Math.round(parseNum(e.target.value));
         last=v; onChange(v); inp.value = v===0 ? '' : fmtN(v);
     });
     inp.addEventListener('blur', e=>{
-        const v=Math.round(parseFloat(String(e.target.value).replace(/\./g,'').replace(',','.'))||0);
+        const v=Math.round(parseNum(e.target.value));
         if(v!==last){ last=v; onChange(v); }
         inp.value = last===0 ? '' : fmtN(last);
     });
@@ -1350,7 +1350,7 @@ function render() {
     }
     // Tarjetas
     listaTarjetas.forEach(t=>{
-        const inp=inpNum(t.saldo,v=>{ t.saldo=v; guardar(); calcDash(); }); inp.id='saldo-t-'+t.id;
+        const inp=inpNum(t.saldo,v=>{ t.saldo=v-cfConsumoMesTarjeta(t.id); guardar(); calcDash(); }); inp.id='saldo-t-'+t.id;   // el campo muestra el TOTAL (saldo+consumos del mes): se guarda solo el arrastre
         const tdS=el('td','tr'); tdS.appendChild(inp);
         const inpV=inpNum(t.vencimiento||0,v=>{ t.vencimiento=v; guardar(); }); inpV.id='venc-t-'+t.id;
         const tdV=el('td','tr'); tdV.appendChild(inpV);
@@ -1400,9 +1400,7 @@ function render() {
             const diff=v-s.pagado;
             if(diff!==0){
                 const bk=listaBancos.find(b=>b.id===s.medioPagoId);
-                const tk=listaTarjetas.find(t=>t.id===s.medioPagoId);
-                if(bk) bk.saldo-=diff;
-                else if(tk) tk.saldo+=diff;
+                if(bk) bk.saldo-=diff;   // tarjeta: no se toca acá (el consumo se suma vía cfConsumoMesTarjeta)
             }
             s.pagado=v; guardar(); calcDash(); render();
             if(s.presupuesto>0 && v>s.presupuesto) alert('⚠️ Pagado ('+fmt(v)+') supera el presupuesto ('+fmt(s.presupuesto)+') en '+fmt(v-s.presupuesto)+'.');
@@ -1426,10 +1424,9 @@ function render() {
          tdPag, tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
          (()=>{ const td=el('td'); td.appendChild(selMediosPesos(s.medioPagoId,v=>{
              if(v!==s.medioPagoId && s.pagado>0){
-                 const bkOld=listaBancos.find(b=>b.id===s.medioPagoId), tkOld=listaTarjetas.find(t=>t.id===s.medioPagoId);
-                 if(bkOld) bkOld.saldo+=s.pagado; else if(tkOld) tkOld.saldo-=s.pagado;
-                 const bkNew=listaBancos.find(b=>b.id===v), tkNew=listaTarjetas.find(t=>t.id===v);
-                 if(bkNew) bkNew.saldo-=s.pagado; else if(tkNew) tkNew.saldo+=s.pagado;
+                 // Solo los bancos mueven saldo al instante; una tarjeta (vieja o nueva) lo toma vía cfConsumoMesTarjeta.
+                 const bkOld=listaBancos.find(b=>b.id===s.medioPagoId); if(bkOld) bkOld.saldo+=s.pagado;
+                 const bkNew=listaBancos.find(b=>b.id===v); if(bkNew) bkNew.saldo-=s.pagado;
              }
              s.medioPagoId=v; guardar(); calcDash(); render();
          })); return td; })(),
@@ -1566,7 +1563,7 @@ function renderPresupRubros() {
 }
 function actualizarPresupRubro(inp) {
     const r = inp.getAttribute('data-rubro');
-    const v = parseFloat(inp.value.replace(/\./g,''))||0;
+    const v = Math.round(parseNum(inp.value));
     if(v>0) listaPresupRubros[r]=v; else delete listaPresupRubros[r];
     guardar(); renderPresupRubros();
     if(tabActivo==='presupuesto') renderContenido();
@@ -1583,6 +1580,16 @@ function toggleRubroReporte4(cb) {
 // ═══════════════════════════════════════════
 //  DASHBOARD PESOS
 // ═══════════════════════════════════════════
+// Modelo de tarjetas (pesos): t.saldo es el ARRASTRE de meses anteriores. Los consumos del mes
+// (servicios pagados + corrientes con fecha de pago) se suman dinámicamente en pantalla y recién
+// se acumulan en t.saldo al cerrar el mes (nuevoMes). Por eso pagar/borrar/mover un servicio de
+// tarjeta NO debe tocar t.saldo: si lo hiciera, el consumo se contaría dos veces.
+function cfConsumoMesTarjeta(id) {
+    let total = 0;
+    listaServicios.forEach(s=>{ if(s.medioPagoId===id && s.pagado>0) total += Math.round(s.pagado); });
+    listaCorrientes.forEach(c=>{ if(c.medioPagoId===id && c.fechaPago) total += Math.round(c.monto) * (c.esIngreso ? -1 : 1); });
+    return total;
+}
 function calcDash() {
     const mDeb={}; listaBancos.forEach(b=>mDeb[b.id]=0); listaTarjetas.forEach(t=>mDeb[t.id]=0);
     let totalPag=0, fijosPend=0;
@@ -1950,8 +1957,7 @@ function elimServicio(id){
     const s=listaServicios.find(x=>x.id===id);
     if(s && s.pagado>0){
         const bk=listaBancos.find(b=>b.id===s.medioPagoId);
-        const tk=listaTarjetas.find(t=>t.id===s.medioPagoId);
-        if(bk) bk.saldo+=s.pagado; else if(tk) tk.saldo-=s.pagado;
+        if(bk) bk.saldo+=s.pagado;   // tarjeta: el consumo desaparece solo al quitar el servicio
     }
     listaServicios=listaServicios.filter(x=>x.id!==id); guardar(); render();
 }
@@ -1959,8 +1965,7 @@ function elimCuota(id)   {
     if(!confirm('¿Eliminar esta cuota?')) return;
     listaServicios.filter(s=>s.cuotaId===id && s.pagado>0).forEach(s=>{
         const bk=listaBancos.find(b=>b.id===s.medioPagoId);
-        const tk=listaTarjetas.find(t=>t.id===s.medioPagoId);
-        if(bk) bk.saldo+=s.pagado; else if(tk) tk.saldo-=s.pagado;
+        if(bk) bk.saldo+=s.pagado;
     });
     listaCuotas=listaCuotas.filter(c=>c.id!==id); listaServicios=listaServicios.filter(s=>s.cuotaId!==id); guardar(); render();
 }
@@ -3094,10 +3099,9 @@ function renderDolares() {
         medSel.onchange=e=>{
             const v=e.target.value;
             if(v!==s.medioPagoId && s.pagado>0){
-                const tkOld=listaTarjetasUSD.find(t=>t.id===s.medioPagoId), ckOld=listaCuentasUSD.find(c=>c.id===s.medioPagoId);
-                if(tkOld) tkOld.saldo-=s.pagado; else if(ckOld) ckOld.saldo+=s.pagado;
-                const tkNew=listaTarjetasUSD.find(t=>t.id===v), ckNew=listaCuentasUSD.find(c=>c.id===v);
-                if(tkNew) tkNew.saldo+=s.pagado; else if(ckNew) ckNew.saldo-=s.pagado;
+                // Solo las cuentas mueven saldo al instante; una tarjeta USD lo toma vía calcMDU (consumo del mes).
+                const ckOld=listaCuentasUSD.find(c=>c.id===s.medioPagoId); if(ckOld) ckOld.saldo+=s.pagado;
+                const ckNew=listaCuentasUSD.find(c=>c.id===v); if(ckNew) ckNew.saldo-=s.pagado;
             }
             s.medioPagoId=v; guardar(); calcDashUSD(); renderDolares();
         };
@@ -3109,7 +3113,7 @@ function renderDolares() {
          (()=>{ const td=el('td','tr');
             td.appendChild(inpNumUSD(s.pagado,v=>{
                 const diff=v-s.pagado;
-                if(diff!==0){ const tk=listaTarjetasUSD.find(t=>t.id===s.medioPagoId), ck=listaCuentasUSD.find(c=>c.id===s.medioPagoId); if(tk) tk.saldo+=diff; else if(ck) ck.saldo-=diff; }
+                if(diff!==0){ const ck=listaCuentasUSD.find(c=>c.id===s.medioPagoId); if(ck) ck.saldo-=diff; }   // tarjeta USD: consumo vía calcMDU
                 s.pagado=v; guardar(); calcDashUSD();
             })); return td; })(),
          tdInpDate(s.fPago,v=>{ s.fPago=v; guardar(); }),
@@ -3186,9 +3190,8 @@ function elimTarjetaUSD(id)   { if(confirm('¿Remover tarjeta USD?')) { listaTar
 function elimServicioUSD(id)  {
     const s=listaServiciosUSD.find(x=>x.id===id);
     if(s && s.pagado>0){
-        const tk=listaTarjetasUSD.find(t=>t.id===s.medioPagoId);
         const ck=listaCuentasUSD.find(c=>c.id===s.medioPagoId);
-        if(tk) tk.saldo-=s.pagado; else if(ck) ck.saldo+=s.pagado;
+        if(ck) ck.saldo+=s.pagado;   // tarjeta USD: el consumo desaparece solo al quitar el servicio
     }
     listaServiciosUSD=listaServiciosUSD.filter(x=>x.id!==id); guardar(); renderDolares();
 }
@@ -4994,7 +4997,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.53';
+const APP_VERSION = 'v3.8.54';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -6806,7 +6809,7 @@ function cfConfirmarGasto() {
     const monto   = parseFloat(document.getElementById('cf-gm-monto').value);
     const moneda  = document.getElementById('cf-gm-moneda').value;
     const detalle = document.getElementById('cf-gm-detalle').value.trim();
-    const fecha   = document.getElementById('cf-gm-fecha').value;
+    const fecha   = document.getElementById('cf-gm-fecha').value || cfFechaLocal();   // el gasto nace pagado: sin fecha se descontaría de nuevo al cargarla después
     const cuotas  = parseInt(document.getElementById('cf-gm-cuotas').value) || 1;
     const rubro   = document.getElementById('cf-gm-rubro').value;
     const medioId = document.getElementById('cf-gm-medio').value;
