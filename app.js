@@ -250,7 +250,9 @@ function cfDbPutAll(db, entries) {
         const tx = db.transaction('kv', 'readwrite');
         entries.forEach(([k, v]) => tx.objectStore('kv').put({ k, v }));
         tx.oncomplete = () => resolve();
-        tx.onerror = e => reject(e.target.error);
+        tx.onerror = e => reject(e.target.error || tx.error);
+        // Sin esto, un abort (ej. cuota llena al commitear) dejaba la promesa colgada sin avisar.
+        tx.onabort = () => reject(tx.error || new Error('Transacción de IndexedDB abortada'));
     });
 }
 // Vuelca cada valor cargado (de IndexedDB o migrado de localStorage) a su variable global.
@@ -321,31 +323,69 @@ async function cfCargarEstadoInicial() {
         });
     } catch(e) { console.warn('cfCargarEstadoInicial:', e); }
 }
+// Arma las entradas a persistir leyendo el estado ACTUAL (se vuelve a llamar en cada reintento
+// para no escribir datos viejos encima de uno más nuevo).
+function cfEntradasGuardado() {
+    return [
+        [K.rubros, listaRubros], [K.bancos, listaBancos], [K.tarjetas, listaTarjetas],
+        [K.servicios, listaServicios], [K.corrientes, listaCorrientes],
+        [K.transferencias, listaTransferencias], [K.transferenciasUSD, listaTransferenciasUSD],
+        [K.comprasUSD, listaComprasUSD], [K.cuotas, listaCuotas], [K.historico, historicoMeses],
+        [K.cuentasUSD, listaCuentasUSD], [K.tarjetasUSD, listaTarjetasUSD],
+        [K.serviciosUSD, listaServiciosUSD], [K.corrientesUSD, listaCorrientesUSD],
+        [K.tipoCambio, tipoCambio], [K.instrumentos, listaInstrumentos], [K.acciones, listaAcciones],
+        ['f_presup_rubros_v1', listaPresupRubros], ['f_rubro_reporte4_v1', listaRubroReporte4],
+        ['f_rubro_reporte4_usd_v1', listaRubroReporte4USD], ['f_presup_rubros_usd_v1', listaPresupRubrosUSD],
+        ['f_rubros_usd_v1', listaRubrosUSD],
+        [K.ingresos, listaIngresos], [K.ingresosUSD, listaIngresosUSD], [K.ingresosPresup, listaIngresosPresup],
+        [K.pagosTarjeta, listaPagosTarjeta], [K.pagosTarjetaUSD, listaPagosTarjetaUSD], [K.ajustesSaldo, listaAjustesSaldo],
+        [K.cotizacionesManual, cotizacionesManual]
+    ];
+}
+// Aviso visible cuando no se pudo guardar en el dispositivo. Se saca solo al próximo guardado exitoso.
+function cfMostrarAvisoGuardado(detalle) {
+    try {
+        let el = document.getElementById('cf-aviso-guardado');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'cf-aviso-guardado';
+            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483000;background:#b91c1c;color:#fff;padding:10px 14px;font:600 13px/1.4 system-ui,sans-serif;display:flex;gap:10px;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            el.innerHTML = '<span id="cf-aviso-guardado-txt"></span><button type="button" style="background:#fff;color:#b91c1c;border:0;border-radius:4px;padding:2px 8px;font-weight:700;cursor:pointer;" onclick="this.parentNode.style.display=\'none\'">✕</button>';
+            (document.body || document.documentElement).appendChild(el);
+        }
+        document.getElementById('cf-aviso-guardado-txt').textContent =
+            '⚠️ No se pudo guardar en este dispositivo: los últimos cambios pueden perderse al cerrar. Hacé un backup ahora (Drive o archivo).' + (detalle ? ' [' + detalle + ']' : '');
+        el.style.display = 'flex';
+    } catch(e) { console.error('cfMostrarAvisoGuardado:', e); }
+}
+function cfOcultarAvisoGuardado() {
+    const el = document.getElementById('cf-aviso-guardado');
+    if (el) el.style.display = 'none';
+}
+async function cfPersistirIndexedDB() {
+    try {
+        if (!window._cfDb) window._cfDb = await cfDbOpen();
+        await cfDbPutAll(window._cfDb, cfEntradasGuardado());
+    } catch (e1) {
+        // Un reintento con conexión nueva (típico: la conexión quedó cerrada al volver de segundo plano).
+        console.warn('Guardado en IndexedDB falló, reintentando:', e1);
+        try { if (window._cfDb) window._cfDb.close(); } catch(_) {}
+        window._cfDb = null;
+        window._cfDb = await cfDbOpen();
+        await cfDbPutAll(window._cfDb, cfEntradasGuardado());
+    }
+}
 function guardar() {
     try {
-        const entries = [
-            [K.rubros, listaRubros], [K.bancos, listaBancos], [K.tarjetas, listaTarjetas],
-            [K.servicios, listaServicios], [K.corrientes, listaCorrientes],
-            [K.transferencias, listaTransferencias], [K.transferenciasUSD, listaTransferenciasUSD],
-            [K.comprasUSD, listaComprasUSD], [K.cuotas, listaCuotas], [K.historico, historicoMeses],
-            [K.cuentasUSD, listaCuentasUSD], [K.tarjetasUSD, listaTarjetasUSD],
-            [K.serviciosUSD, listaServiciosUSD], [K.corrientesUSD, listaCorrientesUSD],
-            [K.tipoCambio, tipoCambio], [K.instrumentos, listaInstrumentos], [K.acciones, listaAcciones],
-            ['f_presup_rubros_v1', listaPresupRubros], ['f_rubro_reporte4_v1', listaRubroReporte4],
-            ['f_rubro_reporte4_usd_v1', listaRubroReporte4USD], ['f_presup_rubros_usd_v1', listaPresupRubrosUSD],
-            ['f_rubros_usd_v1', listaRubrosUSD],
-            [K.ingresos, listaIngresos], [K.ingresosUSD, listaIngresosUSD], [K.ingresosPresup, listaIngresosPresup],
-            [K.pagosTarjeta, listaPagosTarjeta], [K.pagosTarjetaUSD, listaPagosTarjetaUSD], [K.ajustesSaldo, listaAjustesSaldo],
-            [K.cotizacionesManual, cotizacionesManual]
-        ];
-        (async () => {
-            try {
-                if (!window._cfDb) window._cfDb = await cfDbOpen();
-                await cfDbPutAll(window._cfDb, entries);
-            } catch(e) { console.error('Error al guardar en IndexedDB:', e); }
-        })();
+        cfPersistirIndexedDB().then(cfOcultarAvisoGuardado).catch(e => {
+            console.error('Error al guardar en IndexedDB:', e);
+            cfMostrarAvisoGuardado(e && e.name ? e.name : '');
+        });
         syncDebounce();
-    } catch(e) { console.error('Error al guardar:', e); }
+    } catch(e) {
+        console.error('Error al guardar:', e);
+        cfMostrarAvisoGuardado(e && e.name ? e.name : '');
+    }
     // Backup automático en carpeta local si está vinculada
     if (window._cfFolderHandle) cfBackupEnCarpeta(window._cfFolderHandle);
 }
@@ -5131,7 +5171,7 @@ function btnAyuda(ancla) {
     return `<button onclick="window.open('./instructivo.html#${ancla}','_blank','width=1100,height=750,resizable=yes,scrollbars=yes')" title="Ver ayuda" style="background:#f59e0b;border:none;color:#1e293b;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;cursor:pointer;padding:0;line-height:1;margin-left:8px;flex-shrink:0;vertical-align:middle;box-shadow:0 1px 4px rgba(0,0,0,0.3);" class="no-print">?</button>`;
 }
 
-const APP_VERSION = 'v3.8.61';
+const APP_VERSION = 'v3.8.62';
 const GDRIVE_CLIENT_ID='1049169592532-is5j1j4s1bmgrc9tsq48slrgul8fbj17.apps.googleusercontent.com';
 const GDRIVE_SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.readonly';
 const CF_DRIVE_FOLDER = 'ControlFinanciero';
@@ -6229,8 +6269,31 @@ function exportarExcel() {
         XLSX.writeFile(wb, `control_financiero_${ts}.xlsx`);
     }
 
-    // SheetJS cargado localmente (offline-ready)
-    generarXLSX();
+    // SheetJS se carga recién al exportar (860 KB que ya no pesan en cada apertura).
+    // Sigue en el precache del service worker, así que también funciona sin conexión.
+    cfCargarXLSX().then(() => {
+        try { generarXLSX(); }
+        catch(e) {
+            console.error('Error al generar el Excel:', e);
+            alert('⚠️ Error al generar el Excel: ' + (e && e.message ? e.message : e));
+        }
+    }, e => {
+        console.error('No se pudo cargar SheetJS:', e);
+        alert('⚠️ No se pudo cargar el módulo de exportación a Excel. Revisá la conexión y probá de nuevo.');
+    });
+}
+let _cfXlsxPromesa = null;
+function cfCargarXLSX() {
+    if (window.XLSX) return Promise.resolve();
+    if (_cfXlsxPromesa) return _cfXlsxPromesa;
+    _cfXlsxPromesa = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'xlsx.full.min.js';
+        sc.onload = () => window.XLSX ? resolve() : (_cfXlsxPromesa = null, reject(new Error('XLSX no quedó definido')));
+        sc.onerror = () => { _cfXlsxPromesa = null; sc.remove(); reject(new Error('No se pudo descargar xlsx.full.min.js')); };
+        document.head.appendChild(sc);
+    });
+    return _cfXlsxPromesa;
 }
 
 

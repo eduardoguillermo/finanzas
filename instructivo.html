@@ -265,7 +265,7 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <h1>💰 Control Financiero</h1>
-    <p>Manual de usuario · v3.8.61</p>
+    <p>Manual de usuario · v3.8.62</p>
   </div>
 
   <div class="section-label">Introducción</div>
@@ -313,7 +313,7 @@
     <h1>💰 Control Financiero</h1>
     <p>Manual completo de usuario — Gestión financiera personal en pesos y dólares</p>
     <div class="hero-badges">
-      <span class="badge badge-green">✓ v3.8.61</span>
+      <span class="badge badge-green">✓ v3.8.62</span>
       <span class="badge badge-blue">✓ Sin servidor</span>
       <span class="badge badge-amber">✓ Datos locales</span>
       <span class="badge badge-purple">✓ Gmail integrado</span>
@@ -1344,6 +1344,15 @@ console.log(gToken ? 'Token activo' : 'Sin token')</pre>
 
     <details class="changelog-details">
       <summary class="changelog-summary">Ver historial de versiones</summary>
+
+<div class="changelog-entry">
+      <div class="changelog-version"><span class="v-num">v3.8.62</span><span class="changelog-tag tag-fix">fix</span></div>
+      <ul class="changelog-list">
+        <li>Aviso si no se puede guardar: cuando la app no logra guardar tus datos en el navegador (por ejemplo, por falta de espacio), ahora aparece una barra roja arriba con el mensaje y la recomendación de hacer un backup. Antes el fallo pasaba en silencio y los últimos cambios podían perderse sin enterarte. La barra se quita sola en cuanto un guardado vuelve a funcionar (o con la ✕).</li>
+        <li>Si el primer intento de guardado falla, la app reintenta una vez con una conexión nueva antes de mostrar el aviso.</li>
+        <li>Exportar a Excel: la librería de exportación (860 KB) ahora se carga recién al tocar el botón de exportar, en lugar de en cada apertura de la app. La primera exportación de cada sesión puede demorar un instante más; después es inmediata, y sigue funcionando sin conexión. Si falla la carga o la generación del archivo, la app lo avisa.</li>
+      </ul>
+    </div>
 
 <div class="changelog-entry">
       <div class="changelog-version"><span class="v-num">v3.8.58 – v3.8.61</span><span class="changelog-tag tag-feature">feature</span></div>
