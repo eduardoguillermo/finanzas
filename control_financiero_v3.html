@@ -141,14 +141,14 @@
     padding:0 48px;
     box-sizing:border-box;
 ">
-    <div style="position:absolute;top:20px;right:32px;display:flex;gap:16px;font-size:20px;color:#3a3a40;font-family:'Courier New',monospace;">
+    <div style="position:absolute;top:20px;right:32px;display:flex;gap:16px;font-size:clamp(11px,1.6vw,20px);color:#3a3a40;font-family:'Courier New',monospace;">
         <span>ARS/USD <span style="color:#3ecf8e;">▲</span></span>
         <span>IPC <span style="color:#e5484d;">▼</span></span>
         <span>UVA <span style="color:#3ecf8e;">▲</span></span>
     </div>
-    <div style="font-size:26px;color:#6a6a72;letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;">Control Financiero</div>
-    <div style="font-size:88px;font-weight:700;color:#fafafa;letter-spacing:-1.5px;line-height:1;">Tus finanzas,<br/>bajo control.</div>
-    <div style="margin-top:28px;display:flex;align-items:center;gap:24px;font-size:22px;color:#5a5a62;">
+    <div style="font-size:clamp(14px,2.2vw,26px);color:#6a6a72;letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;">Control Financiero</div>
+    <div style="font-size:clamp(40px,8vw,88px);font-weight:700;color:#fafafa;letter-spacing:-1.5px;line-height:1;">Tus finanzas,<br/>bajo control.</div>
+    <div style="margin-top:28px;display:flex;align-items:center;gap:24px;font-size:clamp(12px,1.8vw,22px);color:#5a5a62;">
         <span id="cf-splash-version"></span>
         <span id="cf-splash-datetime"></span>
     </div>
@@ -162,7 +162,7 @@
 (function(){
     const vEl = document.getElementById('cf-splash-version');
     const dEl = document.getElementById('cf-splash-datetime');
-    if(vEl) vEl.textContent = 'v3.8.60';
+    if(vEl) vEl.textContent = 'v3.8.61';
 
     function tickReloj(){
         const dt = new Date();
